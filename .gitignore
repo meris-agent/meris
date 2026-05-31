@@ -47,7 +47,6 @@ Desktop.ini
 .meris/plan/
 .meris/worktrees/
 .meris/spec/
-.forge/
 
 # --- Cursor local (not the vscode-meris extension source) ---
 .cursor/

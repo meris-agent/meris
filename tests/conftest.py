@@ -19,8 +19,6 @@ if sys.platform == "win32":
         "DEEPSEEK_BASE_URL",
         "MERIS_BASE_URL",
         "MERIS_MODEL",
-        "FORGE_BASE_URL",
-        "FORGE_MODEL",
         "OPENAI_API_KEY",
     ):
         val = os.environ.get(name) or ""

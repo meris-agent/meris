@@ -1,4 +1,4 @@
-"""Environment variable helpers — MERIS_* with legacy FORGE_* fallback."""
+"""Environment variable helpers — MERIS_* only."""
 
 from __future__ import annotations
 
@@ -6,14 +6,8 @@ import os
 
 
 def env_get(name: str, default: str = "") -> str:
-    """Read MERIS_{name} or legacy FORGE_{name}."""
-    meris = os.getenv(f"MERIS_{name}")
-    if meris:
-        return meris
-    legacy = os.getenv(f"FORGE_{name}")
-    if legacy:
-        return legacy
-    return default
+    """Read MERIS_{name}."""
+    return os.getenv(f"MERIS_{name}", default)
 
 
 def env_flag(name: str) -> bool:

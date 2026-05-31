@@ -1,4 +1,4 @@
-"""Load `.meris/settings.json` with defaults (legacy `.forge/` fallback)."""
+"""Load `.meris/settings.json` with defaults."""
 
 from __future__ import annotations
 

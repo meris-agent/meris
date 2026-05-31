@@ -9,7 +9,8 @@
   - [x] D2 `BRAND.md`
   - [x] D3 VS Code/Cursor 扩展
   - [x] **本机配置**：Cursor 扩展联接 + Rust/MSVC + `meris-rs` release（见 [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md)）
-- [x] **品牌更名 Meris（v0.7.0）** — 自 Forge 全面改名；`forge` CLI 暂作兼容别名
+- [x] **品牌更名 Meris（v0.7.0）** — 自 Forge 全面改名
+- [x] **移除 Forge 兼容层（v0.8.0）** — 仅 `meris` CLI、`.meris/`、`MERIS_*`
 
 ## 进行中
 - [ ] Benchmark dogfood（需有效 API）
