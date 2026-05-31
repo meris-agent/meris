@@ -1,0 +1,317 @@
+"""Agent loop — async kernel (Claude Code / Nanobot shape)."""
+
+from __future__ import annotations
+
+import asyncio
+import inspect
+import json
+from collections.abc import Awaitable, Callable
+from pathlib import Path
+from typing import AsyncIterator, Union
+
+from meris.harness.context import estimate_messages_tokens
+from meris.native import compress_messages_auto
+from meris.harness.guardrails import check_tool_guardrails
+from meris.harness.guides import build_system_prompt
+from meris.harness.hooks import HookRunner
+from meris.harness.hooks_loader import build_hook_runner
+from meris.harness.memory import load_progress, update_progress_task
+from meris.harness.permissions import check_tool_allowed
+from meris.harness.sensors import run_post_edit_sensors, run_sensors
+from meris.harness.sessions import SessionRecord, load_session, new_session_id, save_session
+from meris.harness.settings import load_settings
+from meris.harness.spec import load_spec_context
+from meris.provider import Provider, get_provider
+from meris.state import AgentState
+from meris.tools import build_all_tools
+
+ApproveFn = Callable[[str, dict], Union[bool, Awaitable[bool]]]
+EmitFn = Callable[[str], None]
+
+
+async def _maybe_approve(approve_fn: ApproveFn | None, name: str, args: dict) -> bool:
+    if not approve_fn:
+        return False
+    result = approve_fn(name, args)
+    if inspect.isawaitable(result):
+        return await result
+    return bool(result)
+
+
+def _needs_approval(tools, name: str) -> bool:
+    tool = tools.get(name)
+    return tool is not None and not tool.read_only
+
+
+def _persist_session(
+    workspace: Path,
+    record: SessionRecord,
+    state: AgentState,
+    status: str,
+) -> None:
+    record.messages = state.messages
+    record.turn = state.turn
+    record.status = status
+    save_session(workspace, record)
+
+
+async def agent_loop(
+    workspace: Path,
+    task: str,
+    *,
+    mode: str = "run",
+    provider: Provider | None = None,
+    max_turns: int = 30,
+    run_sensors_at_end: bool = True,
+    require_approval: bool = False,
+    approve_fn: ApproveFn | None = None,
+    session_id: str | None = None,
+    resume: bool = False,
+    cancel: asyncio.Event | None = None,
+    plan_output: str | Path | None = "__default__",
+) -> AsyncIterator[str]:
+    """Yield human-readable progress lines."""
+    ws = workspace.resolve()
+    provider = provider or get_provider()
+    settings = load_settings(ws)
+
+    record: SessionRecord
+    resumed = False
+    state: AgentState
+
+    if session_id and resume:
+        loaded = load_session(ws, session_id)
+        if loaded:
+            record = loaded
+            state = AgentState.from_session(record.messages, record.turn, record.max_turns)
+            task = record.task
+            mode = record.mode
+            max_turns = record.max_turns
+            resumed = True
+        else:
+            sid = session_id
+            state = AgentState(max_turns=max_turns)
+            record = SessionRecord(
+                id=sid, task=task, mode=mode, max_turns=max_turns, workspace=str(ws)
+            )
+    else:
+        sid = session_id or new_session_id()
+        state = AgentState(max_turns=max_turns)
+        record = SessionRecord(id=sid, task=task, mode=mode, max_turns=max_turns, workspace=str(ws))
+
+    read_only = mode in ("ask", "plan")
+    tools, mcp_mgr, mcp_notes = await build_all_tools(ws, read_only=read_only, settings=settings)
+    hooks = build_hook_runner(ws, settings)
+    blocked_paths = settings.get("blockedPaths", [])
+    max_messages = int(settings.get("context", {}).get("maxMessages", 48))
+    max_tokens_raw = settings.get("context", {}).get("maxTokens")
+    max_tokens = int(max_tokens_raw) if max_tokens_raw else None
+    max_tool_tokens = int(settings.get("context", {}).get("maxToolTokens", 2000))
+    post_edit_cmds = settings.get("sensors", {}).get("postEdit") or []
+
+    if resumed:
+        yield f"[meris] resumed session={session_id} turn={state.turn}"
+    elif session_id and resume:
+        yield f"[meris] session {session_id} not found, starting fresh"
+
+    status = "completed"
+    lines: list[str] = []
+
+    def emit(line: str) -> None:
+        lines.append(line)
+
+    if not resumed and not record.messages:
+        system = build_system_prompt(ws, mode=mode)
+        progress = load_progress(ws)
+        spec_ctx = load_spec_context(ws)
+        if progress:
+            system += f"\n\n# Progress (read first)\n\n{progress[:8000]}"
+        if spec_ctx:
+            system += f"\n\n# Spec\n\n{spec_ctx}"
+        state.append({"role": "system", "content": system})
+        state.append({"role": "user", "content": task})
+
+    yield f"[meris] workspace={ws} mode={mode} model={getattr(provider, 'model', '?')} session={record.id}"
+    for note in mcp_notes:
+        yield f"[meris] {note}"
+    if require_approval:
+        yield "[meris] approve mode ON — mutating tools need confirmation"
+
+    try:
+        while not state.done:
+            if cancel and cancel.is_set():
+                status = "cancelled"
+                yield "[meris] cancelled — session saved"
+                break
+
+            state.next_turn()
+            compressed = compress_messages_auto(
+                state.messages,
+                max_messages=max_messages,
+                max_tokens=max_tokens,
+                max_tool_tokens=max_tool_tokens,
+            )
+            before_t = estimate_messages_tokens(state.messages)
+            after_t = estimate_messages_tokens(compressed)
+            if len(compressed) < len(state.messages):
+                yield f"[meris] context compressed {len(state.messages)} → {len(compressed)} messages"
+            elif before_t > after_t:
+                yield f"[meris] token budget: {before_t} → {after_t} tokens (limit {max_tokens})"
+
+            msg = await provider.chat(compressed, tools=tools.schemas())
+
+            if msg.get("content"):
+                yield f"\n[assistant]\n{msg['content']}"
+
+            tool_calls = msg.get("tool_calls")
+            if not tool_calls:
+                state.append({"role": "assistant", "content": msg.get("content") or ""})
+                _persist_session(ws, record, state, "completed")
+                break
+
+            state.append(
+                {
+                    "role": "assistant",
+                    "content": msg.get("content") or "",
+                    "tool_calls": tool_calls,
+                }
+            )
+
+            for tc in tool_calls:
+                if cancel and cancel.is_set():
+                    status = "cancelled"
+                    yield "[meris] cancelled mid-tool — session saved"
+                    break
+
+                fn = tc["function"]
+                name = fn["name"]
+                try:
+                    args = json.loads(fn["arguments"])
+                except json.JSONDecodeError:
+                    args = {}
+
+                denied = check_tool_allowed(name, args, settings)
+                if denied:
+                    result = denied
+                    yield f"\n[tool] {name} BLOCKED: {denied}"
+                else:
+                    guard = check_tool_guardrails(name, args, blocked_paths=blocked_paths)
+                    if guard:
+                        result = guard
+                        yield f"\n[tool] {name} GUARDRAIL: {guard}"
+                    elif require_approval and _needs_approval(tools, name):
+                        approved = await _maybe_approve(approve_fn, name, args)
+                        if not approved:
+                            result = "User denied tool execution"
+                            status = "denied"
+                            yield f"\n[tool] {name} DENIED by user"
+                        else:
+                            result = await _run_tool(
+                                hooks, tools, name, args, ws, post_edit_cmds, settings, emit
+                            )
+                            for line in lines:
+                                yield line
+                            lines.clear()
+                    else:
+                        result = await _run_tool(
+                            hooks, tools, name, args, ws, post_edit_cmds, settings, emit
+                        )
+                        for line in lines:
+                            yield line
+                        lines.clear()
+
+                state.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc["id"],
+                        "content": result,
+                    }
+                )
+
+            _persist_session(ws, record, state, "running")
+
+            if cancel and cancel.is_set():
+                status = "cancelled"
+                break
+
+        if status != "cancelled" and run_sensors_at_end and mode == "run":
+            ok, out = await run_sensors(ws)
+            if not ok:
+                status = "dod_failed"
+            yield f"\n[sensor] DoD {'PASS' if ok else 'FAIL'}\n{out[:2000]}"
+
+    except asyncio.CancelledError:
+        status = "cancelled"
+        _persist_session(ws, record, state, status)
+        yield "[meris] interrupted — session saved"
+        raise
+    except Exception:
+        status = "error"
+        raise
+    finally:
+        if mcp_mgr:
+            await mcp_mgr.close()
+        _persist_session(ws, record, state, status)
+        if mode == "run" and status != "running":
+            update_progress_task(ws, task[:200], status)
+
+    if mode == "plan" and plan_output is not None and status == "completed":
+        from meris.harness.plan import extract_last_assistant_text, save_plan
+
+        text = extract_last_assistant_text(state.messages)
+        if text:
+            out = None if plan_output == "__default__" else plan_output
+            path = save_plan(ws, text, out)
+            yield f"[meris] plan saved: {path}"
+
+    yield "\n[meris] done."
+
+
+async def _run_tool(
+    hooks: HookRunner,
+    tools,
+    name: str,
+    args: dict,
+    workspace: Path,
+    post_edit_cmds: list[str],
+    settings: dict,
+    emit: EmitFn,
+) -> str:
+    pre = await hooks.run_pre(name, args)
+    if pre.block:
+        emit(f"\n[tool] {name} HOOK BLOCK: {pre.message}")
+        return pre.message
+
+    emit(f"\n[tool] {name}({json.dumps(args, ensure_ascii=False)[:120]})")
+    result = await tools.execute(name, args)
+    if len(result) < 500:
+        emit(result)
+    else:
+        emit(result[:500] + "...")
+
+    from meris.harness.event_hooks import run_event_hooks
+
+    if name in ("write_file", "edit_file"):
+        rel = str(args.get("path", ""))
+        for hr in await run_event_hooks(workspace, settings, "onSave", path=rel):
+            if hr.message:
+                emit(f"\n[hook] onSave: {hr.message[:500]}")
+            if hr.block:
+                result += f"\n[onSave hook BLOCKED]\n{hr.message}"
+                return result
+
+    if name == "git_commit":
+        for hr in await run_event_hooks(workspace, settings, "onCommit"):
+            if hr.message:
+                emit(f"\n[hook] onCommit: {hr.message[:500]}")
+
+    if post_edit_cmds and name in ("write_file", "edit_file"):
+        ok, sensor_out = await run_post_edit_sensors(workspace)
+        if sensor_out:
+            tag = "PASS" if ok else "FAIL"
+            emit(f"\n[sensor] postEdit {tag}\n{sensor_out[:1500]}")
+            if not ok:
+                result += f"\n\n[postEdit sensor FAIL]\n{sensor_out[:2000]}"
+
+    await hooks.run_post(name, args, result)
+    return result

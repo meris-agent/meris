@@ -1,0 +1,25 @@
+{
+  "tasks": [
+    {
+      "id": "read_hello",
+      "mode": "ask",
+      "task": "What does hello.py print? Use read_file only.",
+      "expect": ["hello"],
+      "max_turns": 6
+    },
+    {
+      "id": "list_tools",
+      "mode": "ask",
+      "task": "List the built-in tool names in forge/tools/builtin.py using grep. Names only in answer.",
+      "expect": ["read_file"],
+      "max_turns": 6
+    },
+    {
+      "id": "plan_smoke",
+      "mode": "plan",
+      "task": "Plan adding a meris session prune command. 3 checkbox tasks only.",
+      "expect": ["[ ]"],
+      "max_turns": 4
+    }
+  ]
+}

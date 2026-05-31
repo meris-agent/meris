@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Git",
+      "Bash(pytest*)",
+      "Bash(python*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git add*)",
+      "MCP"
+    ],
+    "deny": [
+      "Bash(rm -rf*)",
+      "Bash(git push*)",
+      "Bash(curl*)"
+    ]
+  },
+  "sensors": {
+    "postEdit": ["pytest tests/ -m \"not integration\" -q --tb=no"],
+    "onComplete": true
+  },
+  "context": {
+    "maxMessages": 48,
+    "maxTokens": 32000,
+    "maxToolTokens": 2000
+  },
+  "blockedPaths": ["**/generated/**", "**/node_modules/**"],
+  "hooks": {
+    "preToolUse": [],
+    "postToolUse": []
+  },
+  "mcpServers": {}
+}

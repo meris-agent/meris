@@ -1,0 +1,53 @@
+# --- Secrets & local env ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+dist/
+build/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# --- Test / lint caches ---
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# --- Rust ---
+meris-rs/target/
+
+# --- IDE / editor (local) ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- Meris harness runtime (do not commit) ---
+.meris/sessions/
+.meris/plan/
+.meris/worktrees/
+.meris/spec/
+.forge/
+
+# --- Cursor local (not the vscode-meris extension source) ---
+.cursor/
