@@ -1,4 +1,4 @@
-//! Permission checks — parity with forge.harness.permissions.
+//! Permission checks — parity with meris.harness.permissions.
 
 use regex::Regex;
 use serde_json::Value;

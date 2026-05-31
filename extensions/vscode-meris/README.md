@@ -8,7 +8,7 @@ Thin wrapper around the `meris` CLI. Requires `meris` on PATH (`pip install -e .
 
 ```
 %USERPROFILE%\.cursor\extensions\meris-agent-vscode
-  → d:\personal\obsidian\AINote\coding-agent\extensions\vscode-meris
+  → d:\personal\obsidian\AINote\meris\extensions\vscode-meris
 ```
 
 **激活**：Cursor → `Developer: Reload Window`
@@ -24,7 +24,7 @@ powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1 -SkipRust
 或手动：
 
 ```powershell
-$src = "d:\personal\obsidian\AINote\coding-agent\extensions\vscode-meris"
+$src = "d:\personal\obsidian\AINote\meris\extensions\vscode-meris"
 $dst = "$env:USERPROFILE\.cursor\extensions\meris-agent-vscode"
 cmd /c mklink /J "$dst" "$src"
 ```

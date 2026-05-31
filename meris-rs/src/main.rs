@@ -35,7 +35,7 @@ enum Commands {
     /// Delegate to Python `meris` CLI (same argv minus `run`)
     Run {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
-        forge_args: Vec<String>,
+        meris_args: Vec<String>,
     },
 }
 
@@ -119,18 +119,18 @@ fn main() {
             println!("meris-rs {}", env!("CARGO_PKG_VERSION"));
             0
         }
-        Commands::Run { forge_args } => delegate_forge(&forge_args),
+        Commands::Run { meris_args } => delegate_meris(&meris_args),
     };
     std::process::exit(code);
 }
 
-fn delegate_forge(args: &[String]) -> i32 {
-    let forge = which_forge();
-    let Some(forge) = forge else {
+fn delegate_meris(args: &[String]) -> i32 {
+    let meris = which_meris();
+    let Some(meris) = meris else {
         eprintln!("Error: `meris` not found on PATH — pip install -e .");
         return 1;
     };
-    let status = Command::new(forge)
+    let status = Command::new(meris)
         .args(args)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
@@ -139,13 +139,13 @@ fn delegate_forge(args: &[String]) -> i32 {
     match status {
         Ok(s) => s.code().unwrap_or(1),
         Err(e) => {
-            eprintln!("Error spawning forge: {e}");
+            eprintln!("Error spawning meris: {e}");
             1
         }
     }
 }
 
-fn which_forge() -> Option<String> {
+fn which_meris() -> Option<String> {
     if cfg!(windows) {
         Command::new("where")
             .arg("meris")

@@ -16,7 +16,7 @@ Agent = Model + Harness
 ## Quick start
 
 ```bash
-cd coding-agent
+cd meris
 pip install -e .
 
 # Set your model (OpenAI-compatible)
@@ -46,8 +46,8 @@ meris run --no-sensor "explore codebase structure"
 ## Project layout
 
 ```
-coding-agent/
-├── forge/              # Python agent
+meris/
+├── meris/              # Python agent package
 ├── meris-rs/           # Rust harness core (P5 MVP)
 ├── extensions/
 │   └── vscode-meris/   # VS Code / Cursor plugin
@@ -95,7 +95,7 @@ set MERIS_NATIVE=1              # optional native context compression
 meris-rs run doctor             # delegates to Python meris
 ```
 
-**Brand**: see [BRAND.md](BRAND.md) — codename **Forge**, package name unchanged.
+**Brand**: see [BRAND.md](BRAND.md) — **Meris** (PyPI: `meris-agent`).
 
 **IDE extension** (VS Code / Cursor): `extensions/vscode-meris/` — 本机已联接至 `%USERPROFILE%\.cursor\extensions\meris-agent-vscode`，Reload Window 后命令面板搜 **Meris:**。
 

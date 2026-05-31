@@ -42,7 +42,7 @@ class ApproveModal(ModalScreen[bool]):
             self.dismiss(False)
 
 
-class ForgeTUI(App):
+class MerisTUI(App):
     TITLE = "Meris Agent"
     SUB_TITLE = "Harness-first coding agent"
     CSS = """
@@ -201,7 +201,7 @@ def run_tui(
     approve: bool = False,
     max_turns: int = 30,
 ) -> None:
-    app = ForgeTUI(workspace, mode=mode, approve=approve, max_turns=max_turns)
+    app = MerisTUI(workspace, mode=mode, approve=approve, max_turns=max_turns)
     app.run()
 
 

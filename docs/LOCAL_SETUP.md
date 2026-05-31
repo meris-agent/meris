@@ -7,17 +7,17 @@
 
 | 组件 | 状态 | 路径 / 说明 |
 |------|------|-------------|
-| Python `meris` CLI | ✅ | `D:\Users\yangy\AppData\Local\Programs\Python\Python314\Scripts\forge.exe` |
+| Python `meris` CLI | ✅ | `%LOCALAPPDATA%\Programs\Python\Python314\Scripts\meris.exe` |
 | Cursor 扩展 | ✅ | 目录联接 → 见下方 |
 | Rust (rustup) | ✅ | `%USERPROFILE%\.cargo\bin` |
 | VS Build Tools 2022 | ✅ | MSVC 链接器（`link.exe`） |
-| `meris-rs` release | ✅ | `coding-agent/meris-rs/target/release/meris-rs.exe` |
+| `meris-rs` release | ✅ | `meris/meris-rs/target/release/meris-rs.exe` |
 
 ### Cursor 扩展安装位置
 
 ```
 C:\Users\yangy\.cursor\extensions\meris-agent-vscode
-  └── (联接) → d:\personal\obsidian\AINote\coding-agent\extensions\vscode-meris
+  └── (联接) → d:\personal\obsidian\AINote\meris\extensions\vscode-meris
 ```
 
 **生效方式**：在 Cursor 中执行 **Developer: Reload Window**（或重启 Cursor），然后在命令面板搜索 `Meris:`。
@@ -33,7 +33,7 @@ setx MERIS_NATIVE 1
 验证：
 
 ```powershell
-cd d:\personal\obsidian\AINote\coding-agent
+cd d:\personal\obsidian\AINote\meris
 meris native status
 # available=True, version=meris-rs 0.6.0
 ```
@@ -49,7 +49,7 @@ meris native status
 在 **管理员或普通 PowerShell** 中（路径按你的仓库位置调整）：
 
 ```powershell
-$src = "d:\personal\obsidian\AINote\coding-agent\extensions\vscode-meris"
+$src = "d:\personal\obsidian\AINote\meris\extensions\vscode-meris"
 $dst = "$env:USERPROFILE\.cursor\extensions\meris-agent-vscode"
 if (Test-Path $dst) { Remove-Item $dst -Force -Recurse }
 cmd /c mklink /J "$dst" "$src"
@@ -104,7 +104,7 @@ cargo --version
 **方式 1 — Python 封装**（日常推荐）：
 
 ```powershell
-cd d:\personal\obsidian\AINote\coding-agent
+cd d:\personal\obsidian\AINote\meris
 meris native build
 meris native status
 ```
@@ -113,7 +113,7 @@ meris native status
 
 ```powershell
 # 若 cargo build 报 link.exe not found，先进入 VS 开发者环境：
-cmd /c "`"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat`" && cd /d d:\personal\obsidian\AINote\coding-agent\meris-rs && cargo build --release"
+cmd /c "`"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat`" && cd /d d:\personal\obsidian\AINote\meris\meris-rs && cargo build --release"
 ```
 
 产物：`meris-rs/target/release/meris-rs.exe`
@@ -121,7 +121,7 @@ cmd /c "`"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxi
 ### 可选：加入 PATH
 
 ```powershell
-setx PATH "$env:PATH;d:\personal\obsidian\AINote\coding-agent\meris-rs\target\release"
+setx PATH "$env:PATH;d:\personal\obsidian\AINote\meris\meris-rs\target\release"
 ```
 
 不加入 PATH 也可：`meris native status` 会自动发现 `target/release/` 下的二进制。
@@ -132,7 +132,7 @@ setx PATH "$env:PATH;d:\personal\obsidian\AINote\coding-agent\meris-rs\target\re
 meris-rs version
 meris-rs context tokens "hello"
 meris-rs permissions check --workspace . --tool read_file --args "{}"
-meris-rs run doctor    # 委托给 Python forge
+meris-rs run doctor    # 委托给 Python meris
 ```
 
 ### MERIS_NATIVE 行为
@@ -146,7 +146,7 @@ meris-rs run doctor    # 委托给 Python forge
 仓库提供 `scripts/setup-local.ps1`，可重复执行：
 
 ```powershell
-cd d:\personal\obsidian\AINote\coding-agent
+cd d:\personal\obsidian\AINote\meris
 powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1
 ```
 

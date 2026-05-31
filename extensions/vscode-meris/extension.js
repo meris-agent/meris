@@ -1,7 +1,7 @@
 const vscode = require("vscode");
 
 /** @param {string} mode ask | plan | run */
-async function runForgeTask(mode, extraArgs = []) {
+async function runMerisTask(mode, extraArgs = []) {
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
     vscode.window.showErrorMessage("Meris: open a workspace folder first.");
@@ -21,31 +21,31 @@ async function runForgeTask(mode, extraArgs = []) {
     cwd: folder.uri.fsPath,
   });
   term.show();
-  term.sendText(`forge ${args}`);
+  term.sendText(`meris ${args}`);
 }
 
-function runForgeSimple(command, label) {
+function runMerisSimple(command, label) {
   const folder = vscode.workspace.workspaceFolders?.[0];
   const cwd = folder?.uri.fsPath ?? ".";
   const term = vscode.window.createTerminal({ name: label, cwd });
   term.show();
-  term.sendText(`forge ${command}`);
+  term.sendText(`meris ${command}`);
 }
 
 /** @param {vscode.ExtensionContext} context */
 function activate(context) {
   context.subscriptions.push(
-    vscode.commands.registerCommand("meris.ask", () => runForgeTask("ask")),
-    vscode.commands.registerCommand("meris.plan", () => runForgeTask("plan")),
-    vscode.commands.registerCommand("meris.run", () => runForgeTask("run")),
+    vscode.commands.registerCommand("meris.ask", () => runMerisTask("ask")),
+    vscode.commands.registerCommand("meris.plan", () => runMerisTask("plan")),
+    vscode.commands.registerCommand("meris.run", () => runMerisTask("run")),
     vscode.commands.registerCommand("meris.runApprove", () =>
-      runForgeTask("run", ["--approve"])
+      runMerisTask("run", ["--approve"])
     ),
     vscode.commands.registerCommand("meris.doctor", () =>
-      runForgeSimple("doctor", "Meris Doctor")
+      runMerisSimple("doctor", "Meris Doctor")
     ),
     vscode.commands.registerCommand("meris.tui", () =>
-      runForgeSimple("tui", "Meris TUI")
+      runMerisSimple("tui", "Meris TUI")
     )
   );
 }

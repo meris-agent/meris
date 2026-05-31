@@ -1,4 +1,4 @@
-//! Token estimation and message compression (parity with forge.harness.context).
+//! Token estimation and message compression (parity with meris.harness.context).
 
 use serde_json::{json, Value};
 

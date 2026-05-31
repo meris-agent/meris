@@ -44,7 +44,7 @@
 
 ## Dogfood 原则（Ratchet）
 
-1. 用 Meris 修 Forge
+1. 用 Meris 修 Meris（dogfood）
 2. Agent 犯错 → 改 AGENTS.md / hook / sensor，不是只改输出
 3. 每完成一阶段 → 跑 `pytest` + `meris doctor`
 

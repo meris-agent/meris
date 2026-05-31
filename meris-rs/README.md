@@ -5,7 +5,7 @@ Native Rust core for [Meris Agent](../README.md) — fast harness primitives wit
 ## Build
 
 ```bash
-# from coding-agent/
+# from repo root (meris/)
 meris native build
 # or
 cd meris-rs && cargo build --release

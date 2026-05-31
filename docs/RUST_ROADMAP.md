@@ -17,15 +17,15 @@
 
 ```
 ┌─────────────────────────────────────────┐
-│  Cursor 扩展 / forge CLI / meris tui     │  ← 用户入口
+│  Cursor 扩展 / meris CLI / meris tui     │  ← 用户入口
 ├─────────────────────────────────────────┤
-│  Python forge (loop, tools, MCP, TUI)   │  ← Agent 主循环
+│  Python meris (loop, tools, MCP, TUI)   │  ← Agent 主循环
 ├─────────────────────────────────────────┤
 │  meris-rs (context, permissions, JSON)  │  ← 可选 MERIS_NATIVE=1
 └─────────────────────────────────────────┘
 ```
 
-Python 通过 `forge.native` 模块发现 `meris-rs/target/release/meris-rs`，子进程调用 `context compress` 等子命令。
+Python 通过 `meris.native` 模块发现 `meris-rs/target/release/meris-rs`，子进程调用 `context compress` 等子命令。
 
 ## 已移植模块
 
