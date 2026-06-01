@@ -63,6 +63,7 @@ class MerisTUI(App):
         ("ctrl+l", "clear_log", "Clear"),
         ("ctrl+r", "resume_session", "Resume"),
         ("ctrl+s", "refresh_sessions", "Sessions"),
+        ("ctrl+enter", "submit_task", "Send"),
     ]
 
     def __init__(
@@ -78,7 +79,7 @@ class MerisTUI(App):
         self.mode = mode
         self.approve = approve
         self.max_turns = max_turns
-        self._running = False
+        self._task_busy = False
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -89,7 +90,10 @@ class MerisTUI(App):
                 yield ListView(id="session-list")
             with Vertical(id="log-panel"):
                 yield RichLog(id="log", wrap=True, highlight=True, markup=True)
-        yield Input(placeholder="Enter task and press Enter…", id="task-input")
+        yield Input(
+            placeholder="Enter task — Enter or Ctrl+Enter to send (CJK IME: Enter twice if needed)",
+            id="task-input",
+        )
         yield Footer()
 
     def on_mount(self) -> None:
@@ -102,7 +106,7 @@ class MerisTUI(App):
         )
         self.query_one("#task-input", Input).focus()
         log = self.query_one("#log", RichLog)
-        log.write("[meris] Ready. Ctrl+S refresh sessions, Enter on session to resume.")
+        log.write("[meris] Ready — type a task below, press Enter or Ctrl+Enter to send.")
         if not MCP_AVAILABLE and mcp:
             log.write("[yellow]Install MCP: pip install meris-agent[mcp][/yellow]")
         self._refresh_session_list()
@@ -112,7 +116,7 @@ class MerisTUI(App):
         lv.clear()
         records = list_sessions(self.workspace)[:15]
         if not records:
-            lv.append(ListItem(Label("(no sessions)")))
+            lv.append(ListItem(Label("(no sessions)"), disabled=True))
             return
         for rec in records:
             label = f"{rec.id[:8]} {rec.status[:4]} {rec.task[:18]}"
@@ -124,7 +128,7 @@ class MerisTUI(App):
     async def on_list_view_selected(self, event: ListView.Selected) -> None:
         item = event.item
         sid = getattr(item, "session_id", None)
-        if not sid or self._running:
+        if not sid or self._task_busy:
             return
         log = self.query_one("#log", RichLog)
         log.write(f"[cyan]Resuming session {sid}…[/cyan]")
@@ -154,11 +158,22 @@ class MerisTUI(App):
     async def _approve(self, tool_name: str, args: dict) -> bool:
         return await self.push_screen_wait(ApproveModal(tool_name, args))
 
+    async def action_submit_task(self) -> None:
+        """Submit task from input (Ctrl+Enter — reliable with CJK IME)."""
+        await self._submit_task_from_input()
+
     async def on_input_submitted(self, event: Input.Submitted) -> None:
-        task = event.value.strip()
-        event.input.value = ""
-        if not task or self._running:
+        await self._submit_task_from_input(event.input)
+
+    async def _submit_task_from_input(self, inp: Input | None = None) -> None:
+        if self._task_busy:
             return
+        field = inp or self.query_one("#task-input", Input)
+        task = field.value.strip()
+        if not task:
+            # IME may fire Enter with empty payload before composition finishes — keep text.
+            return
+        field.value = ""
         await self._run_task(task)
 
     async def _run_task(
@@ -168,7 +183,7 @@ class MerisTUI(App):
         session_id: str | None = None,
         resume: bool = False,
     ) -> None:
-        self._running = True
+        self._task_busy = True
         log = self.query_one("#log", RichLog)
         log.write(f"\n[bold cyan]>>> {task}[/bold cyan]")
 
@@ -189,7 +204,7 @@ class MerisTUI(App):
         except Exception as e:
             log.write(f"[red]Error: {e}[/red]")
         finally:
-            self._running = False
+            self._task_busy = False
             self._refresh_session_list()
             self.query_one("#task-input", Input).focus()
 

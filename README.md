@@ -68,6 +68,8 @@ meris/
 
 See `Articles/MyCodingAgent-架构设计.md` in the Obsidian vault.
 
+**Dogfood（7 天）**：见 [docs/DOGFOOD_7DAY.md](docs/DOGFOOD_7DAY.md)
+
 ## Roadmap
 
 - [x] P1: Loop + tools + provider + harness loaders

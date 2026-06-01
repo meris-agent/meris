@@ -11,8 +11,10 @@
   - [x] **本机配置**：Cursor 扩展联接 + Rust/MSVC + `meris-rs` release（见 [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md)）
 - [x] **品牌更名 Meris（v0.7.0）** — 自 Forge 全面改名
 - [x] **移除 Forge 兼容层（v0.8.0）** — 仅 `meris` CLI、`.meris/`、`MERIS_*`
+- [x] **TUI 提交修复（v0.8.1）** — `_task_busy` 避免与 Textual 冲突；7 天 dogfood 文档
 
 ## 进行中
+- [ ] **7 天 dogfood** — 见 [docs/DOGFOOD_7DAY.md](docs/DOGFOOD_7DAY.md)
 - [ ] Benchmark dogfood（需有效 API）
 - [ ] meris-rs 全量 Agent loop 移植（P5 后续，非 0.6.0 范围）
 

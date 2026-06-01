@@ -1,0 +1,47 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Bash(git status*)",
+      "Bash(git diff*)"
+    ],
+    "deny": [
+      "Bash(rm -rf*)",
+      "Bash(git push*)",
+      "Bash(python*)",
+      "Bash(pytest*)",
+      "Bash(cargo*)",
+      "Bash(pip*)",
+      "Write(meris/**)",
+      "Edit(meris/**)",
+      "Write(.obsidian/**)",
+      "Edit(.obsidian/**)"
+    ]
+  },
+  "sensors": {
+    "postEdit": [],
+    "onComplete": false
+  },
+  "context": {
+    "maxMessages": 32,
+    "maxTokens": 24000,
+    "maxToolTokens": 1500
+  },
+  "blockedPaths": [
+    "meris/**",
+    ".obsidian/**",
+    "**/node_modules/**",
+    ".meris/sessions/**"
+  ],
+  "hooks": {
+    "preToolUse": [],
+    "postToolUse": [],
+    "onSave": [],
+    "onCommit": []
+  },
+  "mcpServers": {}
+}
