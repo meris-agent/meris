@@ -2,31 +2,25 @@
 
 Thin wrapper around the `meris` CLI. Requires `meris` on PATH (`pip install -e .` from repo root).
 
-## 本机安装记录（Windows + Cursor）
+## 安装（Windows + Cursor）
 
-已配置目录联接（改仓库内文件即生效）：
+推荐目录联接（改仓库内文件即生效）：
 
-```
-%USERPROFILE%\.cursor\extensions\meris-agent-vscode
-  → d:\personal\obsidian\AINote\meris\extensions\vscode-meris
+```powershell
+$src = "<repo>\extensions\vscode-meris"   # 换成你的 clone 路径
+$dst = "$env:USERPROFILE\.cursor\extensions\meris-agent-vscode"
+if (Test-Path $dst) { Remove-Item $dst -Force -Recurse }
+cmd /c mklink /J "$dst" "$src"
 ```
 
 **激活**：Cursor → `Developer: Reload Window`
 
-完整步骤与故障排查：[docs/LOCAL_SETUP.md](../../docs/LOCAL_SETUP.md)
+完整步骤：[docs/LOCAL_SETUP.md](../../docs/LOCAL_SETUP.md)
 
-## 重新安装
+或一键脚本：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1 -SkipRust
-```
-
-或手动：
-
-```powershell
-$src = "d:\personal\obsidian\AINote\meris\extensions\vscode-meris"
-$dst = "$env:USERPROFILE\.cursor\extensions\meris-agent-vscode"
-cmd /c mklink /J "$dst" "$src"
 ```
 
 ## Commands
@@ -44,7 +38,7 @@ Runs in integrated terminal at workspace root.
 
 ## VS Code（非 Cursor）
 
-将 `$dst` 改为 `%USERPROFILE%\.vscode\extensions\meris-agent-vscode`。
+将 `$dst` 改为 `$env:USERPROFILE\.vscode\extensions\meris-agent-vscode`。
 
 ## Package VSIX（可选）
 

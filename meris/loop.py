@@ -9,7 +9,7 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import AsyncIterator, Union
 
-from meris.harness.context import estimate_messages_tokens
+from meris.harness.context import estimate_messages_tokens, sanitize_messages_for_api
 from meris.native import compress_messages_auto
 from meris.harness.guardrails import check_tool_guardrails
 from meris.harness.guides import build_system_prompt
@@ -151,6 +151,7 @@ async def agent_loop(
                 max_tokens=max_tokens,
                 max_tool_tokens=max_tool_tokens,
             )
+            compressed = sanitize_messages_for_api(compressed)
             before_t = estimate_messages_tokens(state.messages)
             after_t = estimate_messages_tokens(compressed)
             if len(compressed) < len(state.messages):

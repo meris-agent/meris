@@ -44,6 +44,47 @@ def shrink_tool_results(messages: list[dict[str, Any]], *, max_tool_tokens: int 
     return out
 
 
+def _drop_incomplete_tool_round(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Remove trailing assistant+tool_calls when tool responses are incomplete."""
+    out = list(messages)
+    while out and out[-1].get("role") == "tool":
+        out.pop()
+    if out and out[-1].get("role") == "assistant" and out[-1].get("tool_calls"):
+        out.pop()
+    return out
+
+
+def sanitize_messages_for_api(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Ensure OpenAI tool protocol: each tool message follows matching assistant tool_calls."""
+    out: list[dict[str, Any]] = []
+    pending: set[str] = set()
+
+    for m in messages:
+        role = m.get("role")
+        if role == "tool":
+            tid = m.get("tool_call_id")
+            if tid and tid in pending:
+                out.append(m)
+                pending.discard(tid)
+            continue
+
+        if pending:
+            out = _drop_incomplete_tool_round(out)
+            pending.clear()
+
+        out.append(m)
+        if role == "assistant":
+            pending.clear()
+            for tc in m.get("tool_calls") or []:
+                tid = tc.get("id")
+                if tid:
+                    pending.add(tid)
+
+    if pending:
+        out = _drop_incomplete_tool_round(out)
+    return out
+
+
 def compress_messages(
     messages: list[dict[str, Any]],
     *,
@@ -58,7 +99,7 @@ def compress_messages(
         msgs = _compress_by_tokens(msgs, max_tokens)
 
     if len(msgs) <= max_messages:
-        return msgs
+        return sanitize_messages_for_api(msgs)
 
     system = [m for m in msgs if m.get("role") == "system"]
     rest = [m for m in msgs if m.get("role") != "system"]
@@ -82,7 +123,7 @@ def compress_messages(
         "role": "system",
         "content": f"[meris] Context compressed: dropped {dropped} older messages.",
     }
-    return system + head + [marker] + tail
+    return sanitize_messages_for_api(system + head + [marker] + tail)
 
 
 def _compress_by_tokens(messages: list[dict[str, Any]], max_tokens: int) -> list[dict[str, Any]]:
@@ -121,4 +162,4 @@ def _compress_by_tokens(messages: list[dict[str, Any]], max_tokens: int) -> list
             f"(limit {max_tokens}), dropped older turns."
         ),
     }
-    return fixed + [marker] + tail
+    return sanitize_messages_for_api(fixed + [marker] + tail)

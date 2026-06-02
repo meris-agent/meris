@@ -16,8 +16,12 @@
       "Bash(pytest*)",
       "Bash(cargo*)",
       "Bash(pip*)",
-      "Write(meris/**)",
-      "Edit(meris/**)",
+      "Write(meris/meris/**)",
+      "Edit(meris/meris/**)",
+      "Write(meris/meris-rs/**)",
+      "Edit(meris/meris-rs/**)",
+      "Write(meris/tests/**)",
+      "Edit(meris/tests/**)",
       "Write(.obsidian/**)",
       "Edit(.obsidian/**)"
     ]
@@ -32,7 +36,9 @@
     "maxToolTokens": 1500
   },
   "blockedPaths": [
-    "meris/**",
+    "meris/meris/**",
+    "meris/meris-rs/**",
+    "meris/tests/**",
     ".obsidian/**",
     "**/node_modules/**",
     ".meris/sessions/**"

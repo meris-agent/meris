@@ -9,14 +9,25 @@
   - [x] D2 `BRAND.md`
   - [x] D3 VS Code/Cursor 扩展
   - [x] **本机配置**：Cursor 扩展联接 + Rust/MSVC + `meris-rs` release（见 [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md)）
-- [x] **品牌更名 Meris（v0.7.0）** — 自 Forge 全面改名
-- [x] **移除 Forge 兼容层（v0.8.0）** — 仅 `meris` CLI、`.meris/`、`MERIS_*`
-- [x] **TUI 提交修复（v0.8.1）** — `_task_busy` 避免与 Textual 冲突；7 天 dogfood 文档
+- [x] **品牌 Meris（v0.7.0+）** — CLI / 包 / Harness 统一为 Meris
+- [x] **TUI 提交修复（v0.8.1）** — `_task_busy`；7 天 dogfood 文档
+- [x] **7 天 dogfood Ratchet + 开源整理（v0.8.2）** — 见下方「Dogfood 复盘」
 
 ## 进行中
-- [ ] **7 天 dogfood** — 见 [docs/DOGFOOD_7DAY.md](docs/DOGFOOD_7DAY.md)
-- [ ] Benchmark dogfood（需有效 API）
-- [ ] meris-rs 全量 Agent loop 移植（P5 后续，非 0.6.0 范围）
+- [ ] Benchmark 持续跟踪（`meris benchmark run`）
+- [ ] meris-rs 全量 Agent loop 移植（P5 后续）
+
+## Dogfood 复盘（7 天 · Ratchet）
+
+| # | 错误类型 | 典型表现 | Harness 改动 |
+|---|----------|----------|----------------|
+| 1 | **不知道路径规范** | plan 写 `forge/`；README 写成 `meris/README.md` | `AGENTS.md` 仓库布局 + `.meris/rules/paths.md` |
+| 2 | **输出格式不对** | plan 无 `- [ ]`，benchmark `plan_smoke` fail | `AGENTS.md` Plan 节 + `.meris/skills/plan-format.md` + `benchmark.py` 判题 |
+| 3 | **工作区 cwd 搞错** | 在 vault 根跑 run，README 被 block | `.meris/rules/workspace.md` + vault `AGENTS.md` 双 cwd 表 |
+
+**代码层修复（非 Harness）**：TUI `_task_busy`；context `sanitize_messages_for_api`（tool 消息 400）。
+
+**Meris 比裸 Chat 多什么**：permissions/block、DoD sensor、session 持久化、Plan 落盘、Ratchet 可沉淀规则。
 
 ## 阶段 D 命令
 ```bash

@@ -48,5 +48,7 @@ Desktop.ini
 .meris/worktrees/
 .meris/spec/
 
+# Commit harness *templates* for this repo: .meris/settings.json, rules/, skills/
+
 # --- Cursor local (not the vscode-meris extension source) ---
 .cursor/

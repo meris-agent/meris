@@ -1,4 +1,4 @@
-# AINote Vault — 进度
+# Obsidian Vault — 进度（示例）
 
 ## 已完成
 

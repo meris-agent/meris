@@ -19,6 +19,9 @@ Agent = Model + Harness
 cd meris
 pip install -e .
 
+# Verify installation
+meris version
+
 # Set your model (OpenAI-compatible)
 set OPENAI_API_KEY=sk-...
 set MERIS_BASE_URL=https://api.deepseek.com/v1
@@ -99,7 +102,7 @@ meris-rs run doctor             # delegates to Python meris
 
 **Brand**: see [BRAND.md](BRAND.md) — **Meris** (PyPI: `meris-agent`).
 
-**IDE extension** (VS Code / Cursor): `extensions/vscode-meris/` — 本机已联接至 `%USERPROFILE%\.cursor\extensions\meris-agent-vscode`，Reload Window 后命令面板搜 **Meris:**。
+**IDE extension** (VS Code / Cursor): `extensions/vscode-meris/` — 安装见 [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md)。
 
 ## Phase C (v0.5.0)
 
@@ -253,3 +256,7 @@ In `run` mode, agent can call `subagent_run` to delegate read-only exploration w
   }
 }
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).

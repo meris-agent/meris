@@ -17,8 +17,8 @@
     {
       "id": "plan_smoke",
       "mode": "plan",
-      "task": "Plan adding a meris session prune command. 3 checkbox tasks only.",
-      "expect": ["[ ]"],
+      "task": "Plan adding a meris session prune command. Output exactly 3 lines of `- [ ]` checkbox tasks only.",
+      "expect": ["- [ ]"],
       "max_turns": 4
     }
   ]

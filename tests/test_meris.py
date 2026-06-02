@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 import pytest
-from meris.harness.context import compress_messages
+from meris.harness.context import compress_messages, sanitize_messages_for_api
 from meris.harness.guardrails import check_blocked_path, check_tool_guardrails
 from meris.harness.permissions import check_tool_allowed, load_permissions
 from meris.harness.sensors import parse_dod_from_agents, run_post_edit_sensors
@@ -204,6 +204,51 @@ def test_compress_messages_drops_old() -> None:
     assert len(out) <= 10
     assert out[1]["content"] == "task"
     assert any("compressed" in m.get("content", "") for m in out)
+
+
+def test_sanitize_drops_orphan_tool_messages() -> None:
+    bad = [
+        {"role": "system", "content": "sys"},
+        {"role": "user", "content": "task"},
+        {"role": "system", "content": "[meris] Context compressed"},
+        {"role": "tool", "tool_call_id": "call_1", "content": "orphan"},
+    ]
+    out = sanitize_messages_for_api(bad)
+    assert not any(m.get("role") == "tool" for m in out)
+
+
+def test_compress_with_tool_round_stays_api_valid() -> None:
+    msgs = [{"role": "system", "content": "sys"}, {"role": "user", "content": "task"}]
+    for i in range(40):
+        msgs.append(
+            {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {
+                        "id": f"call_{i}",
+                        "type": "function",
+                        "function": {"name": "read_file", "arguments": "{}"},
+                    }
+                ],
+            }
+        )
+        msgs.append({"role": "tool", "tool_call_id": f"call_{i}", "content": "ok"})
+        msgs.append({"role": "assistant", "content": f"step {i}"})
+    out = compress_messages(msgs, max_messages=12)
+    pending: set[str] = set()
+    for m in out:
+        role = m.get("role")
+        if role == "tool":
+            assert m.get("tool_call_id") in pending
+            pending.discard(m.get("tool_call_id"))
+        elif pending:
+            pending.clear()
+        if role == "assistant" and m.get("tool_calls"):
+            pending = {tc["id"] for tc in m["tool_calls"]}
+        elif role == "assistant":
+            pending.clear()
+    assert not pending
 
 
 def test_guardrails_block_generated() -> None:

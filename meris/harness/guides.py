@@ -33,14 +33,18 @@ def build_system_prompt(workspace: Path, mode: str = "run") -> str:
     guides = load_guides(workspace)
     base = """You are Meris, a harness-first coding agent. Follow project guides strictly.
 Use tools to inspect before editing. Prefer edit_file over write_file for small changes.
-When done, summarize changes and suggest verification commands."""
+When done, summarize changes and suggest verification commands.
+Python package and source paths use the `meris/` directory (e.g. meris/cli.py, meris/harness/)."""
 
     if mode == "ask":
         base += "\n\nMODE: ASK — read-only. Do not call write_file, edit_file, or bash that mutates state."
     elif mode == "plan":
         base += (
-            "\n\nMODE: PLAN — produce a markdown task list only. Do not modify files."
-            "\nUse checkbox items (- [ ] task). End with a short summary."
+            "\n\nMODE: PLAN — produce a markdown task list only. Do not modify source files."
+            "\nRequired format: one task per line as `- [ ] description` (space inside brackets)."
+            "\nInclude at least 3 `- [ ]` lines unless the user specifies another count."
+            "\nDo not use numbered lists instead of checkboxes."
+            "\nReference files as `meris/...` (e.g. meris/cli.py). End with a short summary."
         )
 
     if guides:

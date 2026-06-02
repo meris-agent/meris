@@ -1,6 +1,6 @@
 # Meris Agent — 品牌说明
 
-> 正式品牌名：**Meris** · 版本 **0.8.1**
+> 正式品牌名：**Meris** · 版本 **0.8.2**
 
 ## 标识
 
@@ -17,23 +17,18 @@
 
 > Harness-first · Model-agnostic · Yours to shape
 
-## 更名记录
+## 历史
 
 | 日期 | 变更 |
 |------|------|
-| 2026-05 | 代号 Forge → 正式名 **Meris** |
-| 2026-05 | v0.8.0 移除 `forge` CLI、`.forge/`、`FORGE_*` 兼容 |
-| 2026-05 | Haltr / forCode 等候选不再采用 |
+| 2026-05 | 正式品牌 **Meris** · v0.8.x |
+| 2026-05 | Haltr / forCode 等候选未采用 |
 
-## 迁移说明
+## 新仓库
 
-若仓库仍使用 `.forge/` 或 `FORGE_*`，请手动迁移：
-
-1. 重命名 `.forge/` → `.meris/`
-2. 环境变量 `FORGE_*` → `MERIS_*`
-3. 重新 `pip install -e .`（仅安装 `meris` 命令）
-
-新仓库请 `meris init-harness` 生成 `.meris/`。
+```bash
+meris init-harness /path/to/repo
+```
 
 Hook 环境变量：`MERIS_TOOL_NAME`、`MERIS_HOOK_PHASE` 等。
 

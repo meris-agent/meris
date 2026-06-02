@@ -72,7 +72,7 @@ pub fn compress_messages(
     }
 
     if msgs.len() <= max_messages {
-        return msgs;
+        return sanitize_messages_for_api(&msgs);
     }
 
     let system: Vec<Value> = msgs
@@ -119,6 +119,60 @@ pub fn compress_messages(
     out.extend(head);
     out.push(marker);
     out.extend(tail);
+    sanitize_messages_for_api(&out)
+}
+
+fn drop_incomplete_tool_round(messages: &[Value]) -> Vec<Value> {
+    let mut out: Vec<Value> = messages.to_vec();
+    while out.last().and_then(|m| m.get("role")).and_then(|r| r.as_str()) == Some("tool") {
+        out.pop();
+    }
+    if out.last().map(|m| {
+        m.get("role").and_then(|r| r.as_str()) == Some("assistant")
+            && m.get("tool_calls").is_some()
+    }) == Some(true)
+    {
+        out.pop();
+    }
+    out
+}
+
+pub fn sanitize_messages_for_api(messages: &[Value]) -> Vec<Value> {
+    let mut out: Vec<Value> = vec![];
+    let mut pending: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    for m in messages {
+        if m.get("role").and_then(|r| r.as_str()) == Some("tool") {
+            if let Some(tid) = m.get("tool_call_id").and_then(|t| t.as_str()) {
+                if pending.remove(tid) {
+                    out.push(m.clone());
+                }
+            }
+            continue;
+        }
+
+        if !pending.is_empty() {
+            out = drop_incomplete_tool_round(&out);
+            pending.clear();
+        }
+
+        out.push(m.clone());
+
+        if m.get("role").and_then(|r| r.as_str()) == Some("assistant") {
+            pending.clear();
+            if let Some(tcs) = m.get("tool_calls").and_then(|v| v.as_array()) {
+                for tc in tcs {
+                    if let Some(id) = tc.get("id").and_then(|v| v.as_str()) {
+                        pending.insert(id.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    if !pending.is_empty() {
+        out = drop_incomplete_tool_round(&out);
+    }
     out
 }
 
@@ -173,7 +227,7 @@ fn compress_by_tokens(messages: &[Value], max_tokens: usize) -> Vec<Value> {
 
     fixed.push(marker);
     fixed.extend(tail);
-    fixed
+    sanitize_messages_for_api(&fixed)
 }
 
 #[cfg(test)]

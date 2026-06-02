@@ -51,6 +51,18 @@ def _check_expectations(output: str, expect: list[str]) -> tuple[bool, str]:
     return True, "all expectations met"
 
 
+def _benchmark_output(workspace: Path, lines: list[str], task: BenchmarkTask) -> str:
+    """Join streamed lines; for plan tasks also include saved plan file."""
+    joined = "\n".join(lines)
+    if task.mode == "plan":
+        from meris.harness.plan import default_plan_path
+
+        plan_path = default_plan_path(workspace)
+        if plan_path.is_file():
+            joined += "\n" + plan_path.read_text(encoding="utf-8")
+    return joined
+
+
 async def run_benchmark(
     workspace: Path,
     tasks: list[BenchmarkTask],
@@ -64,6 +76,7 @@ async def run_benchmark(
         session_id = ""
         status = "pass"
         detail = ""
+        plan_out: str | Path | None = "__default__" if t.mode == "plan" else None
         try:
             async for line in agent_loop(
                 workspace,
@@ -72,7 +85,7 @@ async def run_benchmark(
                 provider=provider,
                 max_turns=t.max_turns,
                 run_sensors_at_end=False,
-                plan_output=None,
+                plan_output=plan_out,
             ):
                 lines.append(line)
                 if on_line:
@@ -86,7 +99,7 @@ async def run_benchmark(
             results.append(BenchmarkResult(t.id, status, session_id, detail))
             continue
 
-        joined = "\n".join(lines)
+        joined = _benchmark_output(workspace, lines, t)
         ok, msg = _check_expectations(joined, t.expect)
         if not ok:
             status = "fail"

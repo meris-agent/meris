@@ -74,6 +74,26 @@ async def test_benchmark_mock_run(workspace: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_benchmark_plan_includes_saved_plan(workspace: Path) -> None:
+    from meris.benchmark import BenchmarkTask
+
+    tasks = [
+        BenchmarkTask(
+            id="plan",
+            task="Plan a feature. 3 checkbox tasks only.",
+            mode="plan",
+            expect=["- [ ]"],
+            max_turns=4,
+        ),
+    ]
+    results = await run_benchmark(workspace, tasks, provider=_MockProvider())
+    assert results[0].status == "pass"
+    plan_file = workspace / ".meris" / "plan" / "tasks.md"
+    assert plan_file.is_file()
+    assert "- [ ]" in plan_file.read_text(encoding="utf-8")
+
+
+@pytest.mark.asyncio
 async def test_on_save_hook_runs(workspace: Path, monkeypatch) -> None:
     from meris.harness.event_hooks import run_event_hooks
 

@@ -1,13 +1,13 @@
 # Meris 7 天 Dogfood 清单
 
 > 目标：用 Meris 做真实小事，每次失败改 Harness（Ratchet），而不是只改 Agent 输出。  
-> **项目 1（代码）**：`D:\personal\obsidian\AINote\meris`  
-> **项目 2（笔记库）**：`D:\personal\obsidian\AINote`（Obsidian vault，见 [examples/ainote-vault](examples/ainote-vault/)）
+> **项目 1（代码）**：Meris git 仓库根（`<repo>`）  
+> **项目 2（笔记库，可选）**：Obsidian vault 根，见 [examples/ainote-vault](examples/ainote-vault/)
 
 ## 每天开始前（2 分钟）
 
 ```powershell
-cd D:\personal\obsidian\AINote\meris
+cd <repo>
 meris doctor
 pytest tests/ -m "not integration" -q
 ```
@@ -50,7 +50,7 @@ pytest tests/ -m "not integration" -q
 | 项 | 内容 |
 |----|------|
 | **任务** | `meris benchmark list` → `meris benchmark run` |
-| **验收** | 记录通过率（expect 命中数 / 任务数）到 `PROGRESS.md` |
+| **验收** | 记录通过率到 `PROGRESS.md` |
 | **若失败改** | 某类任务总失败 → 改 `scripts/benchmark/tasks.json` 或 AGENTS 对应章节 |
 
 ---
@@ -66,15 +66,15 @@ pytest tests/ -m "not integration" -q
 
 ---
 
-## Day 6 — 第二项目（Obsidian vault）
+## Day 6 — 第二项目（Obsidian vault，可选）
 
 | 项 | 内容 |
 |----|------|
-| **cwd** | `cd D:\personal\obsidian\AINote` |
-| **任务** | `meris ask "Articles 里有哪些与 Coding Agent 相关的笔记？只读"` |
-| **任务** | `meris plan "更新 MyCodingAgent 架构设计.md 的 Phase 进度表"` |
+| **cwd** | vault 根（非 Meris 仓库根） |
+| **任务** | `meris ask "Articles 里有哪些笔记？只读"` |
+| **任务** | `meris plan "更新某篇架构文档的 Phase 进度表"` |
 | **验收** | 只碰 `Articles/`、`*.md`；不删 `.obsidian/` |
-| **若失败改** | 改了 `meris/` 代码 → vault 的 `.meris/settings.json` `blockedPaths`；wikilink 格式错 → vault `AGENTS.md` |
+| **若失败改** | 改了源码 → vault 的 `.meris/settings.json` `blockedPaths`；格式错 → vault `AGENTS.md` |
 
 ---
 
@@ -82,10 +82,16 @@ pytest tests/ -m "not integration" -q
 
 | 项 | 内容 |
 |----|------|
-| **任务** | 回顾 7 天：列出 Agent 犯过的 3 类错误，各改一处 Harness |
-| **任务** | 写进两个项目的 `PROGRESS.md`；meris 仓库 commit |
-| **验收** | 能回答：Meris 比裸 Cursor Chat 多给了什么（permissions / DoD / session / plan） |
-| **选定日常入口** | 建议：**终端 `meris run --approve`** 为主，扩展为辅 |
+| **任务** | 回顾 7 天：3 类错误 × 各改一处 Harness（见 `PROGRESS.md`） |
+| **验收** | 见下方复盘表；日常入口：**在 Meris 仓库根 `meris run --approve "..."`** |
+
+### 7 天复盘（实例 → Harness）
+
+1. **路径/命名** — plan 出现旧路径、README 写成 `meris/README.md` → `AGENTS.md` + `.meris/rules/paths.md`
+2. **Plan 格式** — 无 `- [ ]`，benchmark fail → `AGENTS.md` Plan 节 + `.meris/skills/plan-format.md`
+3. **cwd 搞错** — vault 根跑 run 改 README 被 block → `.meris/rules/workspace.md`
+
+代码修复（非 Harness）：TUI `_task_busy`、context `sanitize_messages_for_api`（tool 消息 400）。
 
 ---
 
@@ -103,7 +109,7 @@ pytest tests/ -m "not integration" -q
 
 ## 7 天后可选下一步
 
-- [ ] GitHub Release `v0.8.x` + 附 `meris-rs.exe`
+- [ ] GitHub Release + 附 `meris-rs` 二进制
 - [ ] PyPI 发布 `meris-agent`
 - [ ] `MERIS_NATIVE=1` 默认开启（P5-1）
-- [ ] 第三个常驻 repo（你的业务项目）`meris init-harness`
+- [ ] 第三个常驻 repo `meris init-harness`
