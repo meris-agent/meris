@@ -2,142 +2,113 @@
 
 Model-agnostic terminal coding agent — **Harness-first**, inspired by AtomCode, Claude Code, Codex, Cursor, and Kiro.
 
-## Philosophy
-
 ```
 Agent = Model + Harness
 ```
 
-- **Built lean** — minimal deps, fast startup (Python MVP → optional Rust later)
-- **Model-agnostic** — OpenAI-compatible API or native Anthropic (`MERIS_PROVIDER=anthropic`)
-- **Yours to shape** — approve mode, PROGRESS checkpoints, interrupt-safe
-- **Harness-first** — AGENTS.md, permissions, hooks, DoD sensors
+Meris ships a lean CLI (`meris`) plus a **Harness** layer you control: `AGENTS.md`, permissions, hooks, and Definition-of-Done sensors. Bring your own LLM (OpenAI-compatible or Anthropic).
+
+## Install
+
+**From PyPI:**
+
+```bash
+pip install meris-agent
+pip install "meris-agent[tui]"        # Textual TUI
+pip install "meris-agent[anthropic]"  # native Anthropic provider
+pip install "meris-agent[mcp]"        # MCP client
+pip install "meris-agent[full]"       # all optional deps
+```
+
+**From source:**
+
+```bash
+git clone https://github.com/meris-agent/meris.git
+cd meris
+pip install -e .
+```
+
+Requires **Python 3.11+**. Meris does not bundle a model — set an API key (see below).
 
 ## Quick start
 
 ```bash
-cd meris
-pip install -e .
+cd your-project
 
-# Verify installation
 meris version
 
-# Set your model (OpenAI-compatible)
-set OPENAI_API_KEY=sk-...
-set MERIS_BASE_URL=https://api.deepseek.com/v1
-set MERIS_MODEL=deepseek-chat
+# OpenAI-compatible provider (DeepSeek, OpenAI, etc.)
+export OPENAI_API_KEY=sk-...
+export MERIS_BASE_URL=https://api.deepseek.com/v1
+export MERIS_MODEL=deepseek-chat
 
-# Init harness in your project
-meris init-harness /path/to/your/repo
+meris init-harness .
+meris doctor
 
-# Ask (read-only)
 meris ask "where is auth handled?"
-
-# Plan (writes tasks, no code)
 meris plan "add rate limiting to /api/users"
-
-# Run agent
-meris run "fix the failing test in tests/test_auth.py"
-
-# Approve mode — confirm each write/edit/bash
-meris run --approve "refactor loop.py"
-
-# Skip DoD sensors
-meris run --no-sensor "explore codebase structure"
+meris run --approve "fix the failing test in tests/test_auth.py"
 ```
 
-## Project layout
+On Windows, use `set VAR=value` instead of `export`. Copy [.env.example](.env.example) to `.env` for local overrides.
 
-```
-meris/
-├── meris/              # Python agent package
-├── meris-rs/           # Rust harness core (P5 MVP)
-├── extensions/
-│   └── vscode-meris/   # VS Code / Cursor plugin
-├── templates/
-└── tests/
-```
+## Commands
 
-## Harness files (in target repo)
+| Command | What it does |
+|---------|----------------|
+| `meris ask "…"` | Read-only Q&A over your repo |
+| `meris plan "…"` | Write a task list to `.meris/plan/tasks.md` (no code changes) |
+| `meris run "…"` | Full agent: read / edit / bash / git tools |
+| `meris run --approve "…"` | Same as run, but confirm each write/bash |
+| `meris run --from-plan "…"` | Implement the saved plan |
+| `meris run --no-sensor "…"` | Skip post-edit DoD sensors |
+| `meris doctor` | Check API key, model, and harness files |
+| `meris init-harness .` | Scaffold `AGENTS.md`, `.meris/settings.json`, `PROGRESS.md` |
 
-| File | Subsystem | From |
-|------|-----------|------|
-| `AGENTS.md` | Instructions | Codex / 新智元 |
-| `.meris/settings.json` | Tools (permissions) | Claude Code |
-| `PROGRESS.md` | State | Anthropic / 新智元 |
-| `.meris/spec/*.md` | Spec workflow | Kiro (optional) |
+## Harness (your project)
 
-## Design doc
+After `meris init-harness`, these files steer the agent in **your** repo:
 
-See `Articles/MyCodingAgent-架构设计.md` in the Obsidian vault.
+| File | Role |
+|------|------|
+| `AGENTS.md` | Project rules, layout, DoD |
+| `.meris/settings.json` | Tool permissions, sensors, hooks, MCP |
+| `PROGRESS.md` | Cross-session progress notes |
+| `.meris/skills/*.md` | Optional domain skills |
+| `.meris/spec/*.md` | Optional spec workflow (Kiro-style) |
 
-**Dogfood（7 天）**：见 [docs/DOGFOOD_7DAY.md](docs/DOGFOOD_7DAY.md)
+Templates live in [`templates/`](templates/). Example vault harness: [`docs/examples/ainote-vault/`](docs/examples/ainote-vault/).
 
-## Roadmap
+## Configuration
 
-- [x] P1: Loop + tools + provider + harness loaders
-- [x] P2: Context compression, post-edit sensors, guardrails, git tools, approve mode
-- [x] P3: MCP client, Textual TUI, config-driven hooks
-- [x] P4: Session persistence, parallel sessions, skills, subagent, MCP SSE
-- [x] P5: Rust core MVP (`meris-rs` — context, permissions; full loop still Python)
+**Environment variables** (common):
 
-## Phase D (v0.6.0)
+| Variable | Purpose |
+|----------|---------|
+| `OPENAI_API_KEY` / `LLM_API_KEY` | API key (OpenAI-compatible) |
+| `MERIS_BASE_URL` | API base URL |
+| `MERIS_MODEL` | Model name |
+| `MERIS_PROVIDER=anthropic` | Use native Anthropic (`ANTHROPIC_API_KEY`) |
+| `MERIS_NATIVE=1` | Prefer Rust context compression (optional) |
 
-**本机配置（扩展 + Rust）**：见 [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md) · Rust 路线见 [docs/RUST_ROADMAP.md](docs/RUST_ROADMAP.md)
-
-一键脚本（Windows）：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1
-```
-
-**Native Rust core** (`meris-rs/`):
-
-```bash
-meris native build              # requires Rust: https://rustup.rs
-meris native status
-set MERIS_NATIVE=1              # optional native context compression
-meris-rs run doctor             # delegates to Python meris
-```
-
-**Brand**: see [BRAND.md](BRAND.md) — **Meris** (PyPI: `meris-agent`).
-
-**IDE extension** (VS Code / Cursor): `extensions/vscode-meris/` — 安装见 [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md)。
-
-## Phase C (v0.5.0)
-
-**Token budget** — `.meris/settings.json`:
+**Context budget** in `.meris/settings.json`:
 
 ```json
 "context": { "maxMessages": 48, "maxTokens": 32000, "maxToolTokens": 2000 }
 ```
 
-**Anthropic native**:
+**Permissions** — allow/deny tool patterns (bash globs, path blocks). See generated `settings.json` or [`templates/settings.json`](templates/settings.json).
+
+## Workflows
+
+**Plan → run**
 
 ```bash
-pip install meris-agent[anthropic]
-set MERIS_PROVIDER=anthropic
-set ANTHROPIC_API_KEY=sk-ant-...
-meris doctor
+meris plan "add session prune command"
+meris run --from-plan "implement the plan" --approve
 ```
 
-**Extra tools**: `fetch_url` (HTTP GET), `lint_file` (ruff check).
-
-**MCP resources/prompts**: auto-registered as `mcp_{server}_read_resource` / `mcp_{server}_get_prompt`.
-
-**TUI session panel**: `meris tui` — left sidebar lists sessions; Enter to resume, Ctrl+S refresh.
-
-## Phase A
-
-```bash
-meris doctor                    # env + harness + API probe
-meris plan "add feature"        # saves .meris/plan/tasks.md
-meris run --from-plan "go"      # implement saved plan
-```
-
-See [ROADMAP.md](ROADMAP.md) for full plan.
-
-## Spec workflow (Phase B)
+**Spec checklist**
 
 ```bash
 meris spec init "rate limiting"
@@ -146,11 +117,82 @@ meris spec next --note "REST API only"
 meris run --from-spec "implement checklist"
 ```
 
-## Event hooks
+**Benchmark** (harness regression)
+
+```bash
+meris benchmark list
+meris benchmark run
+```
+
+## TUI
+
+```bash
+pip install "meris-agent[tui]"
+meris tui --cwd . --mode run --approve
+```
+
+Interactive log + task input. **Sessions** panel on the left — Enter to resume, Ctrl+R latest, Ctrl+S refresh, Ctrl+L clear log. Enter or Ctrl+Enter sends a message.
+
+## MCP (external tools)
+
+Add servers in `.meris/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/dir"]
+    },
+    "remote": {
+      "transport": "sse",
+      "url": "http://localhost:8080/sse"
+    }
+  }
+}
+```
+
+```bash
+pip install "meris-agent[mcp]"
+meris mcp list
+```
+
+Tools register as `mcp_{server}_{tool}`; resources and prompts as `mcp_{server}_read_resource` / `mcp_{server}_get_prompt`.
+
+## Sessions & parallel
+
+Every run saves to `.meris/sessions/{id}.json`:
+
+```bash
+meris session list
+meris session show abc123
+meris session resume abc123
+meris run "task" --session-id my-id
+meris session prune --keep 10
+```
+
+Run multiple tasks:
+
+```bash
+meris parallel "explain auth" "explain db layer" --mode ask -j 2
+meris parallel "fix test A" "fix test B" --mode run --isolate
+```
+
+In `run` mode, the agent can call `subagent_run` for read-only sub-tasks with isolated context.
+
+## Hooks & skills
+
+**Tool hooks** (Claude Code–style) in `settings.json`:
 
 ```json
 {
   "hooks": {
+    "preToolUse": [
+      { "matcher": "bash", "command": "echo pre $MERIS_TOOL_NAME" }
+    ],
+    "postToolUse": [
+      { "matcher": "write_file|edit_file", "command": "echo post" }
+    ],
     "onSave": [
       { "matcher": "*.py", "command": "python -m ruff check $MERIS_SAVED_PATH" }
     ],
@@ -161,100 +203,37 @@ meris run --from-spec "implement checklist"
 }
 ```
 
-## Benchmark
+Env: `MERIS_TOOL_NAME`, `MERIS_TOOL_ARGS`, `MERIS_TOOL_RESULT`, `MERIS_HOOK_PHASE`.
 
-```bash
-meris benchmark list
-meris benchmark run
+**Skills** — add `.meris/skills/{name}.md`; the agent loads them via `load_skill`.
+
+## Optional: IDE & Rust
+
+| Component | Docs |
+|-----------|------|
+| VS Code / Cursor extension | [`extensions/vscode-meris/`](extensions/vscode-meris/) · [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
+| Rust core (`meris-rs`) | [RUST_ROADMAP](docs/RUST_ROADMAP.md) · `meris native build` / `MERIS_NATIVE=1` |
+
+Windows one-shot dev setup: `powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1`
+
+## Contributing & development
+
+| Topic | Link |
+|-------|------|
+| Roadmap & release phases (P1–P5, Phase A–D) | [ROADMAP.md](ROADMAP.md) |
+| Brand & naming | [BRAND.md](BRAND.md) |
+| 7-day dogfood / Ratchet | [docs/DOGFOOD_7DAY.md](docs/DOGFOOD_7DAY.md) |
+| Publish to PyPI | `scripts/publish-pypi.ps1` |
+
+**Repo layout:**
+
 ```
-
-## MCP (external tools)
-
-Configure servers in `.meris/settings.json`:
-
-```json
-{
-  "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/dir"]
-    }
-  }
-}
-```
-
-```bash
-pip install meris-agent[mcp]
-meris mcp list
-```
-
-Tools appear as `mcp_{server}_{tool}` in the agent registry. Resources and prompts are exposed as `mcp_{server}_read_resource` and `mcp_{server}_get_prompt`.
-
-## TUI
-
-```bash
-pip install meris-agent[tui]
-meris tui --cwd . --mode run --approve
-```
-
-Interactive log + task input. Left **Sessions** panel — Enter to resume, Ctrl+R latest, Ctrl+S refresh. Ctrl+L clears log.
-
-## Hooks (settings.json)
-
-Shell hooks run before/after tools (Claude Code–style):
-
-```json
-{
-  "hooks": {
-    "preToolUse": [
-      { "matcher": "bash", "command": "echo pre $MERIS_TOOL_NAME" }
-    ],
-    "postToolUse": [
-      { "matcher": "write_file|edit_file", "command": "echo post" }
-    ]
-  }
-}
-```
-
-Env vars: `MERIS_TOOL_NAME`, `MERIS_TOOL_ARGS`, `MERIS_TOOL_RESULT`, `MERIS_HOOK_PHASE`.
-
-## Sessions (persist & resume)
-
-Every run auto-saves to `.meris/sessions/{id}.json`. Resume after interrupt:
-
-```bash
-meris session list
-meris session show abc123
-meris session resume abc123
-meris run "task" --session-id my-id   # optional fixed id
-```
-
-## Parallel sessions
-
-```bash
-meris parallel "explain auth" "explain db layer" --mode ask -j 2
-meris parallel "fix test A" "fix test B" --mode run --isolate   # git worktree each
-```
-
-## Skills
-
-Place markdown in `.meris/skills/{name}.md`. Agent sees index in prompt; call `load_skill` to fetch full doc.
-
-## Subagent
-
-In `run` mode, agent can call `subagent_run` to delegate read-only exploration with isolated context.
-
-## MCP SSE transport
-
-```json
-{
-  "mcpServers": {
-    "remote": {
-      "transport": "sse",
-      "url": "http://localhost:8080/sse"
-    }
-  }
-}
+meris/
+├── meris/              # Python agent package
+├── meris-rs/           # Optional Rust harness core
+├── extensions/vscode-meris/
+├── templates/
+└── tests/
 ```
 
 ## License

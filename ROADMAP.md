@@ -1,8 +1,29 @@
-# Meris Agent 开发规划
+# Meris Agent — Roadmap
 
-> 基于 2026-05-31 缺口审计 · 优先级驱动
+> Development history and plans. User-facing docs: [README.md](README.md).
 
-## 阶段 A — 可用性基线
+## Product milestones (P1–P5)
+
+| Phase | Scope | Status |
+|-------|--------|--------|
+| **P1** | Agent loop, tools, provider, harness loaders | ✅ |
+| **P2** | Context compression, post-edit sensors, guardrails, git tools, approve mode | ✅ |
+| **P3** | MCP client, Textual TUI, config-driven hooks | ✅ |
+| **P4** | Session persistence, parallel sessions, skills, subagent, MCP SSE | ✅ |
+| **P5** | Rust core MVP (`meris-rs` — context, permissions; full loop still Python) | ✅ MVP |
+
+## Release phases (Phase A–D)
+
+Historical batch labels used during development. Public version starts at **v0.0.1**.
+
+| Phase | Focus | Highlights |
+|-------|--------|------------|
+| **A** | Usability baseline | `doctor`, permissions, plan → disk, interrupt-safe sessions, `git_commit`, CI |
+| **B** | Workflow depth | Spec workflow, `run --from-plan/spec`, session prune, event hooks, benchmark |
+| **C** | Differentiation | Token budget, Anthropic provider, `fetch_url` / `lint_file`, TUI session panel, MCP resources |
+| **D** | Distribution | `meris-rs`, VS Code/Cursor extension, Meris rebrand, PyPI packaging |
+
+### Phase A — 可用性基线
 
 | # | 任务 | 验收 | 状态 |
 |---|------|------|------|
@@ -14,7 +35,7 @@
 | A6 | GitHub Actions CI | push PR 跑 pytest | ✅ |
 | A7 | 日常 dogfood | parallel + run 全绿 | ⏳ 需有效 API |
 
-## 阶段 B — 工作流深度
+### Phase B — 工作流深度
 
 | # | 任务 | 验收 | 状态 |
 |---|------|------|------|
@@ -24,7 +45,7 @@
 | B4 | 事件 Hooks | onSave / onCommit | ✅ |
 | B5 | Benchmark 集 | `meris benchmark run` | ✅ |
 
-## 阶段 C — 差异化能力
+### Phase C — 差异化能力
 
 | # | 任务 | 验收 | 状态 |
 |---|------|------|------|
@@ -34,13 +55,21 @@
 | C4 | Browser / LSP 工具 | fetch_url + lint_file | ✅ |
 | C5 | TUI 增强 | session 面板 | ✅ |
 
-## 阶段 D — 长期（可选）
+### Phase D — 分发与长期
 
 | # | 任务 | 验收 | 状态 |
 |---|------|------|------|
 | D1 | Rust 移植（P5） | `meris-rs` + `meris native` | ✅ MVP |
-| D2 | 品牌定名 | BRAND.md，包名暂不改 | ✅ |
+| D2 | 品牌 Meris | BRAND.md · PyPI `meris-agent` | ✅ |
 | D3 | IDE 插件 | VS Code/Cursor 扩展 | ✅ |
+| D4 | PyPI 发布脚本 | `scripts/publish-pypi.ps1` | ✅ |
+
+## Next (post v0.0.1)
+
+- [ ] GitHub Release + optional `meris-rs` binary
+- [ ] PyPI publish `meris-agent==0.0.1`
+- [ ] `MERIS_NATIVE=1` by default when `meris-rs` available (P5-1)
+- [ ] Full agent loop in Rust (P5-4, long-term)
 
 ## Dogfood 原则（Ratchet）
 
@@ -48,18 +77,27 @@
 2. Agent 犯错 → 改 AGENTS.md / hook / sensor，不是只改输出
 3. 每完成一阶段 → 跑 `pytest` + `meris doctor`
 
-## 命令速查
+见 [docs/DOGFOOD_7DAY.md](docs/DOGFOOD_7DAY.md)。
+
+## Maintainer commands
 
 ```bash
 meris doctor
-meris native status                   # meris-rs 是否可用
-meris native build                    # cargo build --release
-set MERIS_NATIVE=1                    # 原生 context 压缩
+meris native status
+meris native build
+set MERIS_NATIVE=1
 
-# VS Code / Cursor: 见 docs/LOCAL_SETUP.md
-
-meris plan "add auth" --out .meris/plan/tasks.md
-meris run "implement plan" --approve
-meris mcp list
-meris tui
+meris benchmark run
+pytest tests/ -m "not integration" -q
 ```
+
+**Publish PyPI** (Windows):
+
+```powershell
+$env:TWINE_USERNAME = "__token__"
+$env:TWINE_PASSWORD = "pypi-..."
+powershell -ExecutionPolicy Bypass -File scripts\publish-pypi.ps1 -TestPyPI
+powershell -ExecutionPolicy Bypass -File scripts\publish-pypi.ps1
+```
+
+**Local dev**: [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md) · **Rust**: [docs/RUST_ROADMAP.md](docs/RUST_ROADMAP.md)
