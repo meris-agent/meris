@@ -11,7 +11,8 @@
   - [x] **本机配置**：Cursor 扩展联接 + Rust/MSVC + `meris-rs` release（见 [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md)）
 - [x] **品牌 Meris（v0.7.0+）** — CLI / 包 / Harness 统一为 Meris
 - [x] **TUI 提交修复（v0.8.1）** — `_task_busy`；7 天 dogfood 文档
-- [x] **7 天 dogfood Ratchet + 开源整理（v0.8.2）** — 见下方「Dogfood 复盘」
+- [x] **7 天 dogfood Ratchet + 开源整理** — 见下方「Dogfood 复盘」
+- [x] **首个公开版本 v0.0.1** — 对外 tag 从 0.0.1 起计
 
 ## 进行中
 - [ ] Benchmark 持续跟踪（`meris benchmark run`）

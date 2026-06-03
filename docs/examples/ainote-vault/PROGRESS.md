@@ -11,7 +11,7 @@
 
 ## 待办
 
-- [ ] 同步 `Articles/MyCodingAgent-架构设计.md` 与 Meris 实际版本（v0.8.x）
+- [ ] 同步 `Articles/MyCodingAgent-架构设计.md` 与 Meris 实际版本（v0.0.x）
 
 ## 已知问题
 

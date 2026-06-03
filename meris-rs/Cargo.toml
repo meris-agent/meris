@@ -1,6 +1,6 @@
 [package]
 name = "meris-rs"
-version = "0.8.2"
+version = "0.0.1"
 edition = "2021"
 description = "Meris Agent native core — context, permissions, harness I/O"
 license = "MIT"
