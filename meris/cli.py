@@ -27,12 +27,14 @@ mcp_app = typer.Typer(help="MCP server management")
 session_app = typer.Typer(help="Session persistence")
 spec_app = typer.Typer(help="Kiro-style spec workflow")
 benchmark_app = typer.Typer(help="Benchmark task suite")
+ratchet_app = typer.Typer(help="Harness self-evolution (Ratchet)")
 native_app = typer.Typer(help="Native Rust core (meris-rs)")
 app.add_typer(tui_app, name="tui")
 app.add_typer(mcp_app, name="mcp")
 app.add_typer(session_app, name="session")
 app.add_typer(spec_app, name="spec")
 app.add_typer(benchmark_app, name="benchmark")
+app.add_typer(ratchet_app, name="ratchet")
 app.add_typer(native_app, name="native")
 
 console = Console()
@@ -58,6 +60,14 @@ def _run_async(coro):
         console.print("\n[yellow]Interrupted[/yellow]")
 
 
+def _ratchet_after_run(workspace: Path, session_id: str | None = None) -> None:
+    from meris.harness.ratchet import ratchet_post_run
+
+    _, msg = ratchet_post_run(workspace, session_id=session_id)
+    if msg:
+        console.print(f"\n[dim]{msg}[/dim]")
+
+
 async def _stream(
     task: str,
     workspace: Path,
@@ -69,6 +79,7 @@ async def _stream(
     session_id: str | None = None,
     resume: bool = False,
     plan_output: str | Path | None = "__default__",
+    ratchet: bool = False,
 ) -> None:
     cancel = asyncio.Event()
     interrupted = False
@@ -99,6 +110,14 @@ async def _stream(
         signal.signal(signal.SIGINT, prev)
         if interrupted:
             console.print("[dim]Resume with: meris session list → meris session resume <id>[/dim]")
+        if ratchet:
+            from meris.harness.sessions import list_sessions
+
+            sid = session_id
+            if not sid:
+                sessions = list_sessions(workspace)
+                sid = sessions[0].id if sessions else None
+            _ratchet_after_run(workspace, sid)
 
 
 @app.command("doctor")
@@ -152,12 +171,23 @@ def init_harness(
     harness.mkdir(exist_ok=True)
     (harness / "sessions").mkdir(exist_ok=True)
     (harness / "plan").mkdir(exist_ok=True)
+    (harness / "ratchet" / "proposals").mkdir(parents=True, exist_ok=True)
+    (harness / "ratchet" / "applied").mkdir(parents=True, exist_ok=True)
     skills_dir = harness / "skills"
+    rules_dir = harness / "rules"
+    rules_dir.mkdir(exist_ok=True)
     skills_dir.mkdir(exist_ok=True)
     sample_skill = skills_dir / "harness.md"
     if not sample_skill.exists() and (tpl / "skills" / "harness.md").exists():
         shutil.copy(tpl / "skills" / "harness.md", sample_skill)
         console.print(f"[green]Created[/green] {sample_skill}")
+
+    for rule_name in ("paths.md", "workspace.md"):
+        rule_dst = rules_dir / rule_name
+        rule_src = tpl / "rules" / rule_name
+        if not rule_dst.exists() and rule_src.is_file():
+            shutil.copy(rule_src, rule_dst)
+            console.print(f"[green]Created[/green] {rule_dst}")
 
     settings = harness / "settings.json"
     if not settings.exists():
@@ -165,6 +195,7 @@ def init_harness(
         console.print(f"[green]Created[/green] {settings}")
 
     console.print("[bold]Harness initialized.[/bold] Edit AGENTS.md for your stack.")
+    console.print("[dim]Next: meris ratchet learn --init[/dim]")
 
 
 @spec_app.command("init")
@@ -257,10 +288,20 @@ def ask_cmd(
     task: str = typer.Argument(...),
     cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
     session_id: str | None = typer.Option(None, "--session-id"),
+    ratchet: bool = typer.Option(
+        False, "--ratchet", help="After run: refresh profile + scan for harness proposals"
+    ),
 ) -> None:
     """Read-only exploration (Cursor Ask mode)."""
     _run_async(
-        _stream(task, cwd.resolve(), "ask", session_id=session_id, plan_output=None)
+        _stream(
+            task,
+            cwd.resolve(),
+            "ask",
+            session_id=session_id,
+            plan_output=None,
+            ratchet=ratchet,
+        )
     )
 
 
@@ -271,6 +312,7 @@ def plan_cmd(
     session_id: str | None = typer.Option(None, "--session-id"),
     out: Path | None = typer.Option(None, "--out", "-o", help="Plan output path"),
     no_save: bool = typer.Option(False, "--no-save", help="Do not write tasks.md"),
+    ratchet: bool = typer.Option(False, "--ratchet", help="After run: refresh profile + scan proposals"),
 ) -> None:
     """Generate plan / tasks without editing code (Cursor Plan + Kiro tasks)."""
     plan_out: str | Path | None = None if no_save else (out or "__default__")
@@ -281,6 +323,7 @@ def plan_cmd(
             "plan",
             session_id=session_id,
             plan_output=plan_out,
+            ratchet=ratchet,
         )
     )
 
@@ -298,6 +341,11 @@ def run_cmd(
     ),
     from_spec: bool = typer.Option(
         False, "--from-spec", help="Prepend .meris/spec/tasks.md to task"
+    ),
+    ratchet: bool = typer.Option(
+        False,
+        "--ratchet",
+        help="After run: refresh profile + scan for harness proposals",
     ),
 ) -> None:
     """Full agent loop with tools + sensors (default mode)."""
@@ -327,6 +375,7 @@ def run_cmd(
             require_approval=approve,
             session_id=session_id,
             plan_output=None,
+            ratchet=ratchet,
         )
     )
 
@@ -457,6 +506,11 @@ def benchmark_run(
         "-f",
         help="Benchmark tasks JSON (default: scripts/benchmark/tasks.json)",
     ),
+    filter: str | None = typer.Option(
+        None,
+        "--filter",
+        help="Run only task id matching this string (prefix or exact)",
+    ),
 ) -> None:
     """Run benchmark tasks and report pass rate."""
     from meris.benchmark import load_benchmark_tasks, run_benchmark, summarize
@@ -469,11 +523,18 @@ def benchmark_run(
     tasks = load_benchmark_tasks(tf)
     console.print(f"[bold]Running {len(tasks)} benchmark tasks…[/bold]")
 
+    if filter:
+        tasks = [t for t in tasks if t.id == filter or t.id.startswith(filter)]
+        if not tasks:
+            console.print(f"[red]No tasks match filter: {filter}[/red]")
+            raise typer.Exit(1)
+
     async def _go():
         return await run_benchmark(
             ws,
             tasks,
             on_line=lambda tid, line: console.print(f"[{tid}] {line}"),
+            task_filter=filter,
         )
 
     results = _run_async(_go())
@@ -488,6 +549,13 @@ def benchmark_run(
         f"({summary['rate']:.0f}%)[/bold]"
     )
     if summary["failed"]:
+        from meris.harness.ratchet import scan_workspace
+
+        created = scan_workspace(ws, since_days=1)
+        if created:
+            console.print(f"[ratchet] {len(created)} new proposal(s) — meris ratchet review")
+        else:
+            console.print("[dim]Harness: meris ratchet scan → meris ratchet review[/dim]")
         raise typer.Exit(1)
 
 
@@ -504,6 +572,293 @@ def benchmark_list(
     for t in tasks:
         table.add_row(t.id, t.mode, t.task[:60])
     console.print(table)
+
+
+@ratchet_app.command("status")
+def ratchet_status(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    since_days: int = typer.Option(7, "--since"),
+) -> None:
+    """Show ratchet events and pending proposals."""
+    from meris.harness.ratchet import count_events, list_proposals
+    from meris.harness.ratchet.paths import events_file
+
+    ws = cwd.resolve()
+    pending = list_proposals(ws, status="pending")
+    counts = count_events(ws, since_days=since_days)
+    console.print(f"Events ({since_days}d): {events_file(ws).is_file()}")
+    if counts:
+        for kind, n in sorted(counts.items()):
+            console.print(f"  {kind}: {n}")
+    else:
+        console.print("  [dim]none[/dim]")
+    console.print(f"Pending proposals: {len(pending)}")
+    for p in pending[:5]:
+        console.print(f"  {p.id} [{p.lesson}] {p.summary[:40]}")
+
+
+@ratchet_app.command("learn")
+def ratchet_learn(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    init: bool = typer.Option(
+        False,
+        "--init",
+        help="Run even when no strong repo markers (right after init-harness)",
+    ),
+) -> None:
+    """Scan project layout and create harness proposals (rules + optional AGENTS DoD)."""
+    from meris.harness.ratchet import run_learn, scan_project
+
+    ws = cwd.resolve()
+    facts = scan_project(ws)
+    console.print(
+        f"[dim]Detected: {facts.package_manager}, dirs={', '.join(facts.top_dirs) or '—'}[/dim]"
+    )
+    created = run_learn(ws, init=init, save=True)
+    if not created:
+        console.print("[yellow]No new learn proposals[/yellow]")
+        return
+    for p in created:
+        console.print(f"[green]+[/green] {p.id} [{p.lesson}] {p.summary}")
+        if p.target.path == "AGENTS.md":
+            console.print("    [yellow]apply needs --force-agents[/yellow]")
+    console.print("\n[bold]meris ratchet review[/bold]")
+
+
+@ratchet_app.command("profile")
+def ratchet_profile(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    since_days: int = typer.Option(30, "--since"),
+    show: bool = typer.Option(False, "--show", help="Print profile after rebuild"),
+) -> None:
+    """Rebuild `.meris/profile.md` from approve/permission events."""
+    from meris.harness.ratchet import rebuild_profile
+    from meris.harness.ratchet.profile import load_profile_text
+
+    ws = cwd.resolve()
+    path = rebuild_profile(ws, since_days=since_days)
+    if not path:
+        console.print("[dim]No approve/permission events — profile unchanged[/dim]")
+        raise typer.Exit(0)
+    console.print(f"[green]Updated[/green] {path}")
+    if show:
+        console.print(load_profile_text(ws))
+
+
+@ratchet_app.command("analyze")
+def ratchet_analyze(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    session_id: str | None = typer.Option(None, "--session-id", help="Session to analyze"),
+    last_fail: bool = typer.Option(
+        False, "--last-fail", help="Use latest failed session or event"
+    ),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Print prompt only, no API"),
+    since_days: int = typer.Option(14, "--since"),
+) -> None:
+    """LLM analysis → harness proposals (JSON). Requires API key."""
+    from meris.harness.ratchet.analyze import analyze_workspace, build_analyze_prompt, resolve_analyze_session
+    from meris.provider import ProviderError
+
+    ws = cwd.resolve()
+    session = resolve_analyze_session(ws, session_id=session_id, last_fail=last_fail)
+    if dry_run:
+        console.print(build_analyze_prompt(ws, session=session, since_days=since_days))
+        return
+
+    async def _go():
+        return await analyze_workspace(
+            ws,
+            session_id=session.id if session else None,
+            last_fail=False,
+            save=True,
+            since_days=since_days,
+        )
+
+    try:
+        created = _run_async(_go())
+    except ProviderError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1) from e
+
+    if not created:
+        console.print("[yellow]No valid proposals parsed[/yellow]")
+        raise typer.Exit(1)
+    for p in created:
+        console.print(f"[green]+[/green] {p.id} [{p.lesson}] {p.summary}")
+        if p.target.path == "AGENTS.md":
+            console.print("    [yellow]apply needs --force-agents[/yellow]")
+    console.print("\n[bold]meris ratchet review[/bold]")
+
+
+@ratchet_app.command("scan")
+def ratchet_scan(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    since_days: int = typer.Option(7, "--since", help="Only events within N days"),
+    ingest_sessions: bool = typer.Option(
+        False, "--ingest-sessions", help="Backfill events from failed sessions"
+    ),
+) -> None:
+    """Scan events and create pending harness proposals."""
+    from meris.harness.ratchet import scan_workspace
+
+    ws = cwd.resolve()
+    created = scan_workspace(ws, since_days=since_days, ingest_sessions=ingest_sessions)
+    if not created:
+        console.print("[yellow]No new proposals[/yellow]")
+        return
+    for p in created:
+        console.print(f"[green]+[/green] {p.id} [{p.lesson}] {p.summary}")
+        console.print(f"    → {p.target.path}")
+    console.print(f"\n[bold]{len(created)} proposal(s)[/bold] — meris ratchet review")
+
+
+@ratchet_app.command("list")
+def ratchet_list(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    all_status: bool = typer.Option(False, "--all", help="Include applied proposals"),
+) -> None:
+    """List ratchet proposals."""
+    from meris.harness.ratchet import list_proposals
+
+    status = None if all_status else "pending"
+    props = list_proposals(cwd.resolve(), status=status)
+    if not props:
+        console.print("[dim]No proposals[/dim]")
+        return
+    table = Table("ID", "Lesson", "Status", "Summary")
+    for p in props:
+        table.add_row(p.id, p.lesson, p.status, p.summary[:50])
+    console.print(table)
+
+
+@ratchet_app.command("show")
+def ratchet_show(
+    proposal_id: str = typer.Argument(..., help="Proposal id"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+) -> None:
+    """Show proposal details and patch preview."""
+    from meris.harness.ratchet import load_proposal
+
+    p = load_proposal(cwd.resolve(), proposal_id)
+    if not p:
+        console.print(f"[red]Not found: {proposal_id}[/red]")
+        raise typer.Exit(1)
+    console.print(f"[bold]{p.id}[/bold] [{p.lesson}] {p.status}")
+    console.print(p.summary)
+    console.print(f"Target: {p.target.path} ({p.target.action})")
+    if p.verify:
+        console.print("Verify: " + ", ".join(p.verify))
+    console.print("\n[bold]Content to apply:[/bold]")
+    console.print(p.target.content)
+
+
+@ratchet_app.command("review")
+def ratchet_review(
+    proposal_id: str | None = typer.Argument(None, help="Proposal id (optional)"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    verify: bool = typer.Option(False, "--verify", help="Run verify after apply"),
+) -> None:
+    """Review pending proposal(s); apply on confirm."""
+    from meris.harness.ratchet import list_proposals, load_proposal, reject_proposal
+
+    ws = cwd.resolve()
+    if proposal_id:
+        props = [load_proposal(ws, proposal_id)]
+        props = [p for p in props if p and p.status == "pending"]
+    else:
+        props = list_proposals(ws, status="pending")
+    if not props:
+        console.print("[dim]No pending proposals[/dim]")
+        return
+    for p in props:
+        console.print(f"\n[bold]{p.id}[/bold] [{p.lesson}] — {p.summary}")
+        console.print(f"  → {p.target.path}")
+        console.print(p.target.content[:400] + ("…" if len(p.target.content) > 400 else ""))
+        if typer.confirm("Apply?", default=True):
+            _ratchet_apply_one(ws, p, verify=verify)
+        elif typer.confirm("Reject this proposal?", default=False):
+            reject_proposal(ws, p.id)
+            console.print("[dim]Rejected[/dim]")
+        else:
+            console.print("[dim]Skipped[/dim]")
+
+
+@ratchet_app.command("reject")
+def ratchet_reject(
+    proposal_id: str = typer.Argument(..., help="Proposal id"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+) -> None:
+    """Reject a pending proposal without applying."""
+    from meris.harness.ratchet import reject_proposal
+
+    if reject_proposal(cwd.resolve(), proposal_id):
+        console.print(f"[yellow]Rejected {proposal_id}[/yellow]")
+    else:
+        console.print(f"[red]Not found or not pending: {proposal_id}[/red]")
+        raise typer.Exit(1)
+
+
+@ratchet_app.command("apply")
+def ratchet_apply(
+    proposal_id: str = typer.Argument(..., help="Proposal id"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    verify: bool = typer.Option(False, "--verify", help="Run proposal verify commands"),
+    force_agents: bool = typer.Option(False, "--force-agents", help="Allow AGENTS.md patches"),
+) -> None:
+    """Apply a pending proposal to harness files."""
+    from meris.harness.ratchet import load_proposal
+
+    ws = cwd.resolve()
+    p = load_proposal(ws, proposal_id)
+    if not p or p.status != "pending":
+        console.print(f"[red]Pending proposal not found: {proposal_id}[/red]")
+        raise typer.Exit(1)
+    _ratchet_apply_one(ws, p, verify=verify, force_agents=force_agents)
+
+
+@ratchet_app.command("revert")
+def ratchet_revert(
+    proposal_id: str = typer.Argument(..., help="Applied proposal id"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+) -> None:
+    """Restore harness files from apply backup."""
+    from meris.harness.ratchet import revert_proposal
+
+    if revert_proposal(cwd.resolve(), proposal_id):
+        console.print(f"[green]Reverted {proposal_id}[/green]")
+    else:
+        console.print(f"[red]No backup for {proposal_id}[/red]")
+        raise typer.Exit(1)
+
+
+def _ratchet_apply_one(
+    workspace: Path,
+    proposal,
+    *,
+    verify: bool = False,
+    force_agents: bool = False,
+) -> None:
+    from meris.harness.ratchet import apply_proposal
+
+    try:
+        dest = apply_proposal(workspace, proposal, force_agents=force_agents)
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1) from e
+    console.print(f"[green]Applied[/green] → {dest}")
+    if verify and proposal.verify:
+        for cmd in proposal.verify:
+            console.print(f"[dim]verify: {cmd}[/dim]")
+            if cmd.startswith("meris benchmark"):
+                parts = cmd.split()
+                filt = None
+                if "--filter" in parts:
+                    filt = parts[parts.index("--filter") + 1]
+                benchmark_run(
+                    cwd=workspace,
+                    tasks_file=None,
+                    filter=filt,
+                )
 
 
 @tui_app.callback(invoke_without_command=True)

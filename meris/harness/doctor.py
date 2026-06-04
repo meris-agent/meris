@@ -68,6 +68,24 @@ def check_harness(workspace: Path) -> list[CheckResult]:
     settings = load_settings(ws)
     mcp_n = len(settings.get("mcpServers") or {})
     results.append(CheckResult("mcpServers", "ok" if mcp_n else "warn", f"{mcp_n} configured"))
+
+    try:
+        from meris.harness.ratchet import list_proposals
+
+        pending = list_proposals(ws, status="pending")
+        if pending:
+            results.append(
+                CheckResult(
+                    "ratchet",
+                    "warn",
+                    f"{len(pending)} pending — meris ratchet review",
+                )
+            )
+        else:
+            results.append(CheckResult("ratchet", "ok", "no pending proposals"))
+    except Exception:
+        results.append(CheckResult("ratchet", "ok", "not initialized"))
+
     return results
 
 

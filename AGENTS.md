@@ -1,6 +1,10 @@
 # AGENTS.md — Meris Harness (Instructions subsystem)
 # Inspired by: OpenAI Codex AGENTS.md + Claude Code CLAUDE.md
 
+## 产品宗旨（North star）
+
+Meris 是**会自我进化的 coding agent**：越用越顺手，自动贴合当前项目与用户习惯。进化写在 Harness（本文件、`.meris/skills`、`.meris/rules`、`PROGRESS.md`、session），不是只改模型输出。见 [VISION.md](VISION.md)。
+
 ## 项目说明
 
 - 包管理器：pip（`pyproject.toml` + hatchling）

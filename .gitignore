@@ -47,6 +47,9 @@ Desktop.ini
 .meris/plan/
 .meris/worktrees/
 .meris/spec/
+.meris/ratchet/events.jsonl
+.meris/ratchet/proposals/
+.meris/ratchet/applied/
 
 # Commit harness *templates* for this repo: .meris/settings.json, rules/, skills/
 

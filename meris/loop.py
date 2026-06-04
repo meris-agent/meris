@@ -15,7 +15,7 @@ from meris.harness.guardrails import check_tool_guardrails
 from meris.harness.guides import build_system_prompt
 from meris.harness.hooks import HookRunner
 from meris.harness.hooks_loader import build_hook_runner
-from meris.harness.memory import load_progress, update_progress_task
+from meris.harness.memory import load_progress_for_prompt, update_progress_task
 from meris.harness.permissions import check_tool_allowed
 from meris.harness.sensors import run_post_edit_sensors, run_sensors
 from meris.harness.sessions import SessionRecord, load_session, new_session_id, save_session
@@ -122,10 +122,10 @@ async def agent_loop(
 
     if not resumed and not record.messages:
         system = build_system_prompt(ws, mode=mode)
-        progress = load_progress(ws)
+        progress = load_progress_for_prompt(ws)
         spec_ctx = load_spec_context(ws)
         if progress:
-            system += f"\n\n# Progress (read first)\n\n{progress[:8000]}"
+            system += f"\n\n# Progress (read first)\n\n{progress}"
         if spec_ctx:
             system += f"\n\n# Spec\n\n{spec_ctx}"
         state.append({"role": "system", "content": system})
@@ -195,17 +195,51 @@ async def agent_loop(
                 if denied:
                     result = denied
                     yield f"\n[tool] {name} BLOCKED: {denied}"
+                    from meris.harness.ratchet.events import record_event
+
+                    record_event(
+                        ws,
+                        "permission_denied",
+                        session=record.id,
+                        task=task[:200],
+                        detail=denied[:500],
+                        tool=name,
+                        tags=["permissions", name],
+                    )
                 else:
                     guard = check_tool_guardrails(name, args, blocked_paths=blocked_paths)
                     if guard:
                         result = guard
                         yield f"\n[tool] {name} GUARDRAIL: {guard}"
+                        from meris.harness.ratchet.events import record_event
+
+                        record_event(
+                            ws,
+                            "permission_denied",
+                            session=record.id,
+                            task=task[:200],
+                            detail=guard[:500],
+                            tool=name,
+                            tags=["guardrail", name],
+                        )
                     elif require_approval and _needs_approval(tools, name):
                         approved = await _maybe_approve(approve_fn, name, args)
                         if not approved:
                             result = "User denied tool execution"
                             status = "denied"
                             yield f"\n[tool] {name} DENIED by user"
+                            from meris.harness.ratchet.events import args_summary, record_event
+
+                            record_event(
+                                ws,
+                                "approve_denied",
+                                session=record.id,
+                                task=task[:200],
+                                detail="user denied",
+                                tool=name,
+                                args_summary_text=args_summary(args),
+                                tags=["approve", name],
+                            )
                         else:
                             result = await _run_tool(
                                 hooks, tools, name, args, ws, post_edit_cmds, settings, emit
@@ -255,6 +289,17 @@ async def agent_loop(
         _persist_session(ws, record, state, status)
         if mode == "run" and status != "running":
             update_progress_task(ws, task[:200], status)
+        if status in ("dod_failed", "error"):
+            from meris.harness.ratchet import record_event
+
+            record_event(
+                ws,
+                status,
+                session=record.id,
+                task=task[:200],
+                detail=status,
+                tags=["loop", mode],
+            )
 
     if mode == "plan" and plan_output is not None and status == "completed":
         from meris.harness.plan import extract_last_assistant_text, save_plan
@@ -264,6 +309,15 @@ async def agent_loop(
             out = None if plan_output == "__default__" else plan_output
             path = save_plan(ws, text, out)
             yield f"[meris] plan saved: {path}"
+
+    if status == "dod_failed":
+        from meris.harness.ratchet import list_proposals
+
+        pending = list_proposals(ws, status="pending")
+        if pending:
+            yield f"[ratchet] {len(pending)} pending proposal(s) — meris ratchet review"
+        else:
+            yield "[ratchet] meris ratchet scan — capture harness improvements"
 
     yield "\n[meris] done."
 

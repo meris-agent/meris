@@ -69,9 +69,12 @@ async def run_benchmark(
     *,
     provider=None,
     on_line=None,
+    task_filter: str | None = None,
 ) -> list[BenchmarkResult]:
     results: list[BenchmarkResult] = []
     for t in tasks:
+        if task_filter and t.id != task_filter and not t.id.startswith(task_filter):
+            continue
         lines: list[str] = []
         session_id = ""
         status = "pass"
@@ -104,6 +107,17 @@ async def run_benchmark(
         if not ok:
             status = "fail"
             detail = msg
+            from meris.harness.ratchet import record_event
+
+            record_event(
+                workspace,
+                "benchmark_fail",
+                session=session_id,
+                task_id=t.id,
+                task=t.task[:200],
+                detail=detail,
+                tags=["benchmark", t.mode],
+            )
         else:
             detail = msg
         results.append(BenchmarkResult(t.id, status, session_id, detail))

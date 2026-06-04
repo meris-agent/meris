@@ -33,6 +33,23 @@ def test_parallel_accepts_file_only(tmp_path: Path, monkeypatch) -> None:
     assert "Missing argument" not in result.output
 
 
+def test_ratchet_status_empty(tmp_path: Path) -> None:
+    ws = tmp_path / "repo"
+    ws.mkdir()
+    (ws / ".meris" / "ratchet").mkdir(parents=True)
+    result = runner.invoke(app, ["ratchet", "status", "--cwd", str(ws)])
+    assert result.exit_code == 0, result.output
+
+
+def test_ratchet_learn_pyproject(tmp_path: Path) -> None:
+    ws = tmp_path / "repo"
+    ws.mkdir()
+    (ws / "pyproject.toml").write_text("[project]\nname='x'\n", encoding="utf-8")
+    (ws / ".meris").mkdir()
+    result = runner.invoke(app, ["ratchet", "learn", "--init", "--cwd", str(ws)])
+    assert result.exit_code == 0, result.output
+
+
 def test_session_list_empty(tmp_path: Path) -> None:
     ws = tmp_path / "repo"
     ws.mkdir()

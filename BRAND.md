@@ -17,6 +17,12 @@
 
 > Harness-first · Model-agnostic · Yours to shape
 
+## 产品宗旨
+
+> **会自我进化的 coding agent — 越用越顺手。**
+
+根据已有项目与用户习惯，通过 Harness（AGENTS、skills、rules、session、PROGRESS）持续沉淀，而非依赖一次性 prompt。详见 [VISION.md](VISION.md)。
+
 ## 历史
 
 | 日期 | 变更 |

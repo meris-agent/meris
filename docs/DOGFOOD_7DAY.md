@@ -1,6 +1,6 @@
 # Meris 7 天 Dogfood 清单
 
-> 目标：用 Meris 做真实小事，每次失败改 Harness（Ratchet），而不是只改 Agent 输出。  
+> 目标：用 Meris 做真实小事，每次失败改 Harness（Ratchet），而不是只改 Agent 输出 —— 这正是「越用越顺手」的进化路径。见 [VISION.md](../VISION.md)。  
 > **项目 1（代码）**：Meris git 仓库根（`<repo>`）  
 > **项目 2（笔记库，可选）**：Obsidian vault 根，见 [examples/ainote-vault](examples/ainote-vault/)
 

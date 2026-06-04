@@ -6,6 +6,8 @@ Model-agnostic terminal coding agent — **Harness-first**, inspired by AtomCode
 Agent = Model + Harness
 ```
 
+**North star**: a **self-evolving** coding agent — the more you use it in a project, the better it fits your repo and habits. Evolution lives in the Harness (rules, skills, sessions), not in hoping the model remembers. See [VISION.md](VISION.md).
+
 Meris ships a lean CLI (`meris`) plus a **Harness** layer you control: `AGENTS.md`, permissions, hooks, and Definition-of-Done sensors. Bring your own LLM (OpenAI-compatible or Anthropic).
 
 ## Install
@@ -124,6 +126,20 @@ meris benchmark list
 meris benchmark run
 ```
 
+**Ratchet** (learn from failures → update harness)
+
+```bash
+meris init-harness .
+meris ratchet learn --init             # project layout → proposals
+
+meris run --ratchet "your task"        # after run: profile + scan proposals
+meris benchmark run                    # failures → events.jsonl; may auto-scan
+meris ratchet profile --show           # habits from approve_denied events
+meris ratchet analyze --last-fail      # LLM proposals (needs API)
+meris ratchet analyze --dry-run        # preview prompt only
+meris ratchet review                   # apply or reject interactively
+```
+
 ## TUI
 
 ```bash
@@ -220,6 +236,8 @@ Windows one-shot dev setup: `powershell -ExecutionPolicy Bypass -File scripts\se
 
 | Topic | Link |
 |-------|------|
+| **Vision — self-evolving agent** | [VISION.md](VISION.md) |
+| **Ratchet (`meris ratchet scan`)** | [docs/RATCHET_DESIGN.md](docs/RATCHET_DESIGN.md) |
 | Roadmap & release phases (P1–P5, Phase A–D) | [ROADMAP.md](ROADMAP.md) |
 | Brand & naming | [BRAND.md](BRAND.md) |
 | 7-day dogfood / Ratchet | [docs/DOGFOOD_7DAY.md](docs/DOGFOOD_7DAY.md) |

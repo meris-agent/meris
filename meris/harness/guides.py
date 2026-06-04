@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from meris.harness.paths import harness_root
+from meris.harness.ratchet.profile import load_profile_text
 from meris.harness.skills import skills_index
 
 GUIDE_FILES = ("AGENTS.md", "CLAUDE.md")
@@ -49,6 +50,9 @@ Python package and source paths use the `meris/` directory (e.g. meris/cli.py, m
 
     if guides:
         base = f"{base}\n\n# Project guides\n\n{guides}"
+    profile = load_profile_text(workspace)
+    if profile.strip():
+        base = f"{base}\n\n# User profile\n\n{profile}"
     skill_idx = skills_index(workspace)
     if skill_idx:
         base = f"{base}\n\n# Skills\n\n{skill_idx}"

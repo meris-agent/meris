@@ -66,6 +66,7 @@ Historical batch labels used during development. Public version starts at **v0.0
 
 ## Next (post v0.0.1)
 
+- [x] **`meris ratchet` MVP** — 见 [docs/RATCHET_DESIGN.md](docs/RATCHET_DESIGN.md)
 - [ ] GitHub Release + optional `meris-rs` binary
 - [ ] PyPI publish `meris-agent==0.0.1`
 - [ ] `MERIS_NATIVE=1` by default when `meris-rs` available (P5-1)
