@@ -44,6 +44,7 @@ Agent 犯错 → **改 Harness，不是只重试同一句 prompt**。
 ## 相关
 
 - [docs/RATCHET_DESIGN.md](RATCHET_DESIGN.md) — 自我进化（Ratchet）设计  
+- [docs/RATCHET_30MIN.md](RATCHET_30MIN.md) — 30 分钟 Ratchet 闭环清单  
 - [docs/DOGFOOD_7DAY.md](DOGFOOD_7DAY.md) — 7 天 Ratchet 练手  
 - [ROADMAP.md](ROADMAP.md) — 功能路线图  
 - [BRAND.md](BRAND.md) — 品牌与标识  

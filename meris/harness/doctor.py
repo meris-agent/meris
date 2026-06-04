@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from meris.config import env_get
 from meris.harness.paths import harness_root
 from meris.harness.settings import load_settings
 from meris.provider import ProviderError, get_provider
+from meris.provider.resolve import resolve_provider_config
 
 
 @dataclass
@@ -20,37 +19,15 @@ class CheckResult:
 
 
 def _resolve_env() -> dict[str, str]:
-    provider_kind = (env_get("PROVIDER") or os.getenv("LLM_PROVIDER") or "openai").lower()
-    api_key = (
-        os.getenv("ANTHROPIC_API_KEY")
-        if provider_kind in ("anthropic", "claude")
-        else (
-            os.getenv("OPENAI_API_KEY")
-            or os.getenv("LLM_API_KEY")
-            or os.getenv("DEEPSEEK_API_KEY")
-            or ""
-        )
-    )
+    cfg = resolve_provider_config()
     return {
-        "provider": provider_kind,
-        "api_key": api_key,
-        "base_url": (
-            env_get("BASE_URL")
-            or os.getenv("LLM_BASE_URL")
-            or os.getenv("DEEPSEEK_BASE_URL")
-            or "https://api.deepseek.com/v1"
-        ),
-        "model": (
-            env_get("MODEL")
-            or os.getenv("LLM_MODEL")
-            or os.getenv("ANTHROPIC_MODEL")
-            or os.getenv("DEEPSEEK_MODEL")
-            or (
-                "claude-sonnet-4-20250514"
-                if provider_kind in ("anthropic", "claude")
-                else "deepseek-chat"
-            )
-        ),
+        "provider": cfg.preset_id,
+        "provider_label": cfg.label,
+        "api_key": cfg.api_key,
+        "base_url": cfg.base_url,
+        "model": cfg.model,
+        "key_env_hint": cfg.key_env_hint,
+        "backend": cfg.backend,
     }
 
 
@@ -92,9 +69,11 @@ def check_harness(workspace: Path) -> list[CheckResult]:
 def check_env() -> list[CheckResult]:
     env = _resolve_env()
     results: list[CheckResult] = []
-    results.append(CheckResult("Provider", "ok", env["provider"]))
+    results.append(
+        CheckResult("Provider", "ok", f"{env['provider']} ({env['provider_label']})"),
+    )
     key = env["api_key"]
-    key_label = "ANTHROPIC_API_KEY" if env["provider"] in ("anthropic", "claude") else "LLM_API_KEY"
+    key_label = env["key_env_hint"]
     if not key or key == "not-needed":
         results.append(CheckResult("API key", "fail", f"set {key_label} or OPENAI_API_KEY"))
     elif len(key) < 8:
@@ -102,7 +81,10 @@ def check_env() -> list[CheckResult]:
     else:
         masked = key[:4] + "…" + key[-4:] if len(key) > 10 else "****"
         results.append(CheckResult("API key", "ok", masked))
-    results.append(CheckResult("Base URL", "ok", env["base_url"]))
+    if env["backend"] == "anthropic":
+        results.append(CheckResult("Base URL", "ok", "(native Anthropic API)"))
+    else:
+        results.append(CheckResult("Base URL", "ok", env["base_url"] or "(missing — set MERIS_BASE_URL)"))
     results.append(CheckResult("Model", "ok", env["model"]))
     return results
 

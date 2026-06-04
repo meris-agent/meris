@@ -338,5 +338,6 @@ meris/cli.py        # ratchet 子命令组
 ## 13. 相关文档
 
 - [VISION.md](../VISION.md) — 产品宗旨  
+- [RATCHET_30MIN.md](RATCHET_30MIN.md) — **30 分钟闭环清单**（scan/analyze → review → apply --verify → benchmark）  
 - [DOGFOOD_7DAY.md](DOGFOOD_7DAY.md) — 手工 Ratchet 样例  
 - [ROADMAP.md](../ROADMAP.md) — 排期  

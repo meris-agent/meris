@@ -1,14 +1,13 @@
-"""OpenAI-compatible provider (DeepSeek, GLM, Ollama, etc.)."""
+"""OpenAI-compatible provider (DeepSeek, OpenAI, Gemini, GLM, Ollama, etc.)."""
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 from openai import AsyncOpenAI
 
-from meris.config import env_get
 from meris.provider.base import Provider, ProviderError
+from meris.provider.resolve import resolve_provider_config
 
 
 class OpenAICompatProvider(Provider):
@@ -18,28 +17,10 @@ class OpenAICompatProvider(Provider):
         base_url: str | None = None,
         model: str | None = None,
     ) -> None:
-        self.model = (
-            model
-            or env_get("MODEL")
-            or os.getenv("LLM_MODEL")
-            or os.getenv("DEEPSEEK_MODEL")
-            or "deepseek-chat"
-        )
-        key = (
-            api_key
-            or os.getenv("OPENAI_API_KEY")
-            or os.getenv("LLM_API_KEY")
-            or os.getenv("DEEPSEEK_API_KEY")
-            or "not-needed"
-        )
-        url = (
-            base_url
-            or env_get("BASE_URL")
-            or os.getenv("LLM_BASE_URL")
-            or os.getenv("DEEPSEEK_BASE_URL")
-            or "https://api.deepseek.com/v1"
-        )
-        self.client = AsyncOpenAI(api_key=key, base_url=url)
+        cfg = resolve_provider_config(api_key=api_key, base_url=base_url, model=model)
+        self.model = cfg.model
+        key = cfg.api_key or "not-needed"
+        self.client = AsyncOpenAI(api_key=key, base_url=cfg.base_url)
 
     async def chat(
         self,

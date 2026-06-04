@@ -28,6 +28,7 @@ session_app = typer.Typer(help="Session persistence")
 spec_app = typer.Typer(help="Kiro-style spec workflow")
 benchmark_app = typer.Typer(help="Benchmark task suite")
 ratchet_app = typer.Typer(help="Harness self-evolution (Ratchet)")
+models_app = typer.Typer(help="LLM provider presets (multi-vendor)")
 native_app = typer.Typer(help="Native Rust core (meris-rs)")
 app.add_typer(tui_app, name="tui")
 app.add_typer(mcp_app, name="mcp")
@@ -35,6 +36,7 @@ app.add_typer(session_app, name="session")
 app.add_typer(spec_app, name="spec")
 app.add_typer(benchmark_app, name="benchmark")
 app.add_typer(ratchet_app, name="ratchet")
+app.add_typer(models_app, name="models")
 app.add_typer(native_app, name="native")
 
 console = Console()
@@ -118,6 +120,63 @@ async def _stream(
                 sessions = list_sessions(workspace)
                 sid = sessions[0].id if sessions else None
             _ratchet_after_run(workspace, sid)
+
+
+@models_app.command("list")
+def models_list() -> None:
+    """List built-in MERIS_PROVIDER presets and required API key env vars."""
+    from meris.provider.presets import PRESETS, PRESET_ALIASES, list_preset_ids
+    from meris.provider.resolve import resolve_provider_config
+
+    table = Table("MERIS_PROVIDER", "Label", "Backend", "Default model", "API key (first wins)")
+    for pid in list_preset_ids():
+        p = PRESETS[pid]
+        keys = ", ".join(p.api_key_env[:3])
+        if len(p.api_key_env) > 3:
+            keys += ", …"
+        table.add_row(pid, p.label, p.backend, p.default_model, keys)
+    console.print(table)
+    alias_bits = ", ".join(f"{a}→{b}" for a, b in sorted(PRESET_ALIASES.items())[:8])
+    console.print(f"\n[dim]Aliases (sample): {alias_bits}, …[/dim]")
+    cfg = resolve_provider_config()
+    console.print(
+        f"\n[bold]Current env[/bold]: {cfg.preset_id} ({cfg.label}) · model={cfg.model}"
+    )
+    if cfg.backend == "openai_compat":
+        console.print(f"  base_url={cfg.base_url}")
+    console.print(
+        "\n[dim]Set e.g. MERIS_PROVIDER=openai and OPENAI_API_KEY=sk-… "
+        "(MERIS_BASE_URL / MERIS_MODEL override defaults).[/dim]"
+    )
+
+
+@models_app.command("show")
+def models_show(
+    provider: str = typer.Argument(..., help="Preset id, e.g. openai, deepseek, gemini"),
+) -> None:
+    """Show one preset and example env exports."""
+    from meris.provider.presets import get_preset
+
+    preset = get_preset(provider)
+    if not preset:
+        console.print(f"[red]Unknown preset: {provider}[/red]")
+        console.print("[dim]Run: meris models list[/dim]")
+        raise typer.Exit(1)
+    console.print(f"[bold]{preset.label}[/bold] (MERIS_PROVIDER={preset.id})")
+    console.print(f"  backend: {preset.backend}")
+    if preset.base_url:
+        console.print(f"  base_url: {preset.base_url}")
+    console.print(f"  model: {preset.default_model}")
+    console.print(f"  api_key_env: {', '.join(preset.api_key_env)}")
+    if preset.docs_url:
+        console.print(f"  docs: {preset.docs_url}")
+    key = preset.api_key_env[0] if preset.api_key_env else "LLM_API_KEY"
+    console.print("\n[bold]Example (bash)[/bold]")
+    console.print(f"  export MERIS_PROVIDER={preset.id}")
+    console.print(f"  export {key}=your-key-here")
+    if preset.backend == "openai_compat":
+        console.print(f"  export MERIS_BASE_URL={preset.base_url}")
+        console.print(f"  export MERIS_MODEL={preset.default_model}")
 
 
 @app.command("doctor")

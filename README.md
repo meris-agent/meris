@@ -39,11 +39,11 @@ cd your-project
 
 meris version
 
-# OpenAI-compatible provider (DeepSeek, OpenAI, etc.)
-export OPENAI_API_KEY=sk-...
-export MERIS_BASE_URL=https://api.deepseek.com/v1
-export MERIS_MODEL=deepseek-chat
+# Pick a provider preset (OpenAI, DeepSeek, Gemini, GLM, Qwen, Groq, Anthropic, Ollama, …)
+export MERIS_PROVIDER=deepseek   # or: openai | gemini | glm | moonshot | qwen | anthropic | ollama
+export DEEPSEEK_API_KEY=sk-...   # env name depends on provider — run: meris models show deepseek
 
+meris models list                # all presets + current env
 meris init-harness .
 meris doctor
 
@@ -52,7 +52,7 @@ meris plan "add rate limiting to /api/users"
 meris run --approve "fix the failing test in tests/test_auth.py"
 ```
 
-On Windows, use `set VAR=value` instead of `export`. Copy [.env.example](.env.example) to `.env` for local overrides.
+On Windows, use `set VAR=value` instead of `export`. Copy [.env.example](.env.example) to `.env` for local overrides. Full vendor table: [docs/MODELS.md](docs/MODELS.md). **Hand this to new users:** [docs/USER_SETUP.md](docs/USER_SETUP.md).
 
 ## Commands
 
@@ -82,6 +82,8 @@ After `meris init-harness`, these files steer the agent in **your** repo:
 Templates live in [`templates/`](templates/). Example vault harness: [`docs/examples/ainote-vault/`](docs/examples/ainote-vault/).
 
 ## Configuration
+
+End-user onboarding (install → API key → `init-harness` → `doctor`): **[docs/USER_SETUP.md](docs/USER_SETUP.md)**.
 
 **Environment variables** (common):
 
