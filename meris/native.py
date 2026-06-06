@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from meris.config import env_flag
+from meris.config import env_tri
 
 
 def _repo_root() -> Path:
@@ -34,6 +34,16 @@ def find_native_binary() -> Path | None:
     if not existing:
         return None
     return max(existing, key=lambda p: p.stat().st_mtime)
+
+
+def native_enabled() -> bool:
+    """Use meris-rs when MERIS_NATIVE=1, or auto when binary exists (opt out with MERIS_NATIVE=0)."""
+    tri = env_tri("NATIVE")
+    if tri is False:
+        return False
+    if tri is True:
+        return True
+    return find_native_binary() is not None
 
 
 def native_status() -> dict[str, Any]:
@@ -129,10 +139,10 @@ def compress_messages_auto(
     max_tokens: int | None = None,
     max_tool_tokens: int = 2000,
 ) -> list[dict[str, Any]]:
-    """Use native compress when MERIS_NATIVE=1 and binary exists; else Python."""
+    """Use native compress when enabled and binary exists; else Python."""
     from meris.harness.context import compress_messages
 
-    if env_flag("NATIVE"):
+    if native_enabled():
         native = native_compress_messages(
             messages,
             max_messages=max_messages,
@@ -178,7 +188,7 @@ def native_check_tool_allowed(
     args: dict[str, Any],
 ) -> tuple[bool, str | None]:
     """(used_native, error). used_native=False → fall back to Python check."""
-    if not env_flag("NATIVE"):
+    if not native_enabled():
         return False, None
     if find_native_binary() is None:
         return False, None
@@ -208,7 +218,7 @@ def native_sandbox_check(
     mode: str,
 ) -> dict[str, Any] | None:
     """Parse meris-rs sandbox check JSON; None if native unavailable."""
-    if not env_flag("NATIVE"):
+    if not native_enabled():
         return None
     proc = _run_native(
         [
@@ -241,7 +251,7 @@ def native_run_bash(
     timeout: int = 120,
 ) -> str | None:
     """Run bash via meris-rs sandbox run; None if native unavailable."""
-    if not env_flag("NATIVE"):
+    if not native_enabled():
         return None
     proc = _run_native(
         [

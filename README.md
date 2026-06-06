@@ -102,7 +102,7 @@ End-user onboarding (install → API key → `init-harness` → `doctor`): **[do
 | `MERIS_BASE_URL` | API base URL |
 | `MERIS_MODEL` | Model name |
 | `MERIS_PROVIDER=anthropic` | Use native Anthropic (`ANTHROPIC_API_KEY`) |
-| `MERIS_NATIVE=1` | Prefer Rust context compression (optional) |
+| `MERIS_NATIVE` | `1`/`0` force on/off; unset + built `meris-rs` → auto native |
 
 **Context budget** in `.meris/settings.yaml`:
 
@@ -245,7 +245,7 @@ Env: `MERIS_TOOL_NAME`, `MERIS_TOOL_ARGS`, `MERIS_TOOL_RESULT`, `MERIS_HOOK_PHAS
 | Component | Docs |
 |-----------|------|
 | VS Code / Cursor extension | [`extensions/vscode-meris/`](extensions/vscode-meris/) · [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
-| Rust core (`meris-rs`) | [RUST_ROADMAP](docs/RUST_ROADMAP.md) · `meris native build` / `MERIS_NATIVE=1` |
+| Rust core (`meris-rs`) | [RUST_ROADMAP](docs/RUST_ROADMAP.md) · `meris native build` · auto native when binary present |
 
 Windows one-shot dev setup: `powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1`
 

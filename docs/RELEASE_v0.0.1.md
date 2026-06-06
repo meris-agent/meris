@@ -7,15 +7,15 @@ Harness-first, model-agnostic terminal coding agent (Python + optional Rust).
 - CLI: `ask`, `plan`, `run`, `tui`, `doctor`, `init-harness`
 - Harness: `AGENTS.md`, `.meris/settings.json`, permissions, hooks, DoD sensors
 - Session persistence, MCP client, parallel sessions, skills, subagent
-- Optional `meris-rs` for native context compression (`MERIS_NATIVE=1`)
+- Optional `meris-rs` for native harness primitives (auto when binary present; `MERIS_NATIVE=0` to disable)
 - VS Code / Cursor extension in `extensions/vscode-meris/`
 
 ### Install
 
 ```bash
+pip install meris-agent==0.0.1
+# or from tag:
 pip install git+https://github.com/meris-agent/meris.git@v0.0.1
-# or from source:
-git clone https://github.com/meris-agent/meris.git && cd meris && pip install -e .
 ```
 
 Requires Python 3.11+. Bring your own LLM API key.

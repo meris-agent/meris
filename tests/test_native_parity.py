@@ -106,7 +106,24 @@ def test_native_permissions_fallback_without_binary(workspace: Path, monkeypatch
     assert err is None
 
 
-def test_check_tool_allowed_python_when_native_off(workspace: Path) -> None:
+def test_native_enabled_auto_and_opt_out(monkeypatch) -> None:
+    from meris.native import native_enabled
+
+    fake = Path("/fake/meris-rs")
+    monkeypatch.delenv("MERIS_NATIVE", raising=False)
+    monkeypatch.setattr("meris.native.find_native_binary", lambda: fake)
+    assert native_enabled() is True
+
+    monkeypatch.setenv("MERIS_NATIVE", "0")
+    assert native_enabled() is False
+
+    monkeypatch.setenv("MERIS_NATIVE", "1")
+    monkeypatch.setattr("meris.native.find_native_binary", lambda: None)
+    assert native_enabled() is True
+
+
+def test_check_tool_allowed_python_when_native_off(workspace: Path, monkeypatch) -> None:
+    monkeypatch.setenv("MERIS_NATIVE", "0")
     settings = {"permissions": {"allow": ["Read"], "deny": []}}
     err = check_tool_allowed("bash", {"command": "echo hi"}, settings, workspace=workspace)
     assert err is not None

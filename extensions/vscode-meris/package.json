@@ -29,6 +29,18 @@
         "title": "Meris: Run (approve mode)"
       },
       {
+        "command": "meris.runWithEvents",
+        "title": "Meris: Run with event stream"
+      },
+      {
+        "command": "meris.review",
+        "title": "Meris: Review diff"
+      },
+      {
+        "command": "meris.exec",
+        "title": "Meris: Exec (JSON)"
+      },
+      {
         "command": "meris.doctor",
         "title": "Meris: Doctor"
       },
@@ -43,6 +55,9 @@
         { "command": "meris.plan" },
         { "command": "meris.run" },
         { "command": "meris.runApprove" },
+        { "command": "meris.runWithEvents" },
+        { "command": "meris.review" },
+        { "command": "meris.exec" },
         { "command": "meris.doctor" },
         { "command": "meris.tui" }
       ]

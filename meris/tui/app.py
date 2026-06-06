@@ -43,6 +43,40 @@ class ApproveModal(ModalScreen[bool]):
             self.dismiss(False)
 
 
+class RatchetActionModal(ModalScreen[str | None]):
+    """Apply or reject a pending Ratchet proposal (Phase E6 TUI)."""
+
+    DEFAULT_CSS = """
+    RatchetActionModal { align: center middle; }
+    #ratchet-box {
+        width: 88; height: auto;
+        border: thick $warning; background: $surface; padding: 1 2;
+    }
+    """
+
+    def __init__(self, proposal_id: str, lesson: str, summary: str, target: str) -> None:
+        super().__init__()
+        self.proposal_id = proposal_id
+        self.lesson = lesson
+        self.summary = summary
+        self.target = target
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="ratchet-box"):
+            yield Label(f"[bold]{self.lesson}[/bold] — {self.summary[:60]}")
+            yield Static(f"→ {self.target}")
+            yield Input(placeholder="a=apply · r=reject · Enter=close")
+
+    async def on_input_submitted(self, event: Input.Submitted) -> None:
+        key = event.value.strip().lower()
+        if key in ("a", "apply", "y", "yes"):
+            self.dismiss("apply")
+        elif key in ("r", "reject", "n", "no"):
+            self.dismiss("reject")
+        else:
+            self.dismiss(None)
+
+
 class TUIEventStream(EventStream):
     """Mirror structured events into RichLog (Phase E4.3)."""
 
@@ -84,6 +118,7 @@ class MerisTUI(App):
         ("ctrl+r", "resume_session", "Resume"),
         ("ctrl+s", "refresh_sessions", "Sessions"),
         ("ctrl+g", "refresh_ratchet", "Ratchet"),
+        ("ctrl+shift+g", "ratchet_help", "Ratchet help"),
     ]
 
     def __init__(
@@ -111,7 +146,7 @@ class MerisTUI(App):
             with Vertical(id="log-panel"):
                 yield RichLog(id="log", wrap=True, highlight=True, markup=True)
             with Vertical(id="ratchet-panel"):
-                yield Static("[bold]Ratchet[/bold] pending")
+                yield Static("[bold]Ratchet[/bold] pending (Enter: apply/reject)")
                 yield ListView(id="ratchet-list")
         yield Input(
             placeholder="Enter task — Enter or Ctrl+Enter to send (CJK IME: Enter twice if needed)",
@@ -150,7 +185,12 @@ class MerisTUI(App):
             lv.append(ListItem(Label("(none pending)"), disabled=True))
             return
         for p in props:
-            lv.append(ListItem(Label(f"{p.lesson} {p.summary[:22]}")))
+            item = ListItem(Label(f"{p.lesson} {p.summary[:22]}"))
+            item.proposal_id = p.id  # type: ignore[attr-defined]
+            item.proposal_lesson = p.lesson  # type: ignore[attr-defined]
+            item.proposal_summary = p.summary  # type: ignore[attr-defined]
+            item.proposal_target = p.target.path  # type: ignore[attr-defined]
+            lv.append(item)
         if n_ins:
             lv.append(ListItem(Label(f"{n_ins} insight(s)")))
 
@@ -171,7 +211,14 @@ class MerisTUI(App):
             item.resumable = rec.status in ("running", "cancelled", "error")  # type: ignore[attr-defined]
             lv.append(item)
 
+    def action_ratchet_help(self) -> None:
+        log = self.query_one("#log", RichLog)
+        log.write("[dim]Ratchet panel: select proposal → Enter → a=apply r=reject[/dim]")
+
     async def on_list_view_selected(self, event: ListView.Selected) -> None:
+        if event.list_view.id == "ratchet-list":
+            await self._on_ratchet_selected(event.item)
+            return
         item = event.item
         sid = getattr(item, "session_id", None)
         if not sid or self._task_busy:
@@ -183,6 +230,40 @@ class MerisTUI(App):
         rec = load_session(self.workspace, sid)
         if rec:
             await self._run_task(rec.task, session_id=sid, resume=True)
+
+    async def _on_ratchet_selected(self, item: ListItem) -> None:
+        pid = getattr(item, "proposal_id", None)
+        if not pid or self._task_busy:
+            return
+        action = await self.push_screen_wait(
+            RatchetActionModal(
+                pid,
+                getattr(item, "proposal_lesson", ""),
+                getattr(item, "proposal_summary", ""),
+                getattr(item, "proposal_target", ""),
+            )
+        )
+        log = self.query_one("#log", RichLog)
+        if action == "apply":
+            from meris.harness.ratchet import apply_proposal, load_proposal
+
+            proposal = load_proposal(self.workspace, pid)
+            if not proposal:
+                log.write(f"[red]Proposal {pid} not found[/red]")
+                return
+            try:
+                dest = apply_proposal(self.workspace, proposal)
+                log.write(f"[green]Ratchet applied[/green] → {dest}")
+            except ValueError as e:
+                log.write(f"[red]{e}[/red]")
+        elif action == "reject":
+            from meris.harness.ratchet import reject_proposal
+
+            if reject_proposal(self.workspace, pid):
+                log.write(f"[yellow]Ratchet rejected[/yellow] {pid}")
+            else:
+                log.write(f"[red]Could not reject {pid}[/red]")
+        self._refresh_ratchet_list()
 
     def action_refresh_sessions(self) -> None:
         self._refresh_session_list()

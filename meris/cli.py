@@ -1335,7 +1335,7 @@ def native_build_cmd(
         console.print(out)
     if code != 0:
         raise typer.Exit(code)
-    console.print("[green]meris-rs built — set MERIS_NATIVE=1 to use native context compress[/green]")
+    console.print("[green]meris-rs built — native auto-enabled when binary present (MERIS_NATIVE=0 to disable)[/green]")
 
 
 if __name__ == "__main__":

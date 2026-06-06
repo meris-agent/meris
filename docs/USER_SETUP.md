@@ -108,6 +108,24 @@ meris init-harness .
 
 维护者应**根据项目改 `AGENTS.md`**（路径、测试命令、禁止操作）。模板只是起点。
 
+### 个人 models 覆盖（`settings.local.yaml`）
+
+团队仓库里的 `.meris/settings.yaml` 可以提交占位模型（如 `ep-xxxxxxxx`）。**不要**把整段 `byMode` / `rules` 复制到本机文件。
+
+在本机项目根创建 **`.meris/settings.local.yaml`**（已在 `.gitignore`），只写你要覆盖的字段：
+
+```yaml
+models:
+  profiles:
+    code:
+      provider: volcengine
+      model: ep-你的接入点
+  dynamic:
+    enabled: true
+```
+
+深合并会保留团队的 `byMode`、`rules`、`router` 等；详见 [MODELS.md](MODELS.md)「个人覆盖示例」。
+
 可选：扫描项目生成规则提案：
 
 ```bash

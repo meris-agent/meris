@@ -9,9 +9,16 @@
 - [x] **Phase E（E1–E6）** — 见 [docs/PLAN_PHASE_E.md](docs/PLAN_PHASE_E.md)
 
 ## 进行中
-- [ ] **E0 发布** — PyPI / GitHub Release + `meris-rs` 二进制（可选）
+- [ ] **E0 发布** — 打 tag `v0.0.1` 触发 [release workflow](.github/workflows/release.yml)；PyPI 需 `PYPI_API_TOKEN`
 - [ ] **P5** — meris-rs 全量 Agent loop（长期）
 - [ ] **Live benchmark** — 定期 `meris benchmark run`（需 API）
+
+## 近期落地（E0 / P5-1）
+- [x] `settings.local` 文档（[USER_SETUP.md](docs/USER_SETUP.md)）
+- [x] `MERIS_NATIVE` 二进制存在时自动启用（`MERIS_NATIVE=0` 关闭）
+- [x] TUI Ratchet apply/reject（Enter → a/r）
+- [x] VS Code：`review` / `exec --json` / `run --event-stream`
+- [x] GitHub Release workflow + 多平台 `meris-rs` 二进制
 
 ## Phase E 摘要
 

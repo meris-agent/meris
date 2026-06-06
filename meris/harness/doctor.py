@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from meris.config import env_tri
 from meris.harness.paths import harness_root
 from meris.harness.settings import load_settings, shared_settings_relpath
 from meris.provider import ProviderError, get_provider
@@ -70,7 +71,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
     try:
         from meris.harness.guides import estimate_prompt_chars
         from meris.harness.sandbox import get_bash_timeout, get_sandbox_mode
-        from meris.native import find_native_binary
+        from meris.native import find_native_binary, native_enabled
 
         chars = estimate_prompt_chars(ws, mode="run")
         if chars > 28_000:
@@ -97,7 +98,12 @@ def check_harness(workspace: Path) -> list[CheckResult]:
     mode = get_sandbox_mode(settings)
     timeout = get_bash_timeout(settings)
     native = find_native_binary()
-    native_note = ", meris-rs sandbox run" if native else ", build: meris native build"
+    if native and native_enabled():
+        native_note = ", meris-rs active (auto)" if env_tri("NATIVE") is None else ", meris-rs (MERIS_NATIVE=1)"
+    elif native:
+        native_note = ", meris-rs built — auto when MERIS_NATIVE unset"
+    else:
+        native_note = ", build: meris native build"
     if mode == "off":
         results.append(
             CheckResult(

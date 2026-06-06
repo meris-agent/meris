@@ -70,8 +70,8 @@ Historical batch labels used during development. Public version starts at **v0.0
 - [x] **`meris ratchet digest` + `insights`** — 主动习惯挖掘（与 scan/analyze 并存）
 - [x] **Phase E — Harness 强化（E1–E6）** — 见 [docs/PLAN_PHASE_E.md](docs/PLAN_PHASE_E.md)
 - [ ] GitHub Release + optional `meris-rs` binary
-- [ ] PyPI publish `meris-agent==0.0.1`
-- [ ] `MERIS_NATIVE=1` by default when `meris-rs` available (P5-1)
+- [ ] PyPI publish `meris-agent==0.0.1`（tag `v0.0.1` + `PYPI_API_TOKEN`）
+- [x] `MERIS_NATIVE` auto when `meris-rs` available（`MERIS_NATIVE=0` opt out）
 - [ ] Full agent loop in Rust (P5-4, long-term)
 
 ## Dogfood 原则（Ratchet）
