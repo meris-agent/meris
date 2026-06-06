@@ -3,9 +3,9 @@
 use clap::{Parser, Subcommand};
 use meris_rs::{
     chat_completions, check_bash_sandbox, check_tool_allowed, compress_messages, estimate_tokens,
-    get_bash_timeout, get_sandbox_mode, load_settings, os_sandbox_probe_workspace,
-    probe_provider, resolve_config, run_bash_in_workspace, run_readonly_tool, verdict_to_json,
-    READONLY_TOOLS,
+    get_bash_timeout, get_sandbox_mode, load_settings, list_sessions, load_session, os_sandbox_probe_workspace,
+    probe_provider, resolve_config,     run_agent, run_bash_in_workspace, run_builtin_tool, run_readonly_tool,
+    tool_schemas_json, verdict_to_json, AgentConfig, BUILTIN_TOOL_NAMES,
 };
 use serde_json::Value;
 use std::fs;
@@ -49,6 +49,11 @@ enum Commands {
     Tools {
         #[command(subcommand)]
         action: ToolsAction,
+    },
+    /// Native agent loop (P5-4 M1 — read-only modes)
+    Agent {
+        #[command(subcommand)]
+        action: AgentAction,
     },
     /// Print version and build info
     Version,
@@ -131,7 +136,12 @@ enum ProviderAction {
 enum ToolsAction {
     /// List native read-only tools
     List,
-    /// Execute read_file | glob | grep
+    /// Export OpenAI function schemas (parity with Python ToolRegistry)
+    Schemas {
+        #[arg(long, help = "Exclude bash (ask/plan/review modes)")]
+        read_only: bool,
+    },
+    /// Execute read_file | glob | grep | bash
     Run {
         #[arg(long)]
         workspace: PathBuf,
@@ -139,6 +149,46 @@ enum ToolsAction {
         tool: String,
         #[arg(long, default_value = "{}")]
         args: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum AgentAction {
+    /// Run agent loop (native tools + provider; read-only modes recommended)
+    Run {
+        #[arg(long)]
+        workspace: PathBuf,
+        #[arg(long)]
+        task: String,
+        #[arg(long, default_value = "ask")]
+        mode: String,
+        #[arg(long, default_value_t = 30)]
+        max_turns: u32,
+        #[arg(long)]
+        session_id: Option<String>,
+        #[arg(long)]
+        resume: bool,
+    },
+    /// Session management (Python-compatible JSON)
+    Session {
+        #[command(subcommand)]
+        action: SessionAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum SessionAction {
+    /// List sessions newest-first
+    List {
+        #[arg(long)]
+        workspace: PathBuf,
+    },
+    /// Print one session as JSON
+    Show {
+        #[arg(long)]
+        workspace: PathBuf,
+        #[arg(long)]
+        id: String,
     },
 }
 
@@ -337,9 +387,13 @@ fn main() {
         },
         Commands::Tools { action } => match action {
             ToolsAction::List => {
-                for t in READONLY_TOOLS {
+                for t in BUILTIN_TOOL_NAMES {
                     println!("{t}");
                 }
+                0
+            }
+            ToolsAction::Schemas { read_only } => {
+                println!("{}", tool_schemas_json(read_only));
                 0
             }
             ToolsAction::Run {
@@ -347,12 +401,76 @@ fn main() {
                 tool,
                 args,
             } => {
+                let settings = load_settings(&workspace);
                 let args_v: Value =
                     serde_json::from_str(&args).unwrap_or(Value::Object(Default::default()));
-                let out = run_readonly_tool(&workspace, &tool, &args_v);
+                let out = run_builtin_tool(&workspace, &tool, &args_v, &settings);
                 print!("{out}");
                 0
             }
+        },
+        Commands::Agent { action } => match action {
+            AgentAction::Run {
+                workspace,
+                task,
+                mode,
+                max_turns,
+                session_id,
+                resume,
+            } => match run_agent(AgentConfig {
+                workspace,
+                task,
+                mode,
+                max_turns,
+                session_id,
+                resume,
+            }) {
+                Ok(result) => {
+                    for line in result.lines {
+                        println!("{line}");
+                    }
+                    if result.status != "completed" {
+                        2
+                    } else {
+                        0
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error: {e}");
+                    1
+                }
+            },
+            AgentAction::Session { action } => match action {
+                SessionAction::List { workspace } => match list_sessions(&workspace) {
+                    Ok(records) => {
+                        for rec in records {
+                            println!(
+                                "{}  {}  {}  {}",
+                                rec.id, rec.mode, rec.status, rec.task.chars().take(60).collect::<String>()
+                            );
+                        }
+                        0
+                    }
+                    Err(e) => {
+                        eprintln!("Error: {e}");
+                        1
+                    }
+                },
+                SessionAction::Show { workspace, id } => match load_session(&workspace, &id) {
+                    Ok(Some(rec)) => {
+                        println!("{}", serde_json::to_string_pretty(&rec).unwrap());
+                        0
+                    }
+                    Ok(None) => {
+                        eprintln!("Error: session not found: {id}");
+                        1
+                    }
+                    Err(e) => {
+                        eprintln!("Error: {e}");
+                        1
+                    }
+                },
+            },
         },
         Commands::Version => {
             println!("meris-rs {}", env!("CARGO_PKG_VERSION"));

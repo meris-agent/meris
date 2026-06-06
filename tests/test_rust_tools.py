@@ -47,3 +47,32 @@ def test_parity_fixtures_tools_json() -> None:
     data = json.loads(path.read_text(encoding="utf-8"))
     assert "permissions" in data
     assert "sandbox" in data
+
+
+@pytest.mark.skipif(
+    __import__("meris.native", fromlist=["find_native_binary"]).find_native_binary() is None,
+    reason="meris-rs not built",
+)
+def test_rust_tool_schemas_match_python(workspace: Path, monkeypatch) -> None:
+    import subprocess
+
+    from meris.native import find_native_binary
+    from meris.tools import build_tools
+
+    binary = find_native_binary()
+    probe = subprocess.run(
+        [str(binary), "tools", "schemas", "--read-only"],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    if probe.returncode != 0:
+        pytest.skip("tools schemas subcommand missing")
+    rust = json.loads(probe.stdout)
+    py = build_tools(workspace, read_only=True).schemas()
+    py_by_name = {s["function"]["name"]: s for s in py}
+    for schema in rust:
+        name = schema["function"]["name"]
+        assert name in py_by_name
+        assert schema["function"]["parameters"] == py_by_name[name]["function"]["parameters"]

@@ -1,8 +1,11 @@
-//! Read-only builtin tools — parity with meris.tools.builtin (P5-3).
+//! Builtin tools — parity with meris.tools.builtin (P5-3).
 
+use crate::sandbox::{check_bash_sandbox, get_bash_timeout, get_sandbox_mode, run_bash_in_workspace};
+use crate::settings::load_settings;
 use globwalk::GlobWalkerBuilder;
 use regex::Regex;
-use serde_json::Value;
+use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -184,16 +187,123 @@ pub fn tool_grep(workspace: &Path, args: &Value) -> String {
     }
 }
 
-pub fn run_readonly_tool(workspace: &Path, tool: &str, args: &Value) -> String {
+pub fn tool_bash(
+    workspace: &Path,
+    args: &Value,
+    settings: &HashMap<String, Value>,
+) -> String {
+    let command = match args.get("command").and_then(|v| v.as_str()) {
+        Some(c) => c,
+        None => return "Error: missing command".into(),
+    };
+    let mode = get_sandbox_mode(settings);
+    if let Some(v) = check_bash_sandbox(command, &mode) {
+        if v.blocked {
+            return v.message.clone();
+        }
+    }
+    let timeout = get_bash_timeout(settings);
+    match run_bash_in_workspace(workspace, command, timeout, settings) {
+        Ok((code, out)) => {
+            let text = out.trim();
+            if text.is_empty() {
+                format!("exit={code}")
+            } else {
+                format!("exit={code}\n{text}")
+            }
+        }
+        Err(e) => format!("exit=1\n{e}"),
+    }
+}
+
+fn fn_schema(name: &str, description: &str, parameters: Value) -> Value {
+    json!({
+        "type": "function",
+        "function": {
+            "name": name,
+            "description": description,
+            "parameters": parameters,
+        }
+    })
+}
+
+pub fn tool_schemas(read_only: bool) -> Vec<Value> {
+    let mut schemas = vec![
+        fn_schema(
+            "read_file",
+            "Read a file with 1-based line numbers.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string"},
+                    "offset": {"type": "integer"},
+                    "limit": {"type": "integer"},
+                },
+                "required": ["path"],
+            }),
+        ),
+        fn_schema(
+            "glob",
+            "Find files by glob pattern relative to repo root.",
+            json!({
+                "type": "object",
+                "properties": {"pattern": {"type": "string"}},
+                "required": ["pattern"],
+            }),
+        ),
+        fn_schema(
+            "grep",
+            "Regex search in files. Optional path (file or dir).",
+            json!({
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string"},
+                    "path": {"type": "string"},
+                },
+                "required": ["pattern"],
+            }),
+        ),
+    ];
+    if !read_only {
+        schemas.push(fn_schema(
+            "bash",
+            "Run shell command in repo root. Prefer rg/grep/test over cat.",
+            json!({
+                "type": "object",
+                "properties": {"command": {"type": "string"}},
+                "required": ["command"],
+            }),
+        ));
+    }
+    schemas
+}
+
+pub fn tool_schemas_json(read_only: bool) -> String {
+    serde_json::to_string_pretty(&tool_schemas(read_only)).unwrap_or_else(|_| "[]".into())
+}
+
+pub fn run_builtin_tool(
+    workspace: &Path,
+    tool: &str,
+    args: &Value,
+    settings: &HashMap<String, Value>,
+) -> String {
     match tool {
         "read_file" => tool_read_file(workspace, args),
         "glob" => tool_glob(workspace, args),
         "grep" => tool_grep(workspace, args),
+        "bash" => tool_bash(workspace, args, settings),
         _ => format!("Error: unknown tool {tool}"),
     }
 }
 
+pub fn run_readonly_tool(workspace: &Path, tool: &str, args: &Value) -> String {
+    let settings = load_settings(workspace);
+    run_builtin_tool(workspace, tool, args, &settings)
+}
+
 pub const READONLY_TOOLS: &[&str] = &["read_file", "glob", "grep"];
+pub const BUILTIN_TOOL_NAMES: &[&str] = &["read_file", "glob", "grep", "bash"];
 
 #[cfg(test)]
 mod tests {
@@ -232,5 +342,18 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let err = resolve_in_workspace(dir.path(), "../etc/passwd").unwrap_err();
         assert!(err.contains("escapes"));
+    }
+
+    #[test]
+    fn schemas_match_readonly_count() {
+        assert_eq!(tool_schemas(true).len(), 3);
+        assert_eq!(tool_schemas(false).len(), 4);
+    }
+
+    #[test]
+    fn schema_has_function_wrapper() {
+        let s = &tool_schemas(true)[0];
+        assert_eq!(s["type"], "function");
+        assert_eq!(s["function"]["name"], "read_file");
     }
 }

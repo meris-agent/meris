@@ -25,26 +25,32 @@ meris-rs sandbox run --workspace . --timeout 120 -- pytest tests/ -q
 meris-rs sandbox probe --workspace .   # bubblewrap availability (Linux)
 meris-rs provider probe                # LLM env (base URL, model, key set)
 meris-rs tools list
+meris-rs tools schemas --read-only
 meris-rs tools run --workspace . --tool read_file --args '{"path":"README.md","limit":5}'
+meris-rs tools run --workspace . --tool bash --args '{"command":"git status -s"}'
+meris-rs agent run --workspace . --mode ask --task "Summarize README" --max-turns 5
+meris-rs agent session list --workspace .
 meris-rs run doctor          # delegates to Python `meris`
 ```
 
 ## Python integration
 
 ```bash
-set MERIS_NATIVE=1           # use native context compression in agent loop
+set MERIS_NATIVE=1           # native compress, permissions, sandbox, tools
+set MERIS_NATIVE_LOOP=1      # ask/plan/review via meris-rs agent run
 meris native status
 ```
 
-## Scope (P5 MVP)
+## Scope
 
 | Module | Status |
 |--------|--------|
-| `context` | Token estimate + compress (parity with Python) |
+| `context` | Token estimate + compress |
 | `permissions` | allow/deny check |
-| `settings` | Load `.meris/settings.json` |
-| Agent loop / tools / MCP | Python `meris` (delegate via `meris-rs run`) |
+| `sandbox` | policy + bubblewrap run |
+| `provider` | OpenAI-compatible chat |
+| `tools` | read_file / glob / grep / bash + schemas |
+| `agent` | M1 loop + session (read-only modes) |
+| MCP / full run mode | Python `meris` (see [PLAN_P5_4.md](../docs/PLAN_P5_4.md)) |
 
-Full Rust port of the agent loop is **out of scope** for 0.6.0; this crate is the lean binary foundation.
-
-**Docs**: [../docs/LOCAL_SETUP.md](../docs/LOCAL_SETUP.md) · [../docs/RUST_ROADMAP.md](../docs/RUST_ROADMAP.md)
+**Docs**: [../docs/LOCAL_SETUP.md](../docs/LOCAL_SETUP.md) · [../docs/RUST_ROADMAP.md](../docs/RUST_ROADMAP.md) · [../docs/PLAN_P5_4.md](../docs/PLAN_P5_4.md)

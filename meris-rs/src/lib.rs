@@ -1,12 +1,15 @@
 //! Meris native core — mirrors Python harness primitives for fast startup paths.
 
+pub mod agent;
 pub mod context;
 pub mod permissions;
 pub mod provider;
 pub mod sandbox;
+pub mod session;
 pub mod settings;
 pub mod tools;
 
+pub use agent::{run_agent, AgentConfig, AgentResult};
 pub use context::{compress_messages, estimate_messages_tokens, estimate_tokens};
 pub use permissions::check_tool_allowed;
 pub use provider::{
@@ -19,5 +22,9 @@ pub use sandbox::{
     os_sandbox_probe_workspace, run_bash_in_workspace, scan_bash_command, should_use_bubblewrap,
     verdict_to_json, SandboxVerdict,
 };
+pub use session::{list_sessions, load_session, new_session_id, save_session, SessionRecord};
 pub use settings::load_settings;
-pub use tools::{run_readonly_tool, READONLY_TOOLS};
+pub use tools::{
+    run_builtin_tool, run_readonly_tool, tool_schemas, tool_schemas_json, BUILTIN_TOOL_NAMES,
+    READONLY_TOOLS,
+};

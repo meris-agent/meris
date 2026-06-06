@@ -112,3 +112,12 @@ jobs:
             --workspace .. \
             --tool read_file \
             --args '{"path":"README.md","limit":3}' | grep -q README
+
+      - name: Tools schemas smoke
+        run: |
+          ./meris-rs/target/release/meris-rs tools schemas --read-only | grep -q read_file
+          python scripts/check_tool_schemas_parity.py
+
+      - name: Agent session smoke
+        run: |
+          ./meris-rs/target/release/meris-rs agent session list --workspace .. | true

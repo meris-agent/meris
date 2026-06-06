@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import shutil
@@ -10,7 +11,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from meris.config import env_tri
+from meris.config import env_get, env_tri
 
 
 def _repo_root() -> Path:
@@ -79,6 +80,7 @@ def native_status() -> dict[str, Any]:
         "source": str(_repo_root() / "meris-rs"),
         "nativeEnabled": native_enabled(),
         "nativeProviderEnabled": native_provider_enabled(),
+        "nativeLoopEnabled": native_loop_enabled(),
     }
 
 
@@ -257,12 +259,13 @@ def native_sandbox_check(
     return None
 
 
+NATIVE_BUILTIN_TOOLS = frozenset({"read_file", "glob", "grep", "bash"})
 NATIVE_READONLY_TOOLS = frozenset({"read_file", "glob", "grep"})
 
 
 def native_run_tool(workspace: Path, tool: str, args: dict[str, Any]) -> str | None:
-    """Execute read_file/glob/grep via meris-rs; None if unavailable."""
-    if not native_enabled() or tool not in NATIVE_READONLY_TOOLS:
+    """Execute read_file/glob/grep/bash via meris-rs; None if unavailable."""
+    if not native_enabled() or tool not in NATIVE_BUILTIN_TOOLS:
         return None
     if find_native_binary() is None:
         return None
@@ -283,6 +286,99 @@ def native_run_tool(workspace: Path, tool: str, args: dict[str, Any]) -> str | N
         return None
     out = (proc.stdout or "").strip()
     return out or None
+
+
+def _binary_supports_subcommand(sub: str) -> bool:
+    binary = find_native_binary()
+    if not binary:
+        return False
+    try:
+        proc = subprocess.run(
+            [str(binary), sub, "--help"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except OSError:
+        return False
+    return proc.returncode == 0
+
+
+def native_tool_schemas(*, read_only: bool = False) -> list[dict[str, Any]] | None:
+    """OpenAI function schemas from meris-rs tools schemas."""
+    if not native_enabled() or not _binary_supports_subcommand("tools"):
+        return None
+    args = ["tools", "schemas"]
+    if read_only:
+        args.append("--read-only")
+    proc = _run_native(args, timeout=10)
+    if proc is None or proc.returncode != 0:
+        return None
+    try:
+        data = json.loads(proc.stdout)
+        if isinstance(data, list):
+            return data
+    except json.JSONDecodeError:
+        return None
+    return None
+
+
+def native_loop_enabled() -> bool:
+    """Run agent loop in meris-rs when MERIS_NATIVE_LOOP=1 or =auto."""
+    if not _binary_supports_subcommand("agent"):
+        return False
+    val = env_get("NATIVE_LOOP", "").strip().lower()
+    if val in ("0", "false", "no"):
+        return False
+    if val in ("1", "true", "yes"):
+        return True
+    if val == "auto":
+        return native_enabled()
+    return False
+
+
+async def stream_native_agent_loop(
+    workspace: Path,
+    task: str,
+    *,
+    mode: str = "ask",
+    max_turns: int = 30,
+    session_id: str | None = None,
+    resume: bool = False,
+):
+    """Yield progress lines from meris-rs agent run (async iterator)."""
+    binary = find_native_binary()
+    if not binary:
+        return
+    cmd = [
+        str(binary),
+        "agent",
+        "run",
+        "--workspace",
+        str(workspace.resolve()),
+        "--task",
+        task,
+        "--mode",
+        mode,
+        "--max-turns",
+        str(max_turns),
+    ]
+    if session_id:
+        cmd.extend(["--session-id", session_id])
+    if resume:
+        cmd.append("--resume")
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    assert proc.stdout is not None
+    async for raw in proc.stdout:
+        line = raw.decode("utf-8", errors="replace").rstrip("\n\r")
+        if line:
+            yield line
+    await proc.wait()
 
 
 def native_os_sandbox_probe(workspace: Path) -> dict[str, Any] | None:

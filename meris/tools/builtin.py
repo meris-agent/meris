@@ -121,14 +121,15 @@ def build_tools(workspace: Path, read_only: bool = False) -> ToolRegistry:
         )
 
         async def bash(args: dict) -> str:
-            import asyncio
+            async def _py(a: dict) -> str:
+                from meris.harness.settings import load_settings
+                from meris.harness.sandbox import run_bash_sync
 
-            from meris.harness.settings import load_settings
-            from meris.harness.sandbox import run_bash_sync
+                cmd = a["command"]
+                settings = load_settings(workspace)
+                return await asyncio.to_thread(run_bash_sync, workspace, cmd, settings)
 
-            cmd = args["command"]
-            settings = load_settings(workspace)
-            return await asyncio.to_thread(run_bash_sync, workspace, cmd, settings)
+            return await _native_or(workspace, "bash", args, _py)
 
         reg.register(
             Tool(

@@ -76,6 +76,26 @@ async def agent_loop(
 ) -> AsyncIterator[str]:
     """Yield human-readable progress lines."""
     ws = workspace.resolve()
+
+    from meris.native import native_loop_enabled, stream_native_agent_loop
+
+    if (
+        native_loop_enabled()
+        and mode in ("ask", "plan", "review")
+        and provider is None
+        and not require_approval
+    ):
+        async for line in stream_native_agent_loop(
+            ws,
+            task,
+            mode=mode,
+            max_turns=max_turns,
+            session_id=session_id,
+            resume=resume,
+        ):
+            yield line
+        return
+
     settings = load_settings(ws)
     explicit_provider = provider is not None
     if explicit_provider:
