@@ -10,6 +10,7 @@ from meris.harness.doctor import check_env, check_harness
 from meris.harness.permissions import check_tool_allowed
 from meris.harness.plan import extract_last_assistant_text, save_plan
 from meris.tools import build_tools
+from tests.test_provider_presets import _clear_meris_llm_env
 
 
 def test_permission_allow_blocks_unknown_tool(workspace: Path) -> None:
@@ -68,9 +69,7 @@ def test_doctor_harness_checks(workspace: Path) -> None:
 
 
 def test_doctor_env_without_key(monkeypatch) -> None:
-    monkeypatch.delenv("LLM_API_KEY", raising=False)
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    _clear_meris_llm_env(monkeypatch)
     results = check_env()
     key = next(r for r in results if r.name == "API key")
     assert key.status == "fail"

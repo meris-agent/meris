@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -192,6 +193,24 @@ def test_load_settings_merges_defaults(workspace: Path) -> None:
     assert s["context"]["maxMessages"] == 48
     assert s["context"]["maxTokens"] == 32000
     assert "blockedPaths" in s
+
+
+def test_load_settings_local_json(workspace: Path) -> None:
+    from meris.harness.paths import HARNESS_DIR
+
+    h = workspace / HARNESS_DIR
+    h.mkdir(parents=True, exist_ok=True)
+    (h / "settings.json").write_text(
+        json.dumps({"models": {"byMode": {"ask": {"provider": "openai", "model": "gpt-4o-mini"}}}}),
+        encoding="utf-8",
+    )
+    (h / "settings.local.json").write_text(
+        json.dumps({"models": {"byMode": {"run": {"provider": "volcengine", "model": "ep-local"}}}}),
+        encoding="utf-8",
+    )
+    s = load_settings(workspace)
+    assert s["models"]["byMode"]["ask"]["provider"] == "openai"
+    assert s["models"]["byMode"]["run"]["model"] == "ep-local"
 
 
 def test_compress_messages_drops_old() -> None:

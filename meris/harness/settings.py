@@ -45,15 +45,33 @@ DEFAULT_SETTINGS: dict = {
 }
 
 
+def _deep_merge(base: dict, override: dict) -> dict:
+    out = dict(base)
+    for key, val in override.items():
+        if isinstance(val, dict) and isinstance(out.get(key), dict):
+            out[key] = _deep_merge(out[key], val)
+        else:
+            out[key] = val
+    return out
+
+
+def _load_json(path: Path) -> dict:
+    if not path.is_file():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def load_settings(workspace: Path) -> dict:
-    p = harness_root(workspace) / "settings.json"
-    if not p.is_file():
-        return dict(DEFAULT_SETTINGS)
-    data = json.loads(p.read_text(encoding="utf-8"))
+    """Load settings.json, merged with optional gitignored settings.local.json."""
+    hroot = harness_root(workspace)
     merged = dict(DEFAULT_SETTINGS)
+    data = _load_json(hroot / "settings.json")
     for key, val in data.items():
         if isinstance(val, dict) and isinstance(merged.get(key), dict):
-            merged[key] = {**merged[key], **val}
+            merged[key] = _deep_merge(merged[key], val)
         else:
             merged[key] = val
+    local = _load_json(hroot / "settings.local.json")
+    if local:
+        merged = _deep_merge(merged, local)
     return merged

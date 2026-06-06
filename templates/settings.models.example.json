@@ -1,9 +1,9 @@
 {
   "models": {
     "byMode": {
-      "ask": { "provider": "openai", "model": "gpt-4o-mini" },
+      "ask": { "provider": "deepseek", "model": "deepseek-chat" },
       "plan": { "provider": "deepseek", "model": "deepseek-chat" },
-      "run": { "provider": "deepseek", "model": "deepseek-reasoner" }
+      "run": { "provider": "volcengine", "model": "ep-xxxxxxxx" }
     },
     "rules": [
       {

@@ -91,12 +91,12 @@ def _paths_proposal(ev: dict[str, Any]) -> Proposal:
 ## Ratchet (auto)
 
 - 仓库根文档用 `README.md`，不要写成 `meris/README.md`（除非 cwd 在父目录且项目是子文件夹）。
-- 不要使用已废弃的 `forge/` 路径前缀。
+- 不要使用与本仓库布局不符的路径前缀（以 AGENTS.md 为准）。
 """
     return Proposal(
         id=new_proposal_id(),
         lesson="L-path",
-        summary="路径/命名不规范（meris/README、forge/ 等）",
+        summary="路径/命名不规范（meris/README、错误包目录前缀等）",
         target=ProposalTarget(
             path=".meris/rules/paths.md",
             action="create",
@@ -126,11 +126,11 @@ def classify_event(
                 if not _lesson_applied(workspace, "L-cwd", existing):
                     return _workspace_proposal(ev)
 
-    if kind == "benchmark_fail" and ("meris/readme" in det or "forge/" in det):
+    if kind == "benchmark_fail" and "meris/readme" in det:
         if not _lesson_applied(workspace, "L-path", existing):
             return _paths_proposal(ev)
 
-    if "forge/" in task or "meris/readme" in task:
+    if "meris/readme" in task:
         if not _lesson_applied(workspace, "L-path", existing):
             return _paths_proposal(ev)
 

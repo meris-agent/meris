@@ -117,7 +117,19 @@ export MERIS_MODEL=your-model-id
 
 > **问句用便宜模型，大改用强模型** — 写进 Harness，而不是每次让模型猜。
 
-在 **`.meris/settings.json`** 里配置 `models`（需在 `.env` 里准备好各厂商 Key）：
+在 **`.meris/settings.json`** 里配置团队共享项（权限、传感器、`models` 模板等）。
+
+模型路由以 [templates/settings.models.example.json](../templates/settings.models.example.json) 为模板：
+
+- **`.meris/settings.json`** — 团队共享的 `models`（占位 `ep-xxxxxxxx`，可提交）
+- **`.meris/settings.local.json`** — 个人覆盖（真实 `ep-...` 等，已在 `.gitignore`）
+
+```powershell
+# 个人接入点 ID 等：复制模板再改 run.model
+copy templates\settings.models.example.json .meris\settings.local.json
+```
+
+`.env` 里仍需各厂商 API Key。`models` 结构示例（与模板相同）：
 
 ```json
 {
@@ -153,7 +165,7 @@ meris ask "..."   # 运行时日志会出现 route=byMode:ask ...
 - 这是 **规则路由**（快、可测、无额外 LLM 调用），不是「让模型自己挑厂商」。
 - 未配 `models` 时行为与以前相同：只用 `MERIS_PROVIDER` / `.env`。
 - 未来可选：用便宜模型做意图分类再路由（需另开 API 调用，暂未内置）。
-- 示例片段可复制进 `settings.json`：[templates/settings.models.example.json](../templates/settings.models.example.json)。
+- 完整示例见 [templates/settings.models.example.json](../templates/settings.models.example.json)；`settings.json` 与 `settings.local.json` 的 `models` 均由此复制/对齐，local 覆盖 team 默认值。
 
 ## 自动推断
 

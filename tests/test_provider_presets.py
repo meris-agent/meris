@@ -39,6 +39,9 @@ def _clear_meris_llm_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "OPENAI_API_KEY",
         "DEEPSEEK_API_KEY",
         "ANTHROPIC_API_KEY",
+        "ARK_API_KEY",
+        "VOLCENGINE_API_KEY",
+        "DOUBAO_API_KEY",
         "LLM_API_KEY",
     ):
         monkeypatch.delenv(k, raising=False)
@@ -107,3 +110,12 @@ def test_models_list_cli() -> None:
     assert result.exit_code == 0
     assert "deepseek" in result.output
     assert "openai" in result.output
+
+
+def test_routed_volcengine_ignores_global_deepseek_base(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MERIS_PROVIDER", "deepseek")
+    monkeypatch.setenv("MERIS_BASE_URL", "https://api.deepseek.com/v1")
+    cfg = resolve_provider_config(provider="volcengine", model="ep-test")
+    assert "volces.com" in cfg.base_url
+    assert "deepseek" not in cfg.base_url
+    assert cfg.model == "ep-test"

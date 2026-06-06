@@ -176,13 +176,14 @@ MERIS_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
 **建议提交到 git：**
 
 - `AGENTS.md`、`PROGRESS.md`（若希望共享进度）
-- `.meris/settings.json`（权限、DoD、MCP 配置）
+- `.meris/settings.json`（权限、DoD、MCP、**团队 models 模板**）
 - `.meris/rules/`、`.meris/skills/`（项目规则）
 
-**不要提交：**
+**不要提交（已在 `.gitignore`）：**
 
-- `.env`（含 API Key）
-- `.meris/sessions/`、`.meris/ratchet/events.jsonl`（本地运行时，见仓库 `.gitignore`）
+- `.env`（API Key）
+- `.meris/settings.local.json`（**个人 models 覆盖**，从 `templates/settings.models.example.json` 复制后改 `ep-...` 等）
+- `.meris/sessions/`、`.meris/plan/`、`.meris/ratchet/`、`.meris/profile.md`
 
 **给新同事的一句话：**
 

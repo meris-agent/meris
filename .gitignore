@@ -47,11 +47,12 @@ Desktop.ini
 .meris/plan/
 .meris/worktrees/
 .meris/spec/
-.meris/ratchet/events.jsonl
-.meris/ratchet/proposals/
-.meris/ratchet/applied/
+.meris/profile.md
+.meris/settings.local.json
+.meris/ratchet/
 
-# Commit harness *templates* for this repo: .meris/settings.json, rules/, skills/
+# Commit shared harness: .meris/settings.json, .meris/rules/, .meris/skills/
+# Personal overrides: copy templates/settings.models.example.json → .meris/settings.local.json
 
 # --- Cursor local (not the vscode-meris extension source) ---
 .cursor/

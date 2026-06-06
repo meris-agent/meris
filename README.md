@@ -64,6 +64,8 @@ On Windows, use `set VAR=value` instead of `export`. Copy [.env.example](.env.ex
 | `meris run --approve "…"` | Same as run, but confirm each write/bash |
 | `meris run --from-plan "…"` | Implement the saved plan |
 | `meris run --no-sensor "…"` | Skip post-edit DoD sensors |
+| `meris models list` | Show all provider presets + current env |
+| `meris models show <provider>` | Show model & env details for a provider |
 | `meris doctor` | Check API key, model, and harness files |
 | `meris init-harness .` | Scaffold `AGENTS.md`, `.meris/settings.json`, `PROGRESS.md` |
 

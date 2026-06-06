@@ -109,6 +109,7 @@ def build_analyze_prompt(
 }}
 - Max 3 proposals. Only paths under `.meris/rules/` or `.meris/skills/`.
 - Do NOT patch Python source. Prefer short, actionable rules.
+- Examples in content MUST use file paths from **Existing harness** (AGENTS.md, paths.md).
 - Content max {MAX_CONTENT_CHARS} chars per proposal.
 """
 

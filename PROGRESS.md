@@ -22,7 +22,7 @@
 
 | # | 错误类型 | 典型表现 | Harness 改动 |
 |---|----------|----------|----------------|
-| 1 | **不知道路径规范** | plan 写 `forge/`；README 写成 `meris/README.md` | `AGENTS.md` 仓库布局 + `.meris/rules/paths.md` |
+| 1 | **不知道路径规范** | plan 路径写错；README 写成 `meris/README.md` | `AGENTS.md` 仓库布局 + `.meris/rules/paths.md` |
 | 2 | **输出格式不对** | plan 无 `- [ ]`，benchmark `plan_smoke` fail | `AGENTS.md` Plan 节 + `.meris/skills/plan-format.md` + `benchmark.py` 判题 |
 | 3 | **工作区 cwd 搞错** | 在 vault 根跑 run，README 被 block | `.meris/rules/workspace.md` + vault `AGENTS.md` 双 cwd 表 |
 

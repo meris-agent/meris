@@ -36,5 +36,20 @@
     "onSave": [],
     "onCommit": []
   },
-  "mcpServers": {}
+  "mcpServers": {},
+  "models": {
+    "byMode": {
+      "ask": { "provider": "deepseek", "model": "deepseek-chat" },
+      "plan": { "provider": "deepseek", "model": "deepseek-chat" },
+      "run": { "provider": "volcengine", "model": "ep-xxxxxxxx" }
+    },
+    "rules": [
+      {
+        "name": "heavy-refactor",
+        "match": { "mode": "run", "taskContains": ["重构", "refactor", "架构"] },
+        "provider": "anthropic",
+        "model": "claude-sonnet-4-20250514"
+      }
+    ]
+  }
 }
