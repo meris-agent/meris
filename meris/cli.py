@@ -387,6 +387,24 @@ def harness_hook_on_save_cmd(
         raise typer.Exit(1)
 
 
+@harness_app.command("system-prompt")
+def harness_system_prompt_cmd(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    mode: str = typer.Option("run", "--mode", "-m"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Build full system prompt for native agent (guides, progress, spec)."""
+    import json
+
+    from meris.harness.prompt_bridge import build_full_system_prompt
+
+    prompt = build_full_system_prompt(cwd.resolve(), mode=mode)
+    if json_out:
+        typer.echo(json.dumps({"prompt": prompt}))
+    else:
+        console.print(prompt)
+
+
 @harness_app.command("ratchet-record")
 def harness_ratchet_record_cmd(
     kind: str = typer.Option(..., "--kind"),

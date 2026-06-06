@@ -6,6 +6,7 @@ use crate::hooks::{record_ratchet_event, run_on_save_hook, run_post_hook, run_pr
 use crate::mcp::{has_mcp_servers, is_mcp_tool, McpBridge};
 use crate::permissions::check_tool_allowed;
 use crate::plan::{extract_last_assistant_text, save_plan};
+use crate::prompt::load_system_prompt;
 use crate::provider::{chat_completions, resolve_config, ProviderConfig};
 use crate::sensors::{on_complete_enabled, run_on_complete_sensors, run_post_edit_sensors};
 use crate::session::{load_session, new_session_id, now_iso, save_session, SessionRecord};
@@ -46,14 +47,6 @@ pub struct AgentResult {
 
 fn mode_read_only(mode: &str) -> bool {
     matches!(mode, "ask" | "plan" | "review")
-}
-
-fn system_prompt(mode: &str) -> String {
-    format!(
-        "You are Meris, a harness-first coding agent. Mode: {mode}. \
-         Use read_file/glob/grep for exploration; write_file/edit_file/bash when mode=run; \
-         MCP tools are prefixed mcp_."
-    )
 }
 
 fn push_line(lines: &mut Vec<String>, line: impl Into<String>) {
@@ -315,7 +308,7 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
             created_at: now_iso(),
             updated_at: now_iso(),
             messages: vec![
-                json!({"role": "system", "content": system_prompt(&config.mode)}),
+                json!({"role": "system", "content": load_system_prompt(&ws, &config.mode)}),
                 json!({"role": "user", "content": config.task}),
             ],
             turn: 0,

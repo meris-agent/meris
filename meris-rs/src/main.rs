@@ -1,4 +1,4 @@
-//! `meris-rs` — native CLI for harness primitives; delegates full agent loop to Python `meris`.
+//! `meris-rs` — native CLI for harness primitives; `run` delegates to Python or native loop (M5).
 
 use clap::{Parser, Subcommand};
 use meris_rs::{
@@ -496,7 +496,13 @@ fn main() {
             println!("meris-rs {}", env!("CARGO_PKG_VERSION"));
             0
         }
-        Commands::Run { meris_args } => delegate_meris(&meris_args),
+        Commands::Run { meris_args } => {
+            if let Some(code) = try_direct_native_run(&meris_args) {
+                code
+            } else {
+                delegate_meris(&meris_args)
+            }
+        }
     };
     std::process::exit(code);
 }
@@ -507,12 +513,16 @@ fn delegate_meris(args: &[String]) -> i32 {
         eprintln!("Error: `meris` not found on PATH — pip install -e .");
         return 1;
     };
-    let status = Command::new(meris)
+    let mut command = Command::new(meris);
+    command
         .args(args)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status();
+        .stderr(Stdio::inherit());
+    if should_inject_native_loop_auto() {
+        command.env("MERIS_NATIVE_LOOP", "auto");
+    }
+    let status = command.status();
     match status {
         Ok(s) => s.code().unwrap_or(1),
         Err(e) => {
@@ -520,6 +530,169 @@ fn delegate_meris(args: &[String]) -> i32 {
             1
         }
     }
+}
+
+fn env_tri(name: &str) -> Option<bool> {
+    let key = format!("MERIS_{name}");
+    match std::env::var(&key).ok().as_deref().map(|s| s.trim().to_lowercase()) {
+        Some(ref s) if s == "0" || s == "false" || s == "no" => Some(false),
+        Some(ref s) if s == "1" || s == "true" || s == "yes" => Some(true),
+        Some(ref s) if s == "auto" => None,
+        Some(_) => None,
+        None => None,
+    }
+}
+
+fn native_disabled() -> bool {
+    env_tri("NATIVE") == Some(false)
+}
+
+fn native_loop_disabled() -> bool {
+    env_tri("NATIVE_LOOP") == Some(false)
+}
+
+fn native_loop_enabled_for_run_entry() -> bool {
+    if native_loop_disabled() || native_disabled() {
+        return false;
+    }
+    match env_tri("NATIVE_LOOP") {
+        Some(true) => true,
+        Some(false) => false,
+        None => true,
+    }
+}
+
+fn should_inject_native_loop_auto() -> bool {
+    if std::env::var("MERIS_NATIVE_LOOP").is_ok() {
+        return false;
+    }
+    !native_disabled()
+}
+
+struct DirectRunArgs {
+    mode: String,
+    task: String,
+    workspace: PathBuf,
+    session_id: Option<String>,
+    event_stream: Option<PathBuf>,
+    save_plan: bool,
+    plan_output: Option<String>,
+}
+
+fn try_direct_native_run(args: &[String]) -> Option<i32> {
+    if !native_loop_enabled_for_run_entry() {
+        return None;
+    }
+    let parsed = parse_direct_run_args(args)?;
+    match run_agent(AgentConfig {
+        workspace: parsed.workspace,
+        task: parsed.task,
+        mode: parsed.mode,
+        max_turns: 30,
+        session_id: parsed.session_id,
+        resume: false,
+        require_approval: false,
+        run_sensors_at_end: parsed.mode == "run",
+        event_stream: parsed.event_stream,
+        save_plan: parsed.save_plan,
+        plan_output: parsed.plan_output,
+    }) {
+        Ok(result) => {
+            for line in result.lines {
+                println!("{line}");
+            }
+            Some(match result.status.as_str() {
+                "completed" => 0,
+                "dod_failed" | "max_turns" => 2,
+                _ => 2,
+            })
+        }
+        Err(e) => {
+            eprintln!("Error: {e}");
+            Some(1)
+        }
+    }
+}
+
+fn parse_direct_run_args(args: &[String]) -> Option<DirectRunArgs> {
+    if args.is_empty() {
+        return None;
+    }
+    let mode = args[0].clone();
+    if !matches!(mode.as_str(), "ask" | "plan" | "run") {
+        return None;
+    }
+    for flag in args.iter().skip(1) {
+        if flag == "--ratchet"
+            || flag == "--resume"
+            || flag == "--require-approval"
+            || flag == "--json"
+            || flag.starts_with("--provider")
+            || flag.starts_with("--max-turns")
+        {
+            return None;
+        }
+    }
+
+    let mut workspace = std::env::current_dir().ok()?;
+    let mut task: Option<String> = None;
+    let mut session_id = None;
+    let mut event_stream = None;
+    let mut save_plan = mode == "plan";
+    let mut plan_output: Option<String> = None;
+    let mut no_save = false;
+    let mut i = 1;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--cwd" | "-C" => {
+                i += 1;
+                workspace = PathBuf::from(args.get(i)?);
+                i += 1;
+            }
+            "--session-id" => {
+                i += 1;
+                session_id = Some(args.get(i)?.clone());
+                i += 1;
+            }
+            "--event-stream" => {
+                i += 1;
+                event_stream = Some(PathBuf::from(args.get(i)?));
+                i += 1;
+            }
+            "--out" | "-o" => {
+                i += 1;
+                plan_output = Some(args.get(i)?.clone());
+                i += 1;
+            }
+            "--no-save" => {
+                no_save = true;
+                i += 1;
+            }
+            s if s.starts_with('-') => return None,
+            s => {
+                if task.is_some() {
+                    return None;
+                }
+                task = Some(s.to_string());
+                i += 1;
+            }
+        }
+    }
+    let task = task?;
+    if no_save {
+        save_plan = false;
+    } else if save_plan && plan_output.is_none() {
+        plan_output = Some("__default__".into());
+    }
+    Some(DirectRunArgs {
+        mode,
+        task,
+        workspace,
+        session_id,
+        event_stream,
+        save_plan,
+        plan_output,
+    })
 }
 
 fn which_meris() -> Option<String> {

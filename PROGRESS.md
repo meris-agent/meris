@@ -20,7 +20,7 @@
 - [x] **P5-4 M2** — run 模式写工具 + postEdit/onComplete sensors
 - [x] **P5-4 M3** — MCP JSONL 桥 + native loop 工具合并
 - [x] **P5-4 M4** — hooks / EventStream / plan 模式
-- [ ] **P5-4 M5** — 单二进制默认入口
+- [x] **P5-4 M5** — system-prompt 桥 + `meris-rs run` 原生入口
 
 ## 近期落地（E0 / P5-1）
 - [x] `settings.local` 文档（[USER_SETUP.md](docs/USER_SETUP.md)）

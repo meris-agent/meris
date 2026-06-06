@@ -35,7 +35,7 @@
 | **M2** ✅ | `run` 模式 write/edit + postEdit + on-complete 桥 | mock benchmark + schema parity |
 | **M3** ✅ | MCP JSONL 桥（`meris mcp serve`）+ native loop schema 合并 | `test_mcp_bridge.py` |
 | **M4** ✅ | hooks 桥 + EventStream JSONL + plan 保存 | `test_hooks_bridge.py` |
-| **M5** | TUI/CLI 默认 native loop；Python 仅插件 | 冷启动 <1s；Release 二进制 |
+| **M5** ✅ | system-prompt 桥 + `meris-rs run` 原生/委托路由 | `test_system_prompt_bridge.py` |
 
 ## M1 范围（已实现）
 
@@ -66,6 +66,13 @@
 3. `meris-rs agent run --event-stream` — JSONL 与 Python EventStream 对齐
 4. `--save-plan` / `--plan-output` — plan 模式写入 `.meris/plan/tasks.md`
 
+## M5 范围（已实现）
+
+1. `meris harness system-prompt --json` — 与 Python loop 对齐（guides + progress + spec）
+2. Rust agent 启动时经桥加载完整 system prompt；失败时回退 minimal prompt
+3. `meris-rs run ask|plan|run` — 在 `MERIS_NATIVE_LOOP` 未禁用时直接走 native agent（冷启动）
+4. `meris-rs run …` 委托 Python 时默认注入 `MERIS_NATIVE_LOOP=auto`（可被用户 env 覆盖）
+
 ## M5 / 长期
 
 - `meris-rs run` 成为默认入口（现仍委托 Python）
@@ -76,8 +83,8 @@
 
 | 变量 | 含义 |
 |------|------|
-| `MERIS_NATIVE_LOOP=1` | ask/plan/review 走 Rust loop |
-| `MERIS_NATIVE_LOOP=auto` | 与 `MERIS_NATIVE` 同时启用时走 Rust loop |
+| `MERIS_NATIVE_LOOP=1` | ask/plan/review/run 走 Rust loop |
+| `MERIS_NATIVE_LOOP=auto` | 与 `MERIS_NATIVE` 同时启用时走 Rust loop；`meris-rs run` 委托时默认注入 |
 | `MERIS_NATIVE_LOOP=0` | 强制 Python loop |
 
 ## 开发命令
