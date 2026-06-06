@@ -172,6 +172,12 @@ enum AgentAction {
         require_approval: bool,
         #[arg(long, help = "Skip DoD sensors at end (run mode)")]
         no_sensor: bool,
+        #[arg(long, help = "Append JSONL events (Phase E4)")]
+        event_stream: Option<PathBuf>,
+        #[arg(long, help = "Save plan markdown when mode=plan completes")]
+        save_plan: bool,
+        #[arg(long, help = "Plan output path (default .meris/plan/tasks.md)")]
+        plan_output: Option<String>,
     },
     /// Session management (Python-compatible JSON)
     Session {
@@ -423,6 +429,9 @@ fn main() {
                 resume,
                 require_approval,
                 no_sensor,
+                event_stream,
+                save_plan,
+                plan_output,
             } => match run_agent(AgentConfig {
                 workspace,
                 task,
@@ -432,6 +441,9 @@ fn main() {
                 resume,
                 require_approval,
                 run_sensors_at_end: !no_sensor,
+                event_stream,
+                save_plan,
+                plan_output,
             }) {
                 Ok(result) => {
                     for line in result.lines {

@@ -352,6 +352,9 @@ async def stream_native_agent_loop(
     require_approval: bool = False,
     run_sensors_at_end: bool = True,
     approve_fn: ApproveFn | None = None,
+    event_stream_path: str | Path | None = None,
+    save_plan: bool = False,
+    plan_output: str | None = None,
 ):
     """Yield progress lines from meris-rs agent run (async iterator)."""
     binary = find_native_binary()
@@ -378,6 +381,14 @@ async def stream_native_agent_loop(
         cmd.append("--require-approval")
     if not run_sensors_at_end:
         cmd.append("--no-sensor")
+    if event_stream_path:
+        cmd.extend(["--event-stream", str(event_stream_path)])
+    if save_plan:
+        cmd.append("--save-plan")
+        if plan_output and plan_output != "__default__":
+            cmd.extend(["--plan-output", plan_output])
+        elif plan_output == "__default__":
+            cmd.extend(["--plan-output", "__default__"])
     stdin_pipe = asyncio.subprocess.PIPE if require_approval else None
     proc = await asyncio.create_subprocess_exec(
         *cmd,

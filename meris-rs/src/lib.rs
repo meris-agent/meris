@@ -2,8 +2,11 @@
 
 pub mod agent;
 pub mod context;
+pub mod events;
+pub mod hooks;
 pub mod mcp;
 pub mod permissions;
+pub mod plan;
 pub mod provider;
 pub mod sandbox;
 pub mod sensors;
@@ -12,6 +15,9 @@ pub mod settings;
 pub mod tools;
 
 pub use agent::{run_agent, AgentConfig, AgentResult};
+pub use events::{emit_submission, EventStream};
+pub use hooks::{has_tool_hooks, record_ratchet_event, run_on_save_hook, run_post_hook, run_pre_hook, HookResult};
+pub use plan::{extract_last_assistant_text, save_plan};
 pub use mcp::{has_mcp_servers, is_mcp_tool, McpBridge};
 pub use context::{compress_messages, estimate_messages_tokens, estimate_tokens};
 pub use permissions::check_tool_allowed;

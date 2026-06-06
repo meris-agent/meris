@@ -118,6 +118,7 @@ async def _stream(
         "cancel": cancel,
         "plan_output": plan_output,
         "event_stream": stream,
+        "event_stream_path": event_stream_path,
     }
     if require_approval:
         kwargs["approve_fn"] = _make_approver()
@@ -316,6 +317,103 @@ def harness_on_complete_cmd(
         console.print(out)
     if not ok:
         raise typer.Exit(1)
+
+
+hook_app = typer.Typer(help="Tool hooks bridge for meris-rs")
+harness_app.add_typer(hook_app, name="hook")
+
+
+@hook_app.command("pre")
+def harness_hook_pre_cmd(
+    tool: str = typer.Option(..., "--tool"),
+    args: str = typer.Option("{}", "--args"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    import json
+
+    from meris.harness.hooks_bridge import hook_result_json, run_pre_tool_hook
+
+    parsed = json.loads(args)
+    if not isinstance(parsed, dict):
+        raise typer.BadParameter("args must be a JSON object")
+    result = asyncio.run(run_pre_tool_hook(cwd.resolve(), tool, parsed))
+    if json_out:
+        console.print(hook_result_json(result))
+    elif result.message:
+        console.print(result.message)
+    if result.block:
+        raise typer.Exit(1)
+
+
+@hook_app.command("post")
+def harness_hook_post_cmd(
+    tool: str = typer.Option(..., "--tool"),
+    args: str = typer.Option("{}", "--args"),
+    result: str = typer.Option("", "--result"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    import json
+
+    from meris.harness.hooks_bridge import hook_result_json, run_post_tool_hook
+
+    parsed = json.loads(args)
+    if not isinstance(parsed, dict):
+        raise typer.BadParameter("args must be a JSON object")
+    hook = asyncio.run(run_post_tool_hook(cwd.resolve(), tool, parsed, result))
+    if json_out:
+        console.print(hook_result_json(hook))
+    elif hook.message:
+        console.print(hook.message)
+    if hook.block:
+        raise typer.Exit(1)
+
+
+@hook_app.command("on-save")
+def harness_hook_on_save_cmd(
+    path: str = typer.Option(..., "--path"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    from meris.harness.hooks_bridge import hook_result_json, run_on_save_hooks
+
+    result = asyncio.run(run_on_save_hooks(cwd.resolve(), path))
+    if json_out:
+        console.print(hook_result_json(result))
+    elif result.message:
+        console.print(result.message)
+    if result.block:
+        raise typer.Exit(1)
+
+
+@harness_app.command("ratchet-record")
+def harness_ratchet_record_cmd(
+    kind: str = typer.Option(..., "--kind"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    session: str = typer.Option("", "--session"),
+    task: str = typer.Option("", "--task"),
+    detail: str = typer.Option("", "--detail"),
+    tool: str = typer.Option("", "--tool"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    import json
+
+    from meris.harness.ratchet.events import record_event
+
+    ok = record_event(
+        cwd.resolve(),
+        kind,
+        session=session,
+        task=task,
+        detail=detail,
+        tool=tool,
+        tags=["loop", tool] if tool else ["loop"],
+    )
+    if json_out:
+        console.print(json.dumps({"ok": ok}))
+    if not ok:
+        raise typer.Exit(0)
 
 
 @app.command("version")

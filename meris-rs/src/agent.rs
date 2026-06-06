@@ -1,8 +1,11 @@
-//! Native agent loop — P5-4 M1/M2/M3 (tools + MCP + session + sensors).
+//! Native agent loop — P5-4 M1–M4.
 
 use crate::context::compress_messages;
+use crate::events::{emit_submission, EventStream};
+use crate::hooks::{record_ratchet_event, run_on_save_hook, run_post_hook, run_pre_hook};
 use crate::mcp::{has_mcp_servers, is_mcp_tool, McpBridge};
 use crate::permissions::check_tool_allowed;
+use crate::plan::{extract_last_assistant_text, save_plan};
 use crate::provider::{chat_completions, resolve_config, ProviderConfig};
 use crate::sensors::{on_complete_enabled, run_on_complete_sensors, run_post_edit_sensors};
 use crate::session::{load_session, new_session_id, now_iso, save_session, SessionRecord};
@@ -14,14 +17,14 @@ use crate::tools::{
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::{self, BufRead, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const DEFAULT_MAX_MESSAGES: usize = 48;
 const DEFAULT_MAX_TOOL_TOKENS: usize = 2000;
 
 #[derive(Debug, Clone)]
 pub struct AgentConfig {
-    pub workspace: std::path::PathBuf,
+    pub workspace: PathBuf,
     pub task: String,
     pub mode: String,
     pub max_turns: u32,
@@ -29,6 +32,9 @@ pub struct AgentConfig {
     pub resume: bool,
     pub require_approval: bool,
     pub run_sensors_at_end: bool,
+    pub event_stream: Option<PathBuf>,
+    pub save_plan: bool,
+    pub plan_output: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -84,6 +90,25 @@ fn needs_approval(name: &str, require: bool, mcp: Option<&McpBridge>) -> bool {
     tool_needs_approval(name)
 }
 
+fn emit_event(
+    events: &mut Option<EventStream>,
+    kind: &str,
+    message: &str,
+    session: &str,
+    turn: u32,
+    extra: &[(&str, Value)],
+) {
+    if let Some(es) = events.as_mut() {
+        let mut fields = HashMap::new();
+        fields.insert("session".into(), json!(session));
+        fields.insert("turn".into(), json!(turn));
+        for (k, v) in extra {
+            fields.insert((*k).into(), v.clone());
+        }
+        es.emit(kind, message, &fields);
+    }
+}
+
 fn run_builtin(
     workspace: &Path,
     tool: &str,
@@ -125,6 +150,8 @@ fn apply_post_edit(
     tool: &str,
     result: &str,
     lines: &mut Vec<String>,
+    events: &mut Option<EventStream>,
+    session_id: &str,
 ) -> String {
     if !EDIT_TOOLS.contains(&tool) {
         return result.to_string();
@@ -141,6 +168,12 @@ fn apply_post_edit(
             sensor_out.chars().take(1500).collect::<String>()
         ),
     );
+    if let Some(es) = events.as_mut() {
+        let mut fields = HashMap::new();
+        fields.insert("session".into(), json!(session_id));
+        fields.insert("ok".into(), json!(ok));
+        es.emit("sensor", &sensor_out.chars().take(500).collect::<String>(), &fields);
+    }
     if ok {
         result.to_string()
     } else {
@@ -149,6 +182,87 @@ fn apply_post_edit(
             sensor_out.chars().take(2000).collect::<String>()
         )
     }
+}
+
+fn run_pre_hooks(
+    workspace: &Path,
+    tool: &str,
+    args: &Value,
+    lines: &mut Vec<String>,
+) -> Option<String> {
+    let pre = run_pre_hook(workspace, tool, args)?;
+    if pre.block {
+        push_line(
+            lines,
+            format!("\n[tool] {tool} HOOK BLOCK: {}", pre.message),
+        );
+        return Some(pre.message);
+    }
+    if !pre.message.is_empty() {
+        push_line(
+            lines,
+            format!(
+                "\n[hook] pre: {}",
+                pre.message.chars().take(500).collect::<String>()
+            ),
+        );
+    }
+    None
+}
+
+fn run_post_hooks(
+    workspace: &Path,
+    tool: &str,
+    args: &Value,
+    result: &str,
+    lines: &mut Vec<String>,
+) -> Option<String> {
+    let post = run_post_hook(workspace, tool, args, result)?;
+    if post.block {
+        push_line(lines, format!("\n[tool] {tool} HOOK BLOCK (post): {}", post.message));
+        return Some(post.message);
+    }
+    if !post.message.is_empty() {
+        push_line(
+            lines,
+            format!(
+                "\n[hook] post: {}",
+                post.message.chars().take(500).collect::<String>()
+            ),
+        );
+    }
+    None
+}
+
+fn run_on_save(
+    workspace: &Path,
+    tool: &str,
+    args: &Value,
+    result: &str,
+    lines: &mut Vec<String>,
+) -> String {
+    if !EDIT_TOOLS.contains(&tool) {
+        return result.to_string();
+    }
+    let Some(rel) = args.get("path").and_then(|p| p.as_str()) else {
+        return result.to_string();
+    };
+    let Some(hr) = run_on_save_hook(workspace, rel) else {
+        return result.to_string();
+    };
+    if !hr.message.is_empty() {
+        push_line(
+            lines,
+            format!(
+                "\n[hook] onSave: {}",
+                hr.message.chars().take(500).collect::<String>()
+            ),
+        );
+    }
+    if hr.block {
+        return format!("{result}\n[onSave hook BLOCKED]\n{}", hr.message);
+    }
+    result.to_string()
 }
 
 pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
@@ -171,6 +285,12 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
             tool_defs.extend(mcp_schemas);
         }
     }
+
+    let mut events = config
+        .event_stream
+        .as_ref()
+        .map(|p| EventStream::open(p))
+        .transpose()?;
 
     let mut lines: Vec<String> = Vec::new();
     let mut status = "running".to_string();
@@ -204,10 +324,26 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
         }
     };
 
+    emit_submission(
+        &mut events,
+        "user",
+        &config.task,
+        &session.id,
+    );
+
     push_line(
         &mut lines,
         format!("[meris] native loop session={} mode={}", session.id, session.mode),
     );
+    emit_event(
+        &mut events,
+        "session_start",
+        &format!("[meris] native loop session={} mode={}", session.id, session.mode),
+        &session.id,
+        session.turn,
+        &[("mode", json!(config.mode)), ("model", json!(provider_cfg.model))],
+    );
+
     if let Some(bridge) = mcp_bridge.as_ref() {
         for note in &bridge.notes {
             push_line(&mut lines, format!("[mcp] {note}"));
@@ -231,6 +367,14 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
         if let Some(content) = assistant.get("content").and_then(|c| c.as_str()) {
             if !content.is_empty() {
                 push_line(&mut lines, format!("\n[assistant]\n{content}"));
+                emit_event(
+                    &mut events,
+                    "token",
+                    &content.chars().take(800).collect::<String>(),
+                    &session.id,
+                    session.turn,
+                    &[],
+                );
             }
         }
 
@@ -264,10 +408,29 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
             let args = parse_tool_args(args_raw);
             let tc_id = tc.get("id").and_then(|i| i.as_str()).unwrap_or("");
 
+            emit_event(
+                &mut events,
+                "tool_start",
+                name,
+                &session.id,
+                session.turn,
+                &[("tool", json!(name))],
+            );
+
             let mcp_ref = mcp_bridge.as_ref();
             let mut result = if let Some(err) = check_tool_allowed(name, &args, &settings) {
                 push_line(&mut lines, format!("\n[tool] {name} BLOCKED: {err}"));
+                record_ratchet_event(
+                    &ws,
+                    "permission_denied",
+                    &session.id,
+                    &config.task,
+                    &err,
+                    name,
+                );
                 err
+            } else if let Some(blocked) = run_pre_hooks(&ws, name, &args, &mut lines) {
+                blocked
             } else if needs_approval(name, config.require_approval, mcp_ref) {
                 if !ask_approval(name, &args) {
                     push_line(&mut lines, format!("\n[tool] {name} DENIED by user"));
@@ -288,7 +451,16 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
                         read_only,
                         mcp_bridge.as_mut(),
                     );
-                    apply_post_edit(&ws, &settings, name, &out, &mut lines)
+                    let out = run_on_save(&ws, name, &args, &out, &mut lines);
+                    apply_post_edit(
+                        &ws,
+                        &settings,
+                        name,
+                        &out,
+                        &mut lines,
+                        &mut events,
+                        &session.id,
+                    )
                 }
             } else {
                 push_line(
@@ -306,8 +478,30 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
                     read_only,
                     mcp_bridge.as_mut(),
                 );
-                apply_post_edit(&ws, &settings, name, &out, &mut lines)
+                let out = run_on_save(&ws, name, &args, &out, &mut lines);
+                apply_post_edit(
+                    &ws,
+                    &settings,
+                    name,
+                    &out,
+                    &mut lines,
+                    &mut events,
+                    &session.id,
+                )
             };
+
+            if let Some(blocked) = run_post_hooks(&ws, name, &args, &result, &mut lines) {
+                result = blocked;
+            }
+
+            emit_event(
+                &mut events,
+                "tool_end",
+                &result.chars().take(240).collect::<String>(),
+                &session.id,
+                session.turn,
+                &[("tool", json!(name))],
+            );
 
             session.messages.push(json!({
                 "role": "tool",
@@ -325,6 +519,18 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
         push_line(&mut lines, "[meris] max turns reached");
     }
 
+    if config.mode == "plan" && config.save_plan && status == "completed" {
+        if let Some(text) = extract_last_assistant_text(&session.messages) {
+            let out_ref = config.plan_output.as_deref();
+            match save_plan(&ws, &text, out_ref) {
+                Ok(path) => {
+                    push_line(&mut lines, format!("[meris] plan saved: {}", path.display()));
+                }
+                Err(e) => push_line(&mut lines, format!("[meris] plan save failed: {e}")),
+            }
+        }
+    }
+
     if config.mode == "run"
         && config.run_sensors_at_end
         && on_complete_enabled(&settings)
@@ -339,12 +545,26 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
                     out.chars().take(2000).collect::<String>()
                 ),
             );
+            if let Some(es) = events.as_mut() {
+                let mut fields = HashMap::new();
+                fields.insert("session".into(), json!(session.id));
+                fields.insert("ok".into(), json!(ok));
+                es.emit("sensor", &out.chars().take(500).collect::<String>(), &fields);
+            }
             if !ok {
                 status = "dod_failed".into();
                 session.status = status.clone();
                 let _ = save_session(&ws, &mut session);
             }
         }
+    }
+
+    if let Some(es) = events.as_mut() {
+        let mut fields = HashMap::new();
+        fields.insert("session".into(), json!(session.id));
+        fields.insert("mode".into(), json!(config.mode));
+        fields.insert("status".into(), json!(status));
+        es.emit("done", "", &fields);
     }
 
     if let Some(bridge) = mcp_bridge {

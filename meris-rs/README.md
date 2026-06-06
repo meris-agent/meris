@@ -53,7 +53,8 @@ meris native status
 | `provider` | OpenAI-compatible chat |
 | `tools` | read_file / glob / grep / write_file / edit_file / bash + schemas |
 | `sensors` | postEdit (settings) + on-complete bridge via `meris harness` |
-| `agent` | M1/M2 loop + session (read-only + run modes) |
+| `agent` | M1–M4 loop + session + MCP + hooks/events/plan |
+| `events` | JSONL `--event-stream` (session_start, tool_*, done) |
 | MCP / full run mode | Python `meris` (see [PLAN_P5_4.md](../docs/PLAN_P5_4.md)) |
 | `mcp` | JSONL bridge via `meris mcp serve` (stdio MCP via Python SDK) |
 

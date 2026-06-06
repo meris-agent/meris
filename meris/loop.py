@@ -73,6 +73,7 @@ async def agent_loop(
     cancel: asyncio.Event | None = None,
     plan_output: str | Path | None = "__default__",
     event_stream: EventStream | None = None,
+    event_stream_path: str | Path | None = None,
 ) -> AsyncIterator[str]:
     """Yield human-readable progress lines."""
     ws = workspace.resolve()
@@ -94,6 +95,9 @@ async def agent_loop(
             require_approval=require_approval,
             run_sensors_at_end=run_sensors_at_end and mode == "run",
             approve_fn=approve_fn,
+            event_stream_path=event_stream_path,
+            save_plan=mode == "plan" and plan_output is not None,
+            plan_output=None if plan_output is None else str(plan_output),
         ):
             yield line
         return

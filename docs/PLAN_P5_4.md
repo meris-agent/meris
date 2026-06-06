@@ -34,7 +34,7 @@
 | **M1** ✅ | `agent run` + session 读写 + read-only 工具链 | `cargo test` + `test_rust_agent.py` + CI smoke |
 | **M2** ✅ | `run` 模式 write/edit + postEdit + on-complete 桥 | mock benchmark + schema parity |
 | **M3** ✅ | MCP JSONL 桥（`meris mcp serve`）+ native loop schema 合并 | `test_mcp_bridge.py` |
-| **M4** | hooks（pre/post/onSave）、Ratchet 事件、plan 输出 | parity 与 Python loop |
+| **M4** ✅ | hooks 桥 + EventStream JSONL + plan 保存 | `test_hooks_bridge.py` |
 | **M5** | TUI/CLI 默认 native loop；Python 仅插件 | 冷启动 <1s；Release 二进制 |
 
 ## M1 范围（已实现）
@@ -59,11 +59,12 @@
 3. `meris-rs` 启动 agent 时合并 builtin + MCP schemas；`mcp_*` 工具走桥
 4. 审批：`MCPManager.tool_read_only_flags` 与 Python loop 对齐
 
-## M4 计划
+## M4 范围（已实现）
 
-- HookRunner 桥：Rust 调 Python `meris.hooks` 子进程或 PyO3（倾向子进程保持无 Python 链接）
-- EventStream JSONL 与 `--event-stream` 对齐
-- plan 模式：`extract_last_assistant_text` + `.meris/plans/`
+1. `meris harness hook pre|post|on-save --json` — PreToolUse / PostToolUse / onSave 桥
+2. `meris harness ratchet-record --json` — permission_denied 等事件
+3. `meris-rs agent run --event-stream` — JSONL 与 Python EventStream 对齐
+4. `--save-plan` / `--plan-output` — plan 模式写入 `.meris/plan/tasks.md`
 
 ## M5 / 长期
 
