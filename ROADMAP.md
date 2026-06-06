@@ -10,7 +10,7 @@
 | **P2** | Context compression, post-edit sensors, guardrails, git tools, approve mode | ✅ |
 | **P3** | MCP client, Textual TUI, config-driven hooks | ✅ |
 | **P4** | Session persistence, parallel sessions, skills, subagent, MCP SSE | ✅ |
-| **P5** | Rust core MVP (`meris-rs` — context, permissions; full loop still Python) | ✅ MVP |
+| **P5** | Rust core MVP → full agent loop (`meris-rs`) | ✅ P5-4 M1–M5 |
 
 ## Release phases (Phase A–D)
 
@@ -69,10 +69,12 @@ Historical batch labels used during development. Public version starts at **v0.0
 - [x] **`meris ratchet` MVP** — 见 [docs/RATCHET_DESIGN.md](docs/RATCHET_DESIGN.md)
 - [x] **`meris ratchet digest` + `insights`** — 主动习惯挖掘（与 scan/analyze 并存）
 - [x] **Phase E — Harness 强化（E1–E6）** — 见 [docs/PLAN_PHASE_E.md](docs/PLAN_PHASE_E.md)
-- [ ] GitHub Release + optional `meris-rs` binary
+- [x] **P5-4 — Rust agent loop（M1–M5）** — 见 [docs/PLAN_P5_4.md](docs/PLAN_P5_4.md)
+- [ ] **Phase F — Native 稳定化** — 见 [docs/PLAN_PHASE_F.md](docs/PLAN_PHASE_F.md)（不打 tag 可并行）
+- [ ] GitHub Release + optional `meris-rs` binary（`workflow_dispatch` 可手动构建 artifact）
 - [ ] PyPI publish `meris-agent==0.0.1`（tag `v0.0.1` + `PYPI_API_TOKEN`）
 - [x] `MERIS_NATIVE` auto when `meris-rs` available（`MERIS_NATIVE=0` opt out）
-- [ ] Full agent loop in Rust (P5-4, long-term)
+- [x] Full agent loop in Rust (P5-4 M1–M5; Python 仍负责 TUI/MCP 配置/动态路由)
 
 ## Dogfood 原则（Ratchet）
 

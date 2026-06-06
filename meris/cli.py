@@ -387,6 +387,28 @@ def harness_hook_on_save_cmd(
         raise typer.Exit(1)
 
 
+@harness_app.command("review-task")
+def harness_review_task_cmd(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    staged: bool = typer.Option(False, "--staged", help="Review staged diff only"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Build review agent task from git diff (for meris-rs native loop)."""
+    import json
+
+    from meris.harness.review_bridge import build_review_task_for_native
+
+    try:
+        task = build_review_task_for_native(cwd.resolve(), staged=staged)
+    except RuntimeError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(1) from e
+    if json_out:
+        typer.echo(json.dumps({"task": task}))
+    else:
+        console.print(task)
+
+
 @harness_app.command("system-prompt")
 def harness_system_prompt_cmd(
     cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),

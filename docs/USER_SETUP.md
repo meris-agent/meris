@@ -189,6 +189,35 @@ MERIS_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
 
 ---
 
+## 可选：Rust 加速（meris-rs）
+
+Meris 自带可选 Rust 核心 `meris-rs`，用于更快冷启动与 harness 热路径。从源码开发时：
+
+```bash
+meris native build
+meris native status
+```
+
+| 变量 | 含义 |
+|------|------|
+| `MERIS_NATIVE` | 默认 **auto**：有二进制则启用 compress / permissions / sandbox / tools |
+| `MERIS_NATIVE=0` | 强制纯 Python |
+| `MERIS_NATIVE_LOOP=auto` 或 `1` | ask / plan / review / run 走 Rust agent loop |
+| `MERIS_NATIVE_LOOP=0` | 强制 Python loop |
+
+推荐 dogfood：
+
+```bash
+meris-rs run ask "List top-level files"
+meris-rs run review --staged
+```
+
+无本地编译时，可从 GitHub Actions **release** workflow（`workflow_dispatch`）下载各平台 `meris-rs` 二进制并加入 PATH。
+
+详见 [LOCAL_SETUP.md](LOCAL_SETUP.md) · [PLAN_PHASE_F.md](PLAN_PHASE_F.md) · [RUST_ROADMAP.md](RUST_ROADMAP.md)。
+
+---
+
 ## 团队 / 开源仓库怎么交接
 
 **建议提交到 git：**

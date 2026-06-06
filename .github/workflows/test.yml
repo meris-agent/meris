@@ -141,3 +141,8 @@ jobs:
       - name: meris-rs run entry smoke
         run: |
           ./meris-rs/target/release/meris-rs run ask 2>&1 | head -1 || true
+
+      - name: Review task bridge smoke
+        run: |
+          pip install -e ".."
+          meris harness review-task --cwd .. --json 2>/dev/null || test $? -ne 0

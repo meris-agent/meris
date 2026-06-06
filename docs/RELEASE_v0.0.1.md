@@ -9,6 +9,7 @@ Harness-first, model-agnostic terminal coding agent (Python + optional Rust).
 - Phase E: event stream, Ratchet TUI, offline benchmark mock, CI
 - Session persistence, MCP client, parallel sessions, skills, subagent
 - Optional `meris-rs` (auto when binary present; `MERIS_NATIVE=0` to disable)
+- Native agent loop: `MERIS_NATIVE_LOOP=auto` · `meris-rs run ask|plan|run|review`
 - VS Code / Cursor extension in `extensions/vscode-meris/`
 
 ### Install

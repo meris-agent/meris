@@ -5,7 +5,7 @@ use meris_rs::{
     chat_completions, check_bash_sandbox, check_tool_allowed, compress_messages, estimate_tokens,
     get_bash_timeout, get_sandbox_mode, load_settings, list_sessions, load_session, os_sandbox_probe_workspace,
     probe_provider, resolve_config, run_agent, run_bash_in_workspace, run_builtin_tool,
-    tool_schemas_json, verdict_to_json, AgentConfig, BUILTIN_TOOL_NAMES,
+    tool_schemas_json, verdict_to_json, AgentConfig, BUILTIN_TOOL_NAMES, load_review_task,
 };
 use serde_json::{json, Value};
 use std::fs;
@@ -577,6 +577,7 @@ struct DirectRunArgs {
     event_stream: Option<PathBuf>,
     save_plan: bool,
     plan_output: Option<String>,
+    max_turns: u32,
 }
 
 fn try_direct_native_run(args: &[String]) -> Option<i32> {
@@ -589,7 +590,7 @@ fn try_direct_native_run(args: &[String]) -> Option<i32> {
         workspace: parsed.workspace,
         task: parsed.task,
         mode: parsed.mode,
-        max_turns: 30,
+        max_turns: parsed.max_turns,
         session_id: parsed.session_id,
         resume: false,
         require_approval: false,
@@ -620,6 +621,9 @@ fn parse_direct_run_args(args: &[String]) -> Option<DirectRunArgs> {
         return None;
     }
     let mode = args[0].clone();
+    if mode == "review" {
+        return parse_direct_review_args(args);
+    }
     if !matches!(mode.as_str(), "ask" | "plan" | "run") {
         return None;
     }
@@ -693,6 +697,61 @@ fn parse_direct_run_args(args: &[String]) -> Option<DirectRunArgs> {
         event_stream,
         save_plan,
         plan_output,
+        max_turns: 30,
+    })
+}
+
+fn parse_direct_review_args(args: &[String]) -> Option<DirectRunArgs> {
+    for flag in args.iter().skip(1) {
+        if flag == "--ratchet"
+            || flag == "--resume"
+            || flag == "--require-approval"
+            || flag == "--json"
+            || flag.starts_with("--provider")
+        {
+            return None;
+        }
+    }
+    let mut workspace = std::env::current_dir().ok()?;
+    let mut staged = false;
+    let mut event_stream = None;
+    let mut max_turns = 12u32;
+    let mut i = 1;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--cwd" | "-C" => {
+                i += 1;
+                workspace = PathBuf::from(args.get(i)?);
+                i += 1;
+            }
+            "--staged" => {
+                staged = true;
+                i += 1;
+            }
+            "--event-stream" => {
+                i += 1;
+                event_stream = Some(PathBuf::from(args.get(i)?));
+                i += 1;
+            }
+            "--max-turns" => {
+                i += 1;
+                max_turns = args.get(i)?.parse().ok()?;
+                i += 1;
+            }
+            s if s.starts_with('-') => return None,
+            _ => return None,
+        }
+    }
+    let task = load_review_task(&workspace, staged)?;
+    Some(DirectRunArgs {
+        mode: "review".into(),
+        task,
+        workspace,
+        session_id: None,
+        event_stream,
+        save_plan: false,
+        plan_output: None,
+        max_turns,
     })
 }
 

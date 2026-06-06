@@ -39,7 +39,8 @@ meris-rs run doctor          # delegates to Python `meris`
 
 ```bash
 set MERIS_NATIVE=1           # native compress, permissions, sandbox, tools
-set MERIS_NATIVE_LOOP=1      # ask/plan/review via meris-rs agent run
+set MERIS_NATIVE_LOOP=1      # ask/plan/review/run via meris-rs agent run
+meris-rs run review --staged
 meris native status
 ```
 
@@ -53,9 +54,10 @@ meris native status
 | `provider` | OpenAI-compatible chat |
 | `tools` | read_file / glob / grep / write_file / edit_file / bash + schemas |
 | `sensors` | postEdit (settings) + on-complete bridge via `meris harness` |
-| `agent` | M1–M4 loop + session + MCP + hooks/events/plan |
-| `events` | JSONL `--event-stream` (session_start, tool_*, done) |
-| MCP / full run mode | Python `meris` (see [PLAN_P5_4.md](../docs/PLAN_P5_4.md)) |
+| `agent` | M1–M5 loop + session + MCP + hooks/events/plan + system-prompt/review bridges |
+| `run` | `meris-rs run ask|plan|run|review` native entry; else delegates to Python |
+| `review` | via `harness review-task --json` bridge |
+| MCP / TUI / parallel | Python `meris` (see [PLAN_P5_4.md](../docs/PLAN_P5_4.md), [PLAN_PHASE_F.md](../docs/PLAN_PHASE_F.md)) |
 | `mcp` | JSONL bridge via `meris mcp serve` (stdio MCP via Python SDK) |
 
 **Docs**: [../docs/LOCAL_SETUP.md](../docs/LOCAL_SETUP.md) · [../docs/RUST_ROADMAP.md](../docs/RUST_ROADMAP.md) · [../docs/PLAN_P5_4.md](../docs/PLAN_P5_4.md)

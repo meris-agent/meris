@@ -21,6 +21,12 @@
 - [x] **P5-4 M3** — MCP JSONL 桥 + native loop 工具合并
 - [x] **P5-4 M4** — hooks / EventStream / plan 模式
 - [x] **P5-4 M5** — system-prompt 桥 + `meris-rs run` 原生入口
+- [ ] **Phase F** — native 稳定化与发布准备（见 [docs/PLAN_PHASE_F.md](docs/PLAN_PHASE_F.md)）
+  - [x] F1 文档同步
+  - [x] F2-M1 review 桥 + `meris-rs run review`
+  - [ ] F2-M2 CLI 旗标 parity（max-turns / resume）
+  - [ ] F2-M3 DoD 失败 ratchet 提示
+  - [ ] F3 分发 artifact 文档 / pip bundled binary
 
 ## 近期落地（E0 / P5-1）
 - [x] `settings.local` 文档（[USER_SETUP.md](docs/USER_SETUP.md)）
