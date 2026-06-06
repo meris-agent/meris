@@ -4,10 +4,10 @@ use clap::{Parser, Subcommand};
 use meris_rs::{
     chat_completions, check_bash_sandbox, check_tool_allowed, compress_messages, estimate_tokens,
     get_bash_timeout, get_sandbox_mode, load_settings, list_sessions, load_session, os_sandbox_probe_workspace,
-    probe_provider, resolve_config,     run_agent, run_bash_in_workspace, run_builtin_tool, run_readonly_tool,
+    probe_provider, resolve_config, run_agent, run_bash_in_workspace, run_builtin_tool,
     tool_schemas_json, verdict_to_json, AgentConfig, BUILTIN_TOOL_NAMES,
 };
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -367,7 +367,7 @@ fn main() {
                                 Ok(t) => serde_json::from_str::<Vec<Value>>(&t).ok(),
                                 Err(e) => {
                                     eprintln!("Error: tools file: {e}");
-                                    return 1;
+                                    std::process::exit(1);
                                 }
                             },
                             None => None,
@@ -584,6 +584,7 @@ fn try_direct_native_run(args: &[String]) -> Option<i32> {
         return None;
     }
     let parsed = parse_direct_run_args(args)?;
+    let run_sensors = parsed.mode == "run";
     match run_agent(AgentConfig {
         workspace: parsed.workspace,
         task: parsed.task,
@@ -592,7 +593,7 @@ fn try_direct_native_run(args: &[String]) -> Option<i32> {
         session_id: parsed.session_id,
         resume: false,
         require_approval: false,
-        run_sensors_at_end: parsed.mode == "run",
+        run_sensors_at_end: run_sensors,
         event_stream: parsed.event_stream,
         save_plan: parsed.save_plan,
         plan_output: parsed.plan_output,

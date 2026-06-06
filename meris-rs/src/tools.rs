@@ -23,14 +23,33 @@ pub fn resolve_in_workspace(workspace: &Path, rel: &str) -> Result<PathBuf, Stri
     if rel.is_empty() {
         return Err("empty path".into());
     }
-    let p = ws
-        .join(&rel)
-        .canonicalize()
-        .map_err(|e| format!("{rel}: {e}"))?;
-    if !p.starts_with(&ws) {
+    if rel.starts_with('/') || rel.starts_with("//") {
         return Err(format!("path escapes workspace: {rel}"));
     }
-    Ok(p)
+    #[cfg(windows)]
+    if rel.contains(':') {
+        return Err(format!("path escapes workspace: {rel}"));
+    }
+    let mut out = ws.clone();
+    for segment in rel.split('/').filter(|s| !s.is_empty()) {
+        match segment {
+            "." => {}
+            ".." => return Err(format!("path escapes workspace: {rel}")),
+            name => out.push(name),
+        }
+    }
+    if !out.starts_with(&ws) {
+        return Err(format!("path escapes workspace: {rel}"));
+    }
+    if out.exists() {
+        out = out
+            .canonicalize()
+            .map_err(|e| format!("{rel}: {e}"))?;
+        if !out.starts_with(&ws) {
+            return Err(format!("path escapes workspace: {rel}"));
+        }
+    }
+    Ok(out)
 }
 
 pub fn tool_read_file(workspace: &Path, args: &Value) -> String {

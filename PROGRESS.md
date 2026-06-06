@@ -13,7 +13,7 @@
 - [x] 网络隔离（`network: isolated`）+ `.env` 遮罩（`maskSecrets`）
 - [x] Windows `doctor` WSL/bwrap 检测
 - [x] **Live benchmark** — `run_benchmark_live.py` + GitHub workflow_dispatch
-- [x] **E0 发布准备** — `meris release check`（不打 tag）
+- [x] **E0 发布准备** — `meris release check` 全绿（不打 tag）
 - [ ] **E0 发布** — 打 tag `v0.0.1`（暂缓）
 - [x] **P5-3** — Rust tools + schemas + bash native
 - [x] **P5-4 M1** — Rust agent loop（read-only）+ [PLAN_P5_4.md](docs/PLAN_P5_4.md)

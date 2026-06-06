@@ -132,3 +132,12 @@ jobs:
       - name: Agent session smoke
         run: |
           ./meris-rs/target/release/meris-rs agent session list --workspace .. | true
+
+      - name: System prompt bridge smoke
+        run: |
+          pip install -e ".."
+          meris harness system-prompt --cwd .. --mode ask --json | grep -q '"prompt"'
+
+      - name: meris-rs run entry smoke
+        run: |
+          ./meris-rs/target/release/meris-rs run ask 2>&1 | head -1 || true
