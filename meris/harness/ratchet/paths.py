@@ -29,3 +29,9 @@ def applied_dir(workspace: Path) -> Path:
     d = ratchet_root(workspace) / "applied"
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def insights_dir(workspace: Path) -> Path:
+    d = ratchet_root(workspace) / "insights"
+    d.mkdir(parents=True, exist_ok=True)
+    return d

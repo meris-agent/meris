@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -60,7 +61,7 @@ class Proposal:
 
 def new_proposal_id() -> str:
     ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    return f"ratchet-{ts}"
+    return f"ratchet-{ts}-{uuid.uuid4().hex[:6]}"
 
 
 def proposal_path(workspace: Path, proposal_id: str, *, applied: bool = False) -> Path:

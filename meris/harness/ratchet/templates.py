@@ -12,6 +12,7 @@ SEED_MAP: dict[str, str] = {
     ".meris/rules/paths.md": "rules/paths.md",
     ".meris/rules/workspace.md": "rules/workspace.md",
     ".meris/rules/project.md": "rules/project.md",
+    ".meris/rules/user-prefs.md": "rules/user-prefs.md",
 }
 
 

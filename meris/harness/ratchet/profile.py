@@ -54,7 +54,7 @@ def rebuild_profile(workspace: Path, *, since_days: int = 30) -> Path | None:
     lines = [
         "# User profile (Ratchet)",
         "",
-        "> 由 `.meris/ratchet/events.jsonl` 自动归纳，可手改。",
+        "> 由 `.meris/ratchet/events.jsonl` 自动归纳；`meris ratchet digest` 确认后的习惯也会写入 rules。",
         "",
     ]
     if approve_denies:

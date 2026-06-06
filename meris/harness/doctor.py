@@ -51,19 +51,19 @@ def check_harness(workspace: Path) -> list[CheckResult]:
     results.append(CheckResult("mcpServers", "ok" if mcp_n else "warn", f"{mcp_n} configured"))
 
     try:
-        from meris.harness.ratchet import list_proposals
+        from meris.harness.ratchet import count_pending_insights, list_proposals
 
         pending = list_proposals(ws, status="pending")
+        n_ins = count_pending_insights(ws)
+        parts: list[str] = []
         if pending:
-            results.append(
-                CheckResult(
-                    "ratchet",
-                    "warn",
-                    f"{len(pending)} pending — meris ratchet review",
-                )
-            )
+            parts.append(f"{len(pending)} proposal(s) — meris ratchet review")
+        if n_ins:
+            parts.append(f"{n_ins} insight(s) — meris ratchet insights review")
+        if parts:
+            results.append(CheckResult("ratchet", "warn", "; ".join(parts)))
         else:
-            results.append(CheckResult("ratchet", "ok", "no pending proposals"))
+            results.append(CheckResult("ratchet", "ok", "no pending proposals or insights"))
     except Exception:
         results.append(CheckResult("ratchet", "ok", "not initialized"))
 

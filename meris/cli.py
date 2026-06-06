@@ -28,6 +28,7 @@ session_app = typer.Typer(help="Session persistence")
 spec_app = typer.Typer(help="Kiro-style spec workflow")
 benchmark_app = typer.Typer(help="Benchmark task suite")
 ratchet_app = typer.Typer(help="Harness self-evolution (Ratchet)")
+insights_app = typer.Typer(help="Habit insights from session history (confirm → evolve)")
 models_app = typer.Typer(help="LLM provider presets (multi-vendor)")
 native_app = typer.Typer(help="Native Rust core (meris-rs)")
 app.add_typer(tui_app, name="tui")
@@ -36,6 +37,7 @@ app.add_typer(session_app, name="session")
 app.add_typer(spec_app, name="spec")
 app.add_typer(benchmark_app, name="benchmark")
 app.add_typer(ratchet_app, name="ratchet")
+ratchet_app.add_typer(insights_app, name="insights")
 app.add_typer(models_app, name="models")
 app.add_typer(native_app, name="native")
 
@@ -670,12 +672,13 @@ def ratchet_status(
     cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
     since_days: int = typer.Option(7, "--since"),
 ) -> None:
-    """Show ratchet events and pending proposals."""
-    from meris.harness.ratchet import count_events, list_proposals
+    """Show ratchet events, pending proposals, and pending insights."""
+    from meris.harness.ratchet import count_events, count_pending_insights, list_proposals
     from meris.harness.ratchet.paths import events_file
 
     ws = cwd.resolve()
     pending = list_proposals(ws, status="pending")
+    n_insights = count_pending_insights(ws)
     counts = count_events(ws, since_days=since_days)
     console.print(f"Events ({since_days}d): {events_file(ws).is_file()}")
     if counts:
@@ -686,6 +689,9 @@ def ratchet_status(
     console.print(f"Pending proposals: {len(pending)}")
     for p in pending[:5]:
         console.print(f"  {p.id} [{p.lesson}] {p.summary[:40]}")
+    console.print(f"Pending insights: {n_insights}")
+    if n_insights:
+        console.print("  [dim]meris ratchet insights review[/dim]")
 
 
 @ratchet_app.command("learn")
@@ -801,6 +807,197 @@ def ratchet_scan(
         console.print(f"[green]+[/green] {p.id} [{p.lesson}] {p.summary}")
         console.print(f"    → {p.target.path}")
     console.print(f"\n[bold]{len(created)} proposal(s)[/bold] — meris ratchet review")
+
+
+@ratchet_app.command("digest")
+def ratchet_digest(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    since_days: int = typer.Option(30, "--since", help="Scan user messages within N days"),
+    min_sessions: int = typer.Option(2, "--min-sessions", help="Min distinct sessions per theme"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Print candidates only, do not save"),
+    llm: bool = typer.Option(False, "--llm", help="Also call LLM for extra insights (needs API)"),
+) -> None:
+    """Mine session history for repeated user habits → insight candidates."""
+    from meris.harness.ratchet.digest import digest_sessions_rule_based, format_digest_report
+    from meris.harness.ratchet.digest_llm import build_digest_llm_prompt
+    from meris.provider import ProviderError
+
+    ws = cwd.resolve()
+    if dry_run and llm:
+        console.print(build_digest_llm_prompt(ws, since_days=since_days))
+        return
+
+    if dry_run:
+        created = digest_sessions_rule_based(
+            ws, since_days=since_days, min_sessions=min_sessions
+        )
+        console.print(format_digest_report(created))
+        return
+
+    async def _go():
+        from meris.harness.ratchet.digest import digest_workspace_async
+
+        return await digest_workspace_async(
+            ws,
+            since_days=since_days,
+            min_sessions=min_sessions,
+            save=True,
+            use_llm=llm,
+        )
+
+    try:
+        if llm:
+            created = _run_async(_go())
+        else:
+            from meris.harness.ratchet import digest_workspace
+
+            created = digest_workspace(
+                ws,
+                since_days=since_days,
+                min_sessions=min_sessions,
+                save=True,
+                use_llm=False,
+            )
+    except ProviderError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1) from e
+
+    if not created:
+        console.print("[yellow]No new insights[/yellow]")
+        console.print("[dim]Passive Ratchet (scan/analyze) unchanged — still use on failures[/dim]")
+        return
+    for ins in created:
+        console.print(f"[green]+[/green] {ins.id} [{ins.lesson}] ×{ins.count}")
+        console.print(f"    {ins.question[:70]}")
+    console.print("\n[bold]meris ratchet insights review[/bold]")
+
+
+@insights_app.command("list")
+def ratchet_insights_list(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    all_status: bool = typer.Option(False, "--all", help="Include dismissed/accepted"),
+) -> None:
+    """List habit insight candidates."""
+    from meris.harness.ratchet import list_insights
+
+    ws = cwd.resolve()
+    if all_status:
+        rows: list = []
+        for st in ("pending", "accepted", "dismissed"):
+            rows.extend(list_insights(ws, status=st))
+    else:
+        rows = list_insights(ws, status="pending")
+    if not rows:
+        console.print("[dim]No insights[/dim]")
+        return
+    table = Table("ID", "Kind", "Status", "×", "Question")
+    for ins in rows:
+        table.add_row(
+            ins.id,
+            ins.kind,
+            ins.status,
+            str(ins.count),
+            ins.question[:50],
+        )
+    console.print(table)
+
+
+@insights_app.command("show")
+def ratchet_insights_show(
+    insight_id: str = typer.Argument(..., help="Insight id"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+) -> None:
+    """Show insight details and proposed harness content."""
+    from meris.harness.ratchet import load_insight
+
+    ins = load_insight(cwd.resolve(), insight_id)
+    if not ins:
+        console.print(f"[red]Not found: {insight_id}[/red]")
+        raise typer.Exit(1)
+    console.print(f"[bold]{ins.id}[/bold] [{ins.lesson}] {ins.status}")
+    console.print(ins.question)
+    console.print(f"Pattern: {ins.pattern}")
+    console.print(f"Sessions ({ins.count}): {', '.join(ins.evidence[:6])}")
+    console.print(f"Target: {ins.suggested_target}")
+    console.print("\n[bold]Harness content if accepted:[/bold]")
+    console.print(ins.suggested_content)
+
+
+@insights_app.command("review")
+def ratchet_insights_review(
+    insight_id: str | None = typer.Argument(None, help="Insight id (optional)"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    apply_now: bool = typer.Option(
+        True, "--apply/--no-apply", help="After accept, apply harness patch immediately"
+    ),
+) -> None:
+    """Review pending insights; accept creates proposal (and optional apply)."""
+    from meris.harness.ratchet import accept_insight, dismiss_insight, list_insights, load_insight
+
+    ws = cwd.resolve()
+    if insight_id:
+        one = load_insight(ws, insight_id)
+        items = [one] if one and one.status == "pending" else []
+    else:
+        items = list_insights(ws, status="pending")
+    if not items:
+        console.print("[dim]No pending insights[/dim]")
+        return
+    for ins in items:
+        console.print(f"\n[bold]{ins.id}[/bold] [{ins.lesson}] ×{ins.count}")
+        console.print(ins.question)
+        console.print(ins.suggested_content[:350] + ("…" if len(ins.suggested_content) > 350 else ""))
+        if typer.confirm("Write to Harness?", default=False):
+            proposal = accept_insight(ws, ins.id)
+            if not proposal:
+                console.print("[red]Accept failed[/red]")
+                continue
+            console.print(f"[green]Proposal[/green] {proposal.id} → {proposal.target.path}")
+            if apply_now and typer.confirm("Apply now?", default=True):
+                _ratchet_apply_one(ws, proposal, verify=False)
+            else:
+                console.print("[dim]meris ratchet apply[/dim] " + proposal.id)
+        elif typer.confirm("Dismiss (won't ask again)?", default=False):
+            dismiss_insight(ws, ins.id)
+            console.print("[dim]Dismissed[/dim]")
+        else:
+            console.print("[dim]Skipped[/dim]")
+
+
+@insights_app.command("dismiss")
+def ratchet_insights_dismiss(
+    insight_id: str = typer.Argument(..., help="Insight id"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+) -> None:
+    """Dismiss an insight without writing harness."""
+    from meris.harness.ratchet import dismiss_insight
+
+    if dismiss_insight(cwd.resolve(), insight_id):
+        console.print(f"[yellow]Dismissed {insight_id}[/yellow]")
+    else:
+        console.print(f"[red]Not found or not pending: {insight_id}[/red]")
+        raise typer.Exit(1)
+
+
+@insights_app.command("accept")
+def ratchet_insights_accept(
+    insight_id: str = typer.Argument(..., help="Insight id"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    apply_now: bool = typer.Option(False, "--apply", help="Apply harness patch immediately"),
+) -> None:
+    """Accept insight → pending Ratchet proposal."""
+    from meris.harness.ratchet import accept_insight
+
+    ws = cwd.resolve()
+    proposal = accept_insight(ws, insight_id)
+    if not proposal:
+        console.print(f"[red]Not found or not pending: {insight_id}[/red]")
+        raise typer.Exit(1)
+    console.print(f"[green]Proposal[/green] {proposal.id} → {proposal.target.path}")
+    if apply_now:
+        _ratchet_apply_one(ws, proposal, verify=False)
+    else:
+        console.print("[dim]meris ratchet apply[/dim] " + proposal.id)
 
 
 @ratchet_app.command("list")

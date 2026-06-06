@@ -130,18 +130,24 @@ meris benchmark list
 meris benchmark run
 ```
 
-**Ratchet** (learn from failures → update harness)
+**Ratchet** (passive: failures → harness; active: habits from history)
 
 ```bash
 meris init-harness .
 meris ratchet learn --init             # project layout → proposals
 
+# Passive (keep using these)
 meris run --ratchet "your task"        # after run: profile + scan proposals
 meris benchmark run                    # failures → events.jsonl; may auto-scan
-meris ratchet profile --show           # habits from approve_denied events
+meris ratchet scan
 meris ratchet analyze --last-fail      # LLM proposals (needs API)
-meris ratchet analyze --dry-run        # preview prompt only
 meris ratchet review                   # apply or reject interactively
+
+# Active — repeated user themes → ask before writing harness
+meris ratchet digest                   # rule-based; --llm for API pass
+meris ratchet digest --dry-run
+meris ratchet insights review          # confirm → proposal → apply
+meris ratchet profile --show           # habits from approve_denied events
 ```
 
 ## TUI

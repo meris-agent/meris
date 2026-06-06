@@ -25,6 +25,7 @@
 | 1 | **不知道路径规范** | plan 路径写错；README 写成 `meris/README.md` | `AGENTS.md` 仓库布局 + `.meris/rules/paths.md` |
 | 2 | **输出格式不对** | plan 无 `- [ ]`，benchmark `plan_smoke` fail | `AGENTS.md` Plan 节 + `.meris/skills/plan-format.md` + `benchmark.py` 判题 |
 | 3 | **工作区 cwd 搞错** | 在 vault 根跑 run，README 被 block | `.meris/rules/workspace.md` + vault `AGENTS.md` 双 cwd 表 |
+| 4 | **bash 乱用 / 路径假** | `cd /workspace`、`find`、`pwd` 被拒；pytest 没跑成 | `.meris/rules/bash-permissions.md`（`L-bash-verify`） |
 
 **代码层修复（非 Harness）**：TUI `_task_busy`；context `sanitize_messages_for_api`（tool 消息 400）。
 
@@ -55,4 +56,13 @@ meris mcp list
 meris spec init "my feature"
 meris benchmark run
 meris session prune --keep 10
+
+# Ratchet：被动（失败）+ 主动（习惯）
+meris ratchet scan
+meris ratchet digest
+meris ratchet insights review
 ```
+
+## Ratchet 摘要
+
+- [L-bash-verify] 跑测试用 `pytest tests/ -m "not integration" -q`；禁止 `/workspace` 与 find/pwd bash；探索用 glob/read_file。

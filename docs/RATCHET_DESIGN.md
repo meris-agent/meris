@@ -258,6 +258,42 @@ meris ratchet learn --init
 
 ---
 
+## 8′. 主动进化（Digest / Insights）— P1.5
+
+与 §3–§6 **被动 Ratchet**（失败 → scan/analyze → proposal）**并存**，不替代：
+
+```
+.meris/sessions/*.json  user 消息
+        ↓
+meris ratchet digest [--llm]     # 规则档 + 可选 LLM
+        ↓
+.meris/ratchet/insights/pending.jsonl
+        ↓
+meris ratchet insights review    # 提问 → 用户确认
+        ↓
+accept → 现有 proposal → apply   # 写入 .meris/rules|skills
+dismiss → dismissed.jsonl        # 不再提示
+```
+
+| 命令 | 作用 |
+|------|------|
+| `meris ratchet digest` | 扫最近 N 天 user 消息，重复主题 → insight |
+| `meris ratchet digest --dry-run` | 只预览，不写盘 |
+| `meris ratchet digest --llm` | 规则档 + LLM 补充（需 API） |
+| `meris ratchet insights list` | 待确认习惯 |
+| `meris ratchet insights review` | 交互：写入 Harness / dismiss / 跳过 |
+| `meris ratchet insights accept <id> [--apply]` | 非交互接受 |
+
+**规则档**内置主题（≥2 个不同 session 命中）：YAML/local 最小覆盖、暂不发版、Harness-first、最小 diff。
+
+**检验句**（与被动 Ratchet 相同）：
+
+> 用户确认并 apply 后，Agent 是否更少违背已表达的偏好？
+
+**隐私**：只读 workspace 内 session；不扫 Cursor 云端聊天；LLM 档不传 API key。
+
+---
+
 ## 9. 模块划分（实现）
 
 ```
@@ -268,7 +304,10 @@ meris/harness/ratchet/
 ├── apply.py        # 白名单写入 + 备份
 ├── scan.py         # scan → proposals
 ├── profile.py      # profile.md（P1）
-└── learn.py        # project scan（P1）
+├── learn.py        # project scan（P1）
+├── insights.py     # insight jsonl（P1.5）
+├── digest.py       # session 习惯挖掘（P1.5）
+└── digest_llm.py   # digest LLM 档（P1.5）
 
 meris/cli.py        # ratchet 子命令组
 ```
@@ -307,6 +346,7 @@ meris/cli.py        # ratchet 子命令组
 - [x] `ratchet learn --init`
 - [x] profile.md 习惯层 + `meris ratchet profile`
 - [x] `run|ask|plan --ratchet` 跑完后 profile + scan
+- [x] **Digest / Insights**（主动习惯挖掘 + `insights review` → 复用 apply 链）
 
 ### P2 — 部分已做
 
