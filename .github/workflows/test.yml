@@ -146,3 +146,7 @@ jobs:
         run: |
           pip install -e ".."
           meris harness review-task --cwd .. --json 2>/dev/null || test $? -ne 0
+
+      - name: DoD failed bridge smoke
+        run: |
+          meris harness dod-failed --cwd .. --session ci --task t --detail fail --json | grep -q ratchet

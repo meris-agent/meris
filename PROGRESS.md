@@ -24,9 +24,11 @@
 - [ ] **Phase F** — native 稳定化与发布准备（见 [docs/PLAN_PHASE_F.md](docs/PLAN_PHASE_F.md)）
   - [x] F1 文档同步
   - [x] F2-M1 review 桥 + `meris-rs run review`
-  - [ ] F2-M2 CLI 旗标 parity（max-turns / resume）
-  - [ ] F2-M3 DoD 失败 ratchet 提示
-  - [ ] F3 分发 artifact 文档 / pip bundled binary
+  - [x] F2-M2 CLI 旗标 parity（max-turns / resume）
+  - [x] F2-M3 DoD 失败 ratchet 提示
+  - [x] F3-M1 分发 artifact 文档（[NATIVE_BINARY.md](docs/NATIVE_BINARY.md)）
+  - [ ] F3-M2 pip bundled binary
+  - [ ] F4 benchmark / dogfood native 路径
 
 ## 近期落地（E0 / P5-1）
 - [x] `settings.local` 文档（[USER_SETUP.md](docs/USER_SETUP.md)）

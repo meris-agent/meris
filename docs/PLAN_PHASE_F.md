@@ -29,10 +29,10 @@ meris-rs run ask|plan|run|review   ──► native agent（冷启动）
 | 阶段 | 交付 | 验收 |
 |------|------|------|
 | **F1** ✅ | 文档同步：ROADMAP、USER_SETUP native、meris-rs README、RELEASE 亮点 | 新人可按文档启用 native loop |
-| **F2-M1** | `harness review-task --json` + `meris-rs run review` | `test_review_bridge.py` + CI smoke |
-| **F2-M2** | native loop `--max-turns` / `--resume` 与 CLI 旗标对齐 | parity 测试 |
-| **F2-M3** | DoD 失败时 ratchet-record 提示（对齐 Python loop） | agent 测试 / mock |
-| **F3-M1** | Release artifact 文档（workflow_dispatch 下载 meris-rs） | USER_SETUP 一节 |
+| **F2-M1** ✅ | `harness review-task --json` + `meris-rs run review` | `test_review_bridge.py` + CI smoke |
+| **F2-M2** ✅ | `--max-turns` / `--resume` + `run_entry.rs` 单测 | `cargo test run_entry` |
+| **F2-M3** ✅ | DoD 失败 `harness dod-failed` + ratchet 提示 | `test_dod_bridge.py` |
+| **F3-M1** ✅ | [NATIVE_BINARY.md](NATIVE_BINARY.md) artifact 下载 | USER_SETUP 链接 |
 | **F3-M2** | pip wheel 可选 bundled binary（平台 wheel 或 post-install 脚本） | 长期；需 hatchling 策略 |
 | **F4** | benchmark / dogfood native 路径 smoke | mock benchmark 可选 native 分支 |
 | **F5** | E0 正式发布 | tag `v0.0.1` + PyPI（**用户明确要求后再做**） |

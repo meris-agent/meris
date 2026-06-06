@@ -1,6 +1,7 @@
 //! Native agent loop — P5-4 M1–M4.
 
 use crate::context::compress_messages;
+use crate::dod::handle_dod_failed;
 use crate::events::{emit_submission, EventStream};
 use crate::hooks::{record_ratchet_event, run_on_save_hook, run_post_hook, run_pre_hook};
 use crate::mcp::{has_mcp_servers, is_mcp_tool, McpBridge};
@@ -548,6 +549,9 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
                 status = "dod_failed".into();
                 session.status = status.clone();
                 let _ = save_session(&ws, &mut session);
+                for hint in handle_dod_failed(&ws, &session.id, &config.task, &config.mode, &out) {
+                    push_line(&mut lines, hint);
+                }
             }
         }
     }

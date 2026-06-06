@@ -5,7 +5,8 @@ use meris_rs::{
     chat_completions, check_bash_sandbox, check_tool_allowed, compress_messages, estimate_tokens,
     get_bash_timeout, get_sandbox_mode, load_settings, list_sessions, load_session, os_sandbox_probe_workspace,
     probe_provider, resolve_config, run_agent, run_bash_in_workspace, run_builtin_tool,
-    tool_schemas_json, verdict_to_json, AgentConfig, BUILTIN_TOOL_NAMES, load_review_task,
+    native_loop_enabled_for_run_entry, parse_direct_run_args, should_inject_native_loop_auto,
+    tool_schemas_json, verdict_to_json, AgentConfig, BUILTIN_TOOL_NAMES,
 };
 use serde_json::{json, Value};
 use std::fs;
@@ -532,54 +533,6 @@ fn delegate_meris(args: &[String]) -> i32 {
     }
 }
 
-fn env_tri(name: &str) -> Option<bool> {
-    let key = format!("MERIS_{name}");
-    match std::env::var(&key).ok().as_deref().map(|s| s.trim().to_lowercase()) {
-        Some(ref s) if s == "0" || s == "false" || s == "no" => Some(false),
-        Some(ref s) if s == "1" || s == "true" || s == "yes" => Some(true),
-        Some(ref s) if s == "auto" => None,
-        Some(_) => None,
-        None => None,
-    }
-}
-
-fn native_disabled() -> bool {
-    env_tri("NATIVE") == Some(false)
-}
-
-fn native_loop_disabled() -> bool {
-    env_tri("NATIVE_LOOP") == Some(false)
-}
-
-fn native_loop_enabled_for_run_entry() -> bool {
-    if native_loop_disabled() || native_disabled() {
-        return false;
-    }
-    match env_tri("NATIVE_LOOP") {
-        Some(true) => true,
-        Some(false) => false,
-        None => true,
-    }
-}
-
-fn should_inject_native_loop_auto() -> bool {
-    if std::env::var("MERIS_NATIVE_LOOP").is_ok() {
-        return false;
-    }
-    !native_disabled()
-}
-
-struct DirectRunArgs {
-    mode: String,
-    task: String,
-    workspace: PathBuf,
-    session_id: Option<String>,
-    event_stream: Option<PathBuf>,
-    save_plan: bool,
-    plan_output: Option<String>,
-    max_turns: u32,
-}
-
 fn try_direct_native_run(args: &[String]) -> Option<i32> {
     if !native_loop_enabled_for_run_entry() {
         return None;
@@ -592,7 +545,7 @@ fn try_direct_native_run(args: &[String]) -> Option<i32> {
         mode: parsed.mode,
         max_turns: parsed.max_turns,
         session_id: parsed.session_id,
-        resume: false,
+        resume: parsed.resume,
         require_approval: false,
         run_sensors_at_end: run_sensors,
         event_stream: parsed.event_stream,
@@ -614,145 +567,6 @@ fn try_direct_native_run(args: &[String]) -> Option<i32> {
             Some(1)
         }
     }
-}
-
-fn parse_direct_run_args(args: &[String]) -> Option<DirectRunArgs> {
-    if args.is_empty() {
-        return None;
-    }
-    let mode = args[0].clone();
-    if mode == "review" {
-        return parse_direct_review_args(args);
-    }
-    if !matches!(mode.as_str(), "ask" | "plan" | "run") {
-        return None;
-    }
-    for flag in args.iter().skip(1) {
-        if flag == "--ratchet"
-            || flag == "--resume"
-            || flag == "--require-approval"
-            || flag == "--json"
-            || flag.starts_with("--provider")
-            || flag.starts_with("--max-turns")
-        {
-            return None;
-        }
-    }
-
-    let mut workspace = std::env::current_dir().ok()?;
-    let mut task: Option<String> = None;
-    let mut session_id = None;
-    let mut event_stream = None;
-    let mut save_plan = mode == "plan";
-    let mut plan_output: Option<String> = None;
-    let mut no_save = false;
-    let mut i = 1;
-    while i < args.len() {
-        match args[i].as_str() {
-            "--cwd" | "-C" => {
-                i += 1;
-                workspace = PathBuf::from(args.get(i)?);
-                i += 1;
-            }
-            "--session-id" => {
-                i += 1;
-                session_id = Some(args.get(i)?.clone());
-                i += 1;
-            }
-            "--event-stream" => {
-                i += 1;
-                event_stream = Some(PathBuf::from(args.get(i)?));
-                i += 1;
-            }
-            "--out" | "-o" => {
-                i += 1;
-                plan_output = Some(args.get(i)?.clone());
-                i += 1;
-            }
-            "--no-save" => {
-                no_save = true;
-                i += 1;
-            }
-            s if s.starts_with('-') => return None,
-            s => {
-                if task.is_some() {
-                    return None;
-                }
-                task = Some(s.to_string());
-                i += 1;
-            }
-        }
-    }
-    let task = task?;
-    if no_save {
-        save_plan = false;
-    } else if save_plan && plan_output.is_none() {
-        plan_output = Some("__default__".into());
-    }
-    Some(DirectRunArgs {
-        mode,
-        task,
-        workspace,
-        session_id,
-        event_stream,
-        save_plan,
-        plan_output,
-        max_turns: 30,
-    })
-}
-
-fn parse_direct_review_args(args: &[String]) -> Option<DirectRunArgs> {
-    for flag in args.iter().skip(1) {
-        if flag == "--ratchet"
-            || flag == "--resume"
-            || flag == "--require-approval"
-            || flag == "--json"
-            || flag.starts_with("--provider")
-        {
-            return None;
-        }
-    }
-    let mut workspace = std::env::current_dir().ok()?;
-    let mut staged = false;
-    let mut event_stream = None;
-    let mut max_turns = 12u32;
-    let mut i = 1;
-    while i < args.len() {
-        match args[i].as_str() {
-            "--cwd" | "-C" => {
-                i += 1;
-                workspace = PathBuf::from(args.get(i)?);
-                i += 1;
-            }
-            "--staged" => {
-                staged = true;
-                i += 1;
-            }
-            "--event-stream" => {
-                i += 1;
-                event_stream = Some(PathBuf::from(args.get(i)?));
-                i += 1;
-            }
-            "--max-turns" => {
-                i += 1;
-                max_turns = args.get(i)?.parse().ok()?;
-                i += 1;
-            }
-            s if s.starts_with('-') => return None,
-            _ => return None,
-        }
-    }
-    let task = load_review_task(&workspace, staged)?;
-    Some(DirectRunArgs {
-        mode: "review".into(),
-        task,
-        workspace,
-        session_id: None,
-        event_stream,
-        save_plan: false,
-        plan_output: None,
-        max_turns,
-    })
 }
 
 fn which_meris() -> Option<String> {

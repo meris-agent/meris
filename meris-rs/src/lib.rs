@@ -2,6 +2,7 @@
 
 pub mod agent;
 pub mod context;
+pub mod dod;
 pub mod events;
 pub mod hooks;
 pub mod mcp;
@@ -12,6 +13,7 @@ pub mod provider;
 pub mod review;
 pub mod sandbox;
 pub mod sensors;
+pub mod run_entry;
 pub mod session;
 pub mod settings;
 pub mod tools;
@@ -22,6 +24,11 @@ pub use hooks::{has_tool_hooks, record_ratchet_event, run_on_save_hook, run_post
 pub use plan::{extract_last_assistant_text, save_plan};
 pub use prompt::{fallback_system_prompt, load_system_prompt};
 pub use review::load_review_task;
+pub use dod::handle_dod_failed;
+pub use run_entry::{
+    native_loop_enabled_for_run_entry, parse_direct_run_args, should_inject_native_loop_auto,
+    DirectRunArgs,
+};
 pub use mcp::{has_mcp_servers, is_mcp_tool, McpBridge};
 pub use context::{compress_messages, estimate_messages_tokens, estimate_tokens};
 pub use permissions::check_tool_allowed;

@@ -387,6 +387,34 @@ def harness_hook_on_save_cmd(
         raise typer.Exit(1)
 
 
+@harness_app.command("dod-failed")
+def harness_dod_failed_cmd(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    session: str = typer.Option(..., "--session"),
+    task: str = typer.Option(..., "--task"),
+    mode: str = typer.Option("run", "--mode", "-m"),
+    detail: str = typer.Option("", "--detail"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Record DoD failure + ratchet hints (meris-rs native loop)."""
+    import json
+
+    from meris.harness.dod_bridge import handle_dod_failed
+
+    result = handle_dod_failed(
+        cwd.resolve(),
+        session=session,
+        task=task,
+        mode=mode,
+        sensor_out=detail,
+    )
+    if json_out:
+        typer.echo(json.dumps(result))
+    else:
+        for hint in result.get("hints") or []:
+            console.print(str(hint))
+
+
 @harness_app.command("review-task")
 def harness_review_task_cmd(
     cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
