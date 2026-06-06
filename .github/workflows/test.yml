@@ -99,3 +99,6 @@ jobs:
           out=$(./meris-rs/target/release/meris-rs sandbox run --workspace "$root" --timeout 30 -- \
             sh -c 'cat .env.test 2>/dev/null || true')
           test -z "$out" || ! echo "$out" | grep -q SECRET=ci-leak
+
+      - name: Native parity
+        run: python scripts/check_native_parity.py

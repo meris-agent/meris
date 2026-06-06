@@ -4,10 +4,11 @@ Harness-first, model-agnostic terminal coding agent (Python + optional Rust).
 
 ### Highlights
 
-- CLI: `ask`, `plan`, `run`, `tui`, `doctor`, `init-harness`
-- Harness: `AGENTS.md`, `.meris/settings.json`, permissions, hooks, DoD sensors
+- CLI: `ask`, `plan`, `run`, `tui`, `doctor`, `init-harness`, `review`, `exec`, `harness check`
+- Harness: `AGENTS.md`, `.meris/settings.yaml`, permissions, sandbox (warn/strict + Linux bubblewrap)
+- Phase E: event stream, Ratchet TUI, offline benchmark mock, CI
 - Session persistence, MCP client, parallel sessions, skills, subagent
-- Optional `meris-rs` for native harness primitives (auto when binary present; `MERIS_NATIVE=0` to disable)
+- Optional `meris-rs` (auto when binary present; `MERIS_NATIVE=0` to disable)
 - VS Code / Cursor extension in `extensions/vscode-meris/`
 
 ### Install
@@ -31,6 +32,15 @@ cd your-project
 meris init-harness .
 meris doctor
 meris run --approve "your task"
+```
+
+### Release checklist (before tagging)
+
+```bash
+meris release check          # pytest + mock benchmark + harness + cargo (no tag/PyPI)
+python -m build              # optional: wheel in dist/
+# then: git tag v0.0.1 && git push origin v0.0.1
+# PyPI: TWINE_* + scripts/publish-pypi.ps1
 ```
 
 ### Docs

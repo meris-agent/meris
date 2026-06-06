@@ -1,0 +1,45 @@
+name: benchmark-live
+
+on:
+  workflow_dispatch:
+    inputs:
+      filter:
+        description: "Task id prefix (empty = default read_hello + docs_smoke)"
+        required: false
+        default: ""
+      all_agent:
+        description: "Run all agent tasks (higher API cost)"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Live benchmark
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MERIS_PROVIDER: deepseek
+        run: |
+          if [ -z "$DEEPSEEK_API_KEY" ] && [ -z "$OPENAI_API_KEY" ]; then
+            echo "Skip: set DEEPSEEK_API_KEY or OPENAI_API_KEY in repo secrets"
+            exit 0
+          fi
+          args=""
+          if [ "${{ inputs.all_agent }}" = "true" ]; then
+            args="--all-agent"
+          elif [ -n "${{ inputs.filter }}" ]; then
+            args="--filter ${{ inputs.filter }}"
+          fi
+          python scripts/run_benchmark_live.py $args

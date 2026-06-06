@@ -127,3 +127,30 @@ def test_check_tool_allowed_python_when_native_off(workspace: Path, monkeypatch)
     settings = {"permissions": {"allow": ["Read"], "deny": []}}
     err = check_tool_allowed("bash", {"command": "echo hi"}, settings, workspace=workspace)
     assert err is not None
+
+
+def test_parity_fixtures_json(workspace: Path) -> None:
+    """P5-1 shared fixtures — permissions + sandbox expectations."""
+    import json
+
+    root = Path(__file__).resolve().parents[1]
+    data = json.loads(
+        (root / "scripts" / "benchmark" / "fixtures" / "parity.json").read_text(encoding="utf-8")
+    )
+    for case in data.get("permissions") or []:
+        settings = case["settings"]
+        err = check_tool_allowed(
+            case["tool"],
+            case["args"],
+            settings,
+            workspace=workspace,
+        )
+        denied = err is not None
+        assert denied == case["expect_denied"], case
+    for case in data.get("sandbox") or []:
+        from meris.harness.sandbox import check_bash_sandbox
+
+        settings = {"sandbox": {"mode": case["mode"]}}
+        verdict = check_bash_sandbox(workspace, case["command"], settings)
+        blocked = verdict is not None and verdict.blocked
+        assert blocked == case["expect_blocked"], case

@@ -69,6 +69,8 @@ On Windows, use `set VAR=value` instead of `export`. Copy [.env.example](.env.ex
 | `meris review [--staged]` | Read-only git diff review (markdown checklist) |
 | `meris harness check` | Static harness lint (paths, imports, DoD helpers) |
 | `meris benchmark run` | Run benchmark task suite |
+| `meris benchmark run --local-only` | Offline local tasks (no API) |
+| `meris release check` | Pre-tag readiness (pytest, mock benchmark, harness) |
 | `meris ratchet scan` | Passive harness evolution from failures |
 | `meris ratchet digest` | Active habit mining from sessions |
 | `meris models list` | Show all provider presets + current env |

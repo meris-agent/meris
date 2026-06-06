@@ -12,9 +12,10 @@
 - [x] Linux bubblewrap OS 沙箱（`sandbox.osSandbox: auto|require`）
 - [x] 网络隔离（`network: isolated`）+ `.env` 遮罩（`maskSecrets`）
 - [x] Windows `doctor` WSL/bwrap 检测
-- [ ] **E0 发布** — 打 tag `v0.0.1` 触发 release workflow（暂缓）
-- [ ] **P5** — meris-rs 全量 Agent loop（长期）
-- [ ] **Live benchmark** — 定期 `meris benchmark run`（需 API）
+- [x] **Live benchmark** — `run_benchmark_live.py` + GitHub workflow_dispatch
+- [x] **E0 发布准备** — `meris release check`（不打 tag）
+- [ ] **E0 发布** — 打 tag `v0.0.1`（暂缓）
+- [ ] **P5-2+** — Rust provider / 全量 loop（长期）
 
 ## 近期落地（E0 / P5-1）
 - [x] `settings.local` 文档（[USER_SETUP.md](docs/USER_SETUP.md)）
@@ -49,6 +50,9 @@
 pytest tests/ -m "not integration" -q
 meris harness check
 python scripts/run_benchmark_mock.py
+python scripts/run_benchmark_live.py    # 需 API
+meris benchmark run --local-only
+meris release check                     # E0 发布前自检
 meris doctor
 meris run "…" --event-stream .meris/events/run.jsonl
 meris exec "…" --json

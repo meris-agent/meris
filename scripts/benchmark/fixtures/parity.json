@@ -1,0 +1,31 @@
+{
+  "description": "Shared fixtures for Python ↔ meris-rs permissions/sandbox parity (P5-1)",
+  "permissions": [
+    {
+      "tool": "bash",
+      "args": {"command": "rm -rf /tmp/x"},
+      "settings": {
+        "permissions": {
+          "allow": ["Bash(pytest*)", "Read"],
+          "deny": ["Bash(rm -rf*)"]
+        }
+      },
+      "expect_denied": true
+    },
+    {
+      "tool": "bash",
+      "args": {"command": "pytest tests/ -q"},
+      "settings": {
+        "permissions": {
+          "allow": ["Bash(pytest*)"],
+          "deny": []
+        }
+      },
+      "expect_denied": false
+    }
+  ],
+  "sandbox": [
+    {"command": "pwd", "mode": "strict", "expect_blocked": true},
+    {"command": "pytest tests/ -m \"not integration\" -q", "mode": "warn", "expect_blocked": false}
+  ]
+}

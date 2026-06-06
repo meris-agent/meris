@@ -32,6 +32,7 @@ insights_app = typer.Typer(help="Habit insights from session history (confirm �
 models_app = typer.Typer(help="LLM provider presets (multi-vendor)")
 native_app = typer.Typer(help="Native Rust core (meris-rs)")
 harness_app = typer.Typer(help="Harness validation")
+release_app = typer.Typer(help="Release readiness (E0)")
 app.add_typer(tui_app, name="tui")
 app.add_typer(mcp_app, name="mcp")
 app.add_typer(session_app, name="session")
@@ -42,6 +43,7 @@ ratchet_app.add_typer(insights_app, name="insights")
 app.add_typer(models_app, name="models")
 app.add_typer(native_app, name="native")
 app.add_typer(harness_app, name="harness")
+app.add_typer(release_app, name="release")
 
 console = Console()
 
@@ -724,6 +726,11 @@ def benchmark_run(
         "--filter",
         help="Run only task id matching this string (prefix or exact)",
     ),
+    local_only: bool = typer.Option(
+        False,
+        "--local-only",
+        help="Run only local tasks (harness_check, review_smoke — no API)",
+    ),
 ) -> None:
     """Run benchmark tasks and report pass rate."""
     from meris.benchmark import load_benchmark_tasks, run_benchmark, summarize
@@ -734,6 +741,11 @@ def benchmark_run(
         console.print(f"[red]Tasks file not found: {tf}[/red]")
         raise typer.Exit(1)
     tasks = load_benchmark_tasks(tf)
+    if local_only:
+        tasks = [t for t in tasks if t.local]
+        if not tasks:
+            console.print("[red]No local tasks in tasks file[/red]")
+            raise typer.Exit(1)
     console.print(f"[bold]Running {len(tasks)} benchmark tasks…[/bold]")
 
     if filter:
@@ -783,8 +795,37 @@ def benchmark_list(
     tasks = load_benchmark_tasks(tf)
     table = Table("ID", "Mode", "Task")
     for t in tasks:
-        table.add_row(t.id, t.mode, t.task[:60])
+        mode = f"local:{t.local}" if t.local else t.mode
+        desc = t.task[:60] if t.task else f"({t.local})"
+        table.add_row(t.id, mode, desc)
     console.print(table)
+
+
+@release_app.command("check")
+def release_check_cmd(
+    cwd: Path = typer.Option(
+        None,
+        "--cwd",
+        "-C",
+        help="Repo root (default: meris package parent)",
+    ),
+) -> None:
+    """Run release readiness checks without tagging or PyPI upload."""
+    from meris.harness.release_check import release_ready, run_release_checks
+
+    root = (cwd or Path(__file__).resolve().parent.parent).resolve()
+    console.print(f"[bold]Release check[/bold] (repo={root.name})")
+    checks = run_release_checks(root)
+    table = Table("Check", "Status", "Detail")
+    for c in checks:
+        style = {"ok": "green", "warn": "yellow", "fail": "red"}.get(c.status, "white")
+        table.add_row(c.name, f"[{style}]{c.status}[/{style}]", c.detail[:70])
+    console.print(table)
+    if release_ready(checks):
+        console.print("\n[green]Ready to tag[/green] — see docs/RELEASE_v0.0.1.md")
+    else:
+        console.print("\n[red]Fix failed checks before release[/red]")
+        raise typer.Exit(1)
 
 
 @ratchet_app.command("status")

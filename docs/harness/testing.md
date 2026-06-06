@@ -21,10 +21,13 @@ meris harness check
 
 ```bash
 meris benchmark list
-meris benchmark run
-meris benchmark run --filter plan_smoke
-python scripts/run_benchmark_mock.py   # 离线 mock，CI 同款，不耗 API
+meris benchmark run --local-only          # 无 API：harness_check + review_smoke
+python scripts/run_benchmark_mock.py      # 离线 mock，CI 同款
+python scripts/run_benchmark_live.py      # 真实 LLM（需 API key）
+meris benchmark run --filter plan_smoke   # 单任务 agent
 ```
+
+GitHub Actions：**benchmark-live** workflow（手动触发，需 `DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY` secret）。
 
 任务含 local：`harness_check`、`review_task`（E5.4）；agent 任务需 LLM。
 
