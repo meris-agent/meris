@@ -3,7 +3,7 @@
 use clap::{Parser, Subcommand};
 use meris_rs::{
     check_bash_sandbox, check_tool_allowed, compress_messages, estimate_tokens, get_bash_timeout,
-    get_sandbox_mode, load_settings, run_bash_in_workspace, verdict_to_json,
+    get_sandbox_mode, load_settings, os_sandbox_probe, run_bash_in_workspace, verdict_to_json,
 };
 use serde_json::Value;
 use std::fs;
@@ -83,6 +83,11 @@ enum SandboxAction {
         timeout: Option<u64>,
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         cmd: Vec<String>,
+    },
+    /// Report OS sandbox / bubblewrap availability (JSON)
+    Probe {
+        #[arg(long)]
+        workspace: PathBuf,
     },
 }
 
@@ -184,7 +189,12 @@ fn main() {
                     };
                     let mode = get_sandbox_mode(&settings);
                     let timeout_secs = timeout.unwrap_or_else(|| get_bash_timeout(&settings));
-                    let execute = || match run_bash_in_workspace(&workspace, &shell_cmd, timeout_secs) {
+                    let execute = || match run_bash_in_workspace(
+                        &workspace,
+                        &shell_cmd,
+                        timeout_secs,
+                        &settings,
+                    ) {
                         Ok((code, out)) => {
                             print!("exit={code}\n{out}");
                             if code == 0 { 0 } else { code as i32 }
@@ -205,6 +215,14 @@ fn main() {
                         execute()
                     }
                 }
+            }
+            SandboxAction::Probe { workspace } => {
+                let settings = load_settings(&workspace);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&os_sandbox_probe(&settings)).unwrap()
+                );
+                0
             }
         },
         Commands::Version => {

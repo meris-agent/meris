@@ -70,7 +70,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
 
     try:
         from meris.harness.guides import estimate_prompt_chars
-        from meris.harness.sandbox import get_bash_timeout, get_sandbox_mode
+        from meris.harness.sandbox import get_bash_timeout, get_os_sandbox_mode, get_sandbox_mode, probe_os_sandbox
         from meris.native import find_native_binary, native_enabled
 
         chars = estimate_prompt_chars(ws, mode="run")
@@ -97,6 +97,18 @@ def check_harness(workspace: Path) -> list[CheckResult]:
 
     mode = get_sandbox_mode(settings)
     timeout = get_bash_timeout(settings)
+    os_mode = get_os_sandbox_mode(settings)
+    probe = probe_os_sandbox(ws, settings)
+    if probe.get("wouldUseBubblewrap"):
+        os_note = ", osSandbox=bubblewrap active"
+    elif os_mode == "require" and not probe.get("bubblewrap"):
+        os_note = ", osSandbox=require but bwrap missing"
+    elif probe.get("bubblewrap"):
+        os_note = f", osSandbox={os_mode}, bwrap ok"
+    elif os_mode != "off":
+        os_note = f", osSandbox={os_mode} (Linux bwrap only)"
+    else:
+        os_note = ""
     native = find_native_binary()
     if native and native_enabled():
         native_note = ", meris-rs active (auto)" if env_tri("NATIVE") is None else ", meris-rs (MERIS_NATIVE=1)"
@@ -109,7 +121,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
             CheckResult(
                 "sandbox",
                 "warn",
-                f"mode=off, bashTimeout={timeout}s — consider warn/strict (Phase E3){native_note}",
+                f"mode=off, bashTimeout={timeout}s — consider warn/strict (Phase E3){native_note}{os_note}",
             )
         )
     elif mode == "strict":
@@ -117,7 +129,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
             CheckResult(
                 "sandbox",
                 "ok",
-                f"mode=strict, bashTimeout={timeout}s — cd/find/pwd blocked{native_note}",
+                f"mode=strict, bashTimeout={timeout}s — cd/find/pwd blocked{native_note}{os_note}",
             )
         )
     else:
@@ -125,7 +137,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
             CheckResult(
                 "sandbox",
                 "ok",
-                f"mode={mode}, bashTimeout={timeout}s — risky bash warns only{native_note}",
+                f"mode={mode}, bashTimeout={timeout}s — risky bash warns only{native_note}{os_note}",
             )
         )
 

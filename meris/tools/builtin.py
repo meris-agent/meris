@@ -103,28 +103,14 @@ def build_tools(workspace: Path, read_only: bool = False) -> ToolRegistry:
         )
 
         async def bash(args: dict) -> str:
-            from meris.config import env_flag
+            import asyncio
+
             from meris.harness.settings import load_settings
-            from meris.harness.sandbox import get_bash_timeout
-            from meris.native import native_run_bash
+            from meris.harness.sandbox import run_bash_sync
 
             cmd = args["command"]
             settings = load_settings(workspace)
-            timeout = get_bash_timeout(settings)
-            if env_flag("NATIVE"):
-                native_out = native_run_bash(workspace, cmd, timeout=timeout)
-                if native_out is not None:
-                    return native_out
-
-            proc = await asyncio.create_subprocess_shell(
-                cmd,
-                cwd=workspace,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-            )
-            out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-            text = out.decode("utf-8", errors="replace")
-            return f"exit={proc.returncode}\n{text[-8000:]}"
+            return await asyncio.to_thread(run_bash_sync, workspace, cmd, settings)
 
         reg.register(
             Tool(

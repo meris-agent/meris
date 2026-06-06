@@ -44,6 +44,7 @@ DEFAULT_SETTINGS: dict = {
     "sandbox": {
         "mode": "warn",
         "bashTimeoutSec": 120,
+        "osSandbox": "auto",
     },
     "hooks": {
         "preToolUse": [],

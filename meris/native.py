@@ -244,6 +244,23 @@ def native_sandbox_check(
     return None
 
 
+def native_os_sandbox_probe(workspace: Path) -> dict[str, Any] | None:
+    """JSON from meris-rs sandbox probe; None if binary unavailable."""
+    proc = _run_native(
+        ["sandbox", "probe", "--workspace", str(workspace.resolve())],
+        timeout=10,
+    )
+    if proc is None or not proc.stdout.strip():
+        return None
+    try:
+        data = json.loads(proc.stdout)
+        if isinstance(data, dict):
+            return data
+    except json.JSONDecodeError:
+        return None
+    return None
+
+
 def native_run_bash(
     workspace: Path,
     command: str,

@@ -45,6 +45,8 @@ blockedPaths:
 sandbox:
   mode: warn
   bashTimeoutSec: 120
+  # Linux bubblewrap: off | auto | require
+  osSandbox: auto
 
 # --- 工具钩子（Claude Code 风格，见 README）---
 hooks:

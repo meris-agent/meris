@@ -59,6 +59,42 @@ def test_doctor_reports_sandbox(workspace: Path) -> None:
     assert "mode=" in sandbox.detail
 
 
+def test_default_os_sandbox_auto(workspace: Path) -> None:
+    settings = load_settings(workspace)
+    from meris.harness.sandbox import get_os_sandbox_mode
+
+    assert get_os_sandbox_mode(settings) == "auto"
+
+
+def test_os_sandbox_off(workspace: Path) -> None:
+    from meris.harness.sandbox import get_os_sandbox_mode, should_use_bubblewrap
+
+    settings = {"sandbox": {"osSandbox": "off"}}
+    assert get_os_sandbox_mode(settings) == "off"
+    assert should_use_bubblewrap(settings) is False
+
+
+def test_probe_os_sandbox(workspace: Path) -> None:
+    from meris.harness.sandbox import probe_os_sandbox
+
+    probe = probe_os_sandbox(workspace)
+    assert probe["osSandbox"] in ("off", "auto", "require")
+    assert "wouldUseBubblewrap" in probe
+
+
+def test_run_bash_sync_plain(workspace: Path, monkeypatch) -> None:
+    import sys
+
+    from meris.harness.sandbox import run_bash_sync
+
+    monkeypatch.setenv("MERIS_NATIVE", "0")
+    settings = {"sandbox": {"osSandbox": "off", "bashTimeoutSec": 30}}
+    cmd = "echo 99" if sys.platform == "win32" else 'python -c "print(99)"'
+    out = run_bash_sync(workspace, cmd, settings)
+    assert "99" in out
+    assert out.startswith("exit=0")
+
+
 @pytest.mark.asyncio
 async def test_loop_strict_blocks_bash(workspace: Path, monkeypatch) -> None:
     from meris.loop import agent_loop

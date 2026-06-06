@@ -9,7 +9,8 @@
 - [x] **Phase E（E1–E6）** — 见 [docs/PLAN_PHASE_E.md](docs/PLAN_PHASE_E.md)
 
 ## 进行中
-- [ ] **E0 发布** — 打 tag `v0.0.1` 触发 [release workflow](.github/workflows/release.yml)；PyPI 需 `PYPI_API_TOKEN`
+- [x] Linux bubblewrap OS 沙箱（`sandbox.osSandbox: auto|require`）
+- [ ] **E0 发布** — 打 tag `v0.0.1` 触发 release workflow（暂缓）
 - [ ] **P5** — meris-rs 全量 Agent loop（长期）
 - [ ] **Live benchmark** — 定期 `meris benchmark run`（需 API）
 
@@ -26,7 +27,7 @@
 |------|------|
 | E1 | `docs/harness/`、rules 按需注入、`meris harness check` |
 | E2 | DoD 解析、Ratchet `L-harness-check`、benchmark local/reject |
-| E3 | sandbox warn/strict、`meris-rs sandbox run/check`、native parity |
+| E3 | sandbox warn/strict、bubblewrap（Linux）、`meris-rs sandbox run/check/probe` |
 | E4 | JSONL 事件流、`--event-stream`、`meris exec --json`、TUI 事件 |
 | E5 | `meris review`、`review` 路由 |
 | E6 | `user-prefs.md`、TUI Ratchet 面板、rules 按 name 合并 |

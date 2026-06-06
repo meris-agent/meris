@@ -66,3 +66,26 @@ jobs:
             --workspace .. \
             --command 'pytest tests/ -m "not integration" -q' \
             --mode warn | grep -q '"ok"'
+
+      - name: Install bubblewrap
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap
+
+      - name: OS sandbox probe
+        run: |
+          ./meris-rs/target/release/meris-rs sandbox probe --workspace .. | grep -q wouldUseBubblewrap
+
+      - name: Bubblewrap blocks writes outside workspace
+        run: |
+          set -e
+          root="$(cd .. && pwd)"
+          marker="/etc/meris-bwrap-ci-$$"
+          ./meris-rs/target/release/meris-rs sandbox run --workspace "$root" --timeout 30 -- \
+            sh -c "touch $marker" || true
+          test ! -e "$marker"
+
+      - name: Bubblewrap allows workspace writes
+        run: |
+          root="$(cd .. && pwd)"
+          ./meris-rs/target/release/meris-rs sandbox run --workspace "$root" --timeout 30 -- \
+            sh -c "touch .meris-bwrap-ci-ok && test -f .meris-bwrap-ci-ok"
+          rm -f "$root/.meris-bwrap-ci-ok"

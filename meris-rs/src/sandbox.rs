@@ -1,15 +1,16 @@
-//! Bash sandbox — parity with meris.harness.sandbox (Phase E3).
+//! Bash sandbox — policy scan + cwd-locked run + optional Linux bubblewrap (Phase E3).
 
 use regex::Regex;
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
 
 const DEFAULT_MODE: &str = "warn";
 const DEFAULT_TIMEOUT: u64 = 120;
+const DEFAULT_OS_SANDBOX: &str = "auto";
 
 fn bash_rules() -> Vec<(Regex, &'static str)> {
     vec![
@@ -46,6 +47,16 @@ pub fn get_sandbox_mode(settings: &HashMap<String, Value>) -> String {
         .unwrap_or_else(|| DEFAULT_MODE.to_string())
 }
 
+pub fn get_os_sandbox_mode(settings: &HashMap<String, Value>) -> String {
+    settings
+        .get("sandbox")
+        .and_then(|s| s.get("osSandbox"))
+        .and_then(|m| m.as_str())
+        .map(|m| m.trim().to_lowercase())
+        .filter(|m| matches!(m.as_str(), "off" | "auto" | "require"))
+        .unwrap_or_else(|| DEFAULT_OS_SANDBOX.to_string())
+}
+
 pub fn get_bash_timeout(settings: &HashMap<String, Value>) -> u64 {
     settings
         .get("sandbox")
@@ -53,6 +64,64 @@ pub fn get_bash_timeout(settings: &HashMap<String, Value>) -> u64 {
         .and_then(|t| t.as_u64().or_else(|| t.as_i64().map(|i| i as u64)))
         .map(|t| t.clamp(5, 3600))
         .unwrap_or(DEFAULT_TIMEOUT)
+}
+
+pub fn find_bubblewrap() -> Option<PathBuf> {
+    if !cfg!(target_os = "linux") {
+        return None;
+    }
+    let path_var = std::env::var_os("PATH")?;
+    for dir in std::env::split_paths(&path_var) {
+        for name in ["bwrap", "bubblewrap"] {
+            let candidate = dir.join(name);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
+    None
+}
+
+pub fn bubblewrap_version(bwrap: &Path) -> Option<String> {
+    Command::new(bwrap)
+        .arg("--version")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .ok()
+        .map(|out| String::from_utf8_lossy(&out.stdout).trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
+pub fn should_use_bubblewrap(settings: &HashMap<String, Value>) -> Result<bool, String> {
+    if !cfg!(target_os = "linux") {
+        return Ok(false);
+    }
+    match get_os_sandbox_mode(settings).as_str() {
+        "off" => Ok(false),
+        "require" => {
+            if find_bubblewrap().is_some() {
+                Ok(true)
+            } else {
+                Err("sandbox.osSandbox=require but bubblewrap (bwrap) not found on PATH".into())
+            }
+        }
+        "auto" | _ => Ok(find_bubblewrap().is_some()),
+    }
+}
+
+pub fn os_sandbox_probe(settings: &HashMap<String, Value>) -> Value {
+    let os_mode = get_os_sandbox_mode(settings);
+    let bwrap = find_bubblewrap();
+    let version = bwrap.as_ref().and_then(|p| bubblewrap_version(p));
+    let would_use = should_use_bubblewrap(settings).unwrap_or(false);
+    json!({
+        "platform": std::env::consts::OS,
+        "osSandbox": os_mode,
+        "bubblewrap": bwrap.map(|p| p.to_string_lossy().to_string()),
+        "bubblewrapVersion": version,
+        "wouldUseBubblewrap": would_use,
+    })
 }
 
 pub fn scan_bash_command(command: &str) -> Vec<String> {
@@ -110,27 +179,11 @@ pub fn verdict_to_json(v: &SandboxVerdict) -> Value {
     })
 }
 
-pub fn run_bash_in_workspace(
-    workspace: &Path,
-    command: &str,
+fn run_command_with_timeout(
+    mut cmd: Command,
     timeout_secs: u64,
 ) -> Result<(i32, String), String> {
-    let ws = workspace
-        .canonicalize()
-        .map_err(|e| format!("workspace: {e}"))?;
-    let mut cmd = if cfg!(windows) {
-        let mut c = Command::new("cmd");
-        c.args(["/C", command]);
-        c
-    } else {
-        let mut c = Command::new("sh");
-        c.args(["-c", command]);
-        c
-    };
-    cmd.current_dir(&ws)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
     let (tx, rx) = std::sync::mpsc::channel();
     thread::spawn(move || {
         let result = cmd.output();
@@ -158,6 +211,86 @@ pub fn run_bash_in_workspace(
     }
 }
 
+fn build_bwrap_command(
+    bwrap: &Path,
+    workspace: &Path,
+    command: &str,
+) -> Result<Command, String> {
+    let ws = workspace
+        .canonicalize()
+        .map_err(|e| format!("workspace: {e}"))?;
+    let ws_s = ws.to_string_lossy();
+    let mut cmd = Command::new(bwrap);
+    cmd.args([
+        "--ro-bind",
+        "/",
+        "/",
+        "--bind",
+        ws_s.as_ref(),
+        ws_s.as_ref(),
+        "--tmpfs",
+        "/tmp",
+        "--proc",
+        "/proc",
+        "--dev",
+        "/dev",
+        "--die-with-parent",
+        "--new-session",
+        "--unshare-pid",
+        "--share-net",
+        "--chdir",
+        ws_s.as_ref(),
+        "sh",
+        "-c",
+        command,
+    ]);
+    Ok(cmd)
+}
+
+pub fn run_bash_bubblewrap(
+    workspace: &Path,
+    command: &str,
+    timeout_secs: u64,
+) -> Result<(i32, String), String> {
+    let bwrap = find_bubblewrap().ok_or_else(|| "bubblewrap (bwrap) not found".to_string())?;
+    let cmd = build_bwrap_command(&bwrap, workspace, command)?;
+    run_command_with_timeout(cmd, timeout_secs)
+}
+
+pub fn run_bash_plain(
+    workspace: &Path,
+    command: &str,
+    timeout_secs: u64,
+) -> Result<(i32, String), String> {
+    let ws = workspace
+        .canonicalize()
+        .map_err(|e| format!("workspace: {e}"))?;
+    let mut cmd = if cfg!(windows) {
+        let mut c = Command::new("cmd");
+        c.args(["/C", command]);
+        c
+    } else {
+        let mut c = Command::new("sh");
+        c.args(["-c", command]);
+        c
+    };
+    cmd.current_dir(&ws);
+    run_command_with_timeout(cmd, timeout_secs)
+}
+
+pub fn run_bash_in_workspace(
+    workspace: &Path,
+    command: &str,
+    timeout_secs: u64,
+    settings: &HashMap<String, Value>,
+) -> Result<(i32, String), String> {
+    if should_use_bubblewrap(settings)? {
+        run_bash_bubblewrap(workspace, command, timeout_secs)
+    } else {
+        run_bash_plain(workspace, command, timeout_secs)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -177,5 +310,21 @@ mod tests {
     fn strict_blocks_pwd() {
         let v = check_bash_sandbox("pwd", "strict").unwrap();
         assert!(v.blocked);
+    }
+
+    #[test]
+    fn default_os_sandbox_auto() {
+        let settings = HashMap::new();
+        assert_eq!(get_os_sandbox_mode(&settings), "auto");
+    }
+
+    #[test]
+    fn os_sandbox_off_skips_bwrap() {
+        let mut settings = HashMap::new();
+        settings.insert(
+            "sandbox".into(),
+            json!({"osSandbox": "off"}),
+        );
+        assert!(!should_use_bubblewrap(&settings).unwrap());
     }
 }

@@ -128,7 +128,7 @@ flowchart LR
 
 ### E3 — 沙箱 MVP（~2～3 周）
 
-**进度（已落地）**：E3.1 ✅ · E3.2 ✅ · E3.3 MVP ✅ · E3.4 文档 ✅ · E3.5 ✅（`MERIS_NATIVE=1` 时 permissions/sandbox/bash 走 meris-rs）
+**进度（已落地）**：E3.1 ✅ · E3.2 ✅ · E3.3 ✅ bubblewrap · E3.4 文档 ✅ · E3.5 ✅
 
 **目标**：bash 不再裸跑宿主机；策略与 loop 解耦（学 codex `execpolicy` / `linux-sandbox`）。
 
