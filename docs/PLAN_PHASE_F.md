@@ -34,7 +34,7 @@ meris-rs run ask|plan|run|review   ──► native agent（冷启动）
 | **F2-M3** ✅ | DoD 失败 `harness dod-failed` + ratchet 提示 | `test_dod_bridge.py` |
 | **F3-M1** ✅ | [NATIVE_BINARY.md](NATIVE_BINARY.md) artifact 下载 | USER_SETUP 链接 |
 | **F3-M2** | pip wheel 可选 bundled binary（平台 wheel 或 post-install 脚本） | 长期；需 hatchling 策略 |
-| **F4** | benchmark / dogfood native 路径 smoke | mock benchmark 可选 native 分支 |
+| **F4** ✅ | native_* 离线 benchmark + `--native` / `--native-only` | `test_benchmark_native.py` + CI |
 | **F5** | E0 正式发布 | tag `v0.0.1` + PyPI（**用户明确要求后再做**） |
 
 ## F1 范围（文档）
@@ -49,6 +49,13 @@ meris-rs run ask|plan|run|review   ──► native agent（冷启动）
 1. `meris harness review-task --json [--staged]` → `{"task":"..."}`
 2. `meris-rs run review [--staged] [--cwd] [--event-stream]` → 加载 task → `agent run --mode review`
 3. CI：`meris harness review-task` smoke（无 diff 时 exit 非 0 可 skip）
+
+## F4 范围（native benchmark）
+
+1. `tasks.json` 增加 `native_system_prompt` / `native_dod_bridge` / `native_run_entry` 本地任务
+2. 默认 mock benchmark 仍 **8/8**（排除 `native_*`）
+3. `python scripts/run_benchmark_mock.py --native-only` — 3 项 bridge smoke
+4. `meris benchmark run --native-only` / `--native` — CLI 对齐
 
 ## 环境变量（推荐 dogfood）
 

@@ -5,7 +5,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-from meris.benchmark import load_benchmark_tasks, run_benchmark, summarize
+from meris.benchmark import filter_benchmark_tasks, load_benchmark_tasks, run_benchmark, summarize
 
 
 class MockProvider:
@@ -30,15 +30,27 @@ class MockProvider:
 
 
 async def main() -> int:
+    argv = sys.argv[1:]
+    native_only = "--native-only" in argv
+    include_native = "--native" in argv or native_only
     root = Path(__file__).resolve().parents[1]
-    tasks = load_benchmark_tasks(root / "scripts" / "benchmark" / "tasks.json")
+    all_tasks = load_benchmark_tasks(root / "scripts" / "benchmark" / "tasks.json")
+    tasks = filter_benchmark_tasks(
+        all_tasks,
+        include_native=include_native,
+        native_only=native_only,
+    )
+    if not tasks:
+        print("No benchmark tasks selected")
+        return 1
     results = await run_benchmark(root, tasks, provider=MockProvider())
     s = summarize(results)
+    label = "native-only" if native_only else ("mock+native" if include_native else "mock")
     for r in results:
         tag = "PASS" if r.status == "pass" else "FAIL"
         detail = (r.detail or "")[:70]
         print(f"  [{tag}] {r.task_id}: {detail}")
-    print(f"\nBenchmark: {s['passed']}/{s['total']} passed ({s['rate']:.0f}%)")
+    print(f"\nBenchmark ({label}): {s['passed']}/{s['total']} passed ({s['rate']:.0f}%)")
     return 0 if s["failed"] == 0 else 1
 
 

@@ -53,6 +53,21 @@
       "id": "review_smoke",
       "local": "review_task",
       "expect": ["## Issues"]
+    },
+    {
+      "id": "native_system_prompt",
+      "local": "native_system_prompt",
+      "expect": ["Meris", "MODE: ASK"]
+    },
+    {
+      "id": "native_dod_bridge",
+      "local": "native_dod_bridge",
+      "expect": ["ratchet"]
+    },
+    {
+      "id": "native_run_entry",
+      "local": "native_run_entry",
+      "expect": ["ok"]
     }
   ]
 }

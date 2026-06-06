@@ -28,7 +28,7 @@
   - [x] F2-M3 DoD 失败 ratchet 提示
   - [x] F3-M1 分发 artifact 文档（[NATIVE_BINARY.md](docs/NATIVE_BINARY.md)）
   - [ ] F3-M2 pip bundled binary
-  - [ ] F4 benchmark / dogfood native 路径
+  - [x] F4 benchmark native 路径（`run_benchmark_mock.py --native-only`）
 
 ## 近期落地（E0 / P5-1）
 - [x] `settings.local` 文档（[USER_SETUP.md](docs/USER_SETUP.md)）
@@ -63,6 +63,8 @@
 pytest tests/ -m "not integration" -q
 meris harness check
 python scripts/run_benchmark_mock.py
+python scripts/run_benchmark_mock.py --native-only   # native bridge smokes
+python scripts/run_benchmark_mock.py --native        # mock + native (11 tasks)
 python scripts/run_benchmark_live.py    # 需 API
 meris benchmark run --local-only
 meris release check                     # E0 发布前自检

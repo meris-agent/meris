@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -82,7 +84,62 @@ def _run_local_task(workspace: Path, local: str) -> tuple[str, str, str]:
             if needle not in task:
                 return task[:500], "fail", f"missing: {needle}"
         return task[:400], "pass", "review task template ok"
+    if local == "native_system_prompt":
+        from meris.harness.prompt_bridge import build_full_system_prompt
+
+        text = build_full_system_prompt(workspace, mode="ask")
+        if "Meris" not in text or "MODE: ASK" not in text:
+            return text[:300], "fail", "prompt missing expected sections"
+        return text, "pass", "system prompt ok"
+    if local == "native_dod_bridge":
+        from meris.harness.dod_bridge import handle_dod_failed
+
+        result = handle_dod_failed(
+            workspace,
+            session="bench",
+            task="native smoke",
+            mode="run",
+            sensor_out="sensor failed",
+        )
+        hints = result.get("hints") or []
+        joined = " ".join(str(h) for h in hints)
+        if not joined or "ratchet" not in joined.lower():
+            return joined, "fail", "missing ratchet hint"
+        return joined, "pass", "dod bridge ok"
+    if local == "native_run_entry":
+        cargo = shutil.which("cargo")
+        rs_dir = workspace / "meris-rs"
+        if not cargo or not rs_dir.is_dir():
+            return "ok (cargo skip)", "pass", "cargo skip"
+        proc = subprocess.run(
+            [cargo, "test", "run_entry", "-q"],
+            cwd=rs_dir,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            check=False,
+        )
+        if proc.returncode != 0:
+            err = (proc.stderr or proc.stdout or "run_entry failed").strip()
+            return err[-400:], "fail", "run_entry tests failed"
+        return "ok", "pass", "run_entry ok"
     raise ValueError(f"unknown local benchmark task: {local}")
+
+
+def filter_benchmark_tasks(
+    tasks: list[BenchmarkTask],
+    *,
+    include_native: bool = False,
+    native_only: bool = False,
+) -> list[BenchmarkTask]:
+    """Default mock run excludes native_* offline smokes unless requested."""
+    if native_only:
+        return [t for t in tasks if t.id.startswith("native_")]
+    if include_native:
+        return tasks
+    return [t for t in tasks if not t.id.startswith("native_")]
 
 
 def _benchmark_output(workspace: Path, lines: list[str], task: BenchmarkTask) -> str:

@@ -35,6 +35,9 @@ jobs:
       - name: Benchmark mock (offline)
         run: python scripts/run_benchmark_mock.py
 
+      - name: Benchmark native smoke (offline)
+        run: python scripts/run_benchmark_mock.py --native-only
+
       - name: MCP schemas JSON smoke
         run: meris mcp schemas --cwd . --json | grep -q '"schemas"'
 

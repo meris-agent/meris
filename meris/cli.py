@@ -935,9 +935,19 @@ def benchmark_run(
         "--local-only",
         help="Run only local tasks (harness_check, review_smoke — no API)",
     ),
+    native_only: bool = typer.Option(
+        False,
+        "--native-only",
+        help="Run only native_* offline smokes (bridges + run_entry)",
+    ),
+    include_native: bool = typer.Option(
+        False,
+        "--native",
+        help="Include native_* tasks with the full suite",
+    ),
 ) -> None:
     """Run benchmark tasks and report pass rate."""
-    from meris.benchmark import load_benchmark_tasks, run_benchmark, summarize
+    from meris.benchmark import filter_benchmark_tasks, load_benchmark_tasks, run_benchmark, summarize
 
     ws = cwd.resolve()
     tf = tasks_file or (Path(__file__).resolve().parent.parent / "scripts" / "benchmark" / "tasks.json")
@@ -945,6 +955,10 @@ def benchmark_run(
         console.print(f"[red]Tasks file not found: {tf}[/red]")
         raise typer.Exit(1)
     tasks = load_benchmark_tasks(tf)
+    if native_only:
+        tasks = filter_benchmark_tasks(tasks, native_only=True)
+    elif not include_native:
+        tasks = filter_benchmark_tasks(tasks, include_native=False)
     if local_only:
         tasks = [t for t in tasks if t.local]
         if not tasks:
