@@ -179,6 +179,32 @@ def models_show(
         console.print(f"  export MERIS_MODEL={preset.default_model}")
 
 
+@models_app.command("route")
+def models_route(
+    task: str = typer.Argument(..., help="Sample task text to match routing rules"),
+    mode: str = typer.Option("run", "--mode", "-m", help="ask | plan | run"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+) -> None:
+    """Preview which provider/model settings routing would pick for a task."""
+    from meris.provider.resolve import resolve_provider_config
+    from meris.provider.router import resolve_task_routing
+
+    ws = cwd.resolve()
+    overrides, note = resolve_task_routing(ws, mode, task)
+    cfg = resolve_provider_config(
+        provider=overrides.get("provider"),
+        model=overrides.get("model"),
+        base_url=overrides.get("base_url"),
+    )
+    if note:
+        console.print(f"[green]Routing[/green]: {note}")
+    else:
+        console.print("[dim]No models routing — using env / MERIS_PROVIDER only[/dim]")
+    console.print(f"[bold]Resolved[/bold]: {cfg.preset_id} · model={cfg.model}")
+    if cfg.backend == "openai_compat":
+        console.print(f"  base_url={cfg.base_url}")
+
+
 @app.command("doctor")
 def doctor_cmd(
     cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),

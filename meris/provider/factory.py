@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from meris.provider.base import Provider
 from meris.provider.openai_compat import OpenAICompatProvider
 from meris.provider.resolve import resolve_provider_config
+from meris.provider.router import resolve_task_routing
 
 
 def get_provider(
@@ -36,3 +39,30 @@ def get_provider(
         base_url=cfg.base_url or None,
         model=cfg.model,
     )
+
+
+def get_provider_for_task(
+    workspace: Path,
+    mode: str,
+    task: str,
+    *,
+    provider: Provider | None = None,
+) -> tuple[Provider, str]:
+    """
+    Provider for an agent run: optional explicit instance, else settings ``models`` routing, else env.
+    Returns (provider, routing note for logs — empty if env-only).
+    """
+    if provider is not None:
+        return provider, ""
+    overrides, route_note = resolve_task_routing(workspace, mode, task)
+    p = get_provider(
+        provider=overrides.get("provider"),
+        model=overrides.get("model"),
+        base_url=overrides.get("base_url"),
+    )
+    if route_note and overrides.get("provider"):
+        note = f"route={route_note} provider={overrides['provider']}"
+        if overrides.get("model"):
+            note += f" model={overrides['model']}"
+        return p, note
+    return p, route_note

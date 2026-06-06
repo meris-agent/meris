@@ -21,7 +21,8 @@ from meris.harness.sensors import run_post_edit_sensors, run_sensors
 from meris.harness.sessions import SessionRecord, load_session, new_session_id, save_session
 from meris.harness.settings import load_settings
 from meris.harness.spec import load_spec_context
-from meris.provider import Provider, get_provider
+from meris.provider import Provider
+from meris.provider.factory import get_provider_for_task
 from meris.state import AgentState
 from meris.tools import build_all_tools
 
@@ -72,8 +73,8 @@ async def agent_loop(
 ) -> AsyncIterator[str]:
     """Yield human-readable progress lines."""
     ws = workspace.resolve()
-    provider = provider or get_provider()
     settings = load_settings(ws)
+    provider, route_note = get_provider_for_task(ws, mode, task, provider=provider)
 
     record: SessionRecord
     resumed = False
@@ -131,7 +132,11 @@ async def agent_loop(
         state.append({"role": "system", "content": system})
         state.append({"role": "user", "content": task})
 
-    yield f"[meris] workspace={ws} mode={mode} model={getattr(provider, 'model', '?')} session={record.id}"
+    route_suffix = f" {route_note}" if route_note else ""
+    yield (
+        f"[meris] workspace={ws} mode={mode} model={getattr(provider, 'model', '?')}"
+        f"{route_suffix} session={record.id}"
+    )
     for note in mcp_notes:
         yield f"[meris] {note}"
     if require_approval:

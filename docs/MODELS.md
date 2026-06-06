@@ -113,6 +113,48 @@ export MERIS_BASE_URL=https://your-gateway/v1
 export MERIS_MODEL=your-model-id
 ```
 
+## 按任务自动选模型（Harness 路由）
+
+> **问句用便宜模型，大改用强模型** — 写进 Harness，而不是每次让模型猜。
+
+在 **`.meris/settings.json`** 里配置 `models`（需在 `.env` 里准备好各厂商 Key）：
+
+```json
+{
+  "models": {
+    "byMode": {
+      "ask": { "provider": "openai", "model": "gpt-4o-mini" },
+      "plan": { "provider": "deepseek", "model": "deepseek-chat" },
+      "run": { "provider": "deepseek", "model": "deepseek-reasoner" }
+    },
+    "rules": [
+      {
+        "name": "heavy-refactor",
+        "match": { "mode": "run", "taskContains": ["重构", "refactor", "架构"] },
+        "provider": "anthropic",
+        "model": "claude-sonnet-4-20250514"
+      }
+    ]
+  }
+}
+```
+
+**优先级**：`rules`（从上到下第一条命中）→ `byMode[mode]` → `models.default` → 仅环境变量。
+
+预览某条任务会选谁：
+
+```bash
+meris models route "大规模重构 auth 模块" --mode run
+meris ask "..."   # 运行时日志会出现 route=byMode:ask ...
+```
+
+说明：
+
+- 这是 **规则路由**（快、可测、无额外 LLM 调用），不是「让模型自己挑厂商」。
+- 未配 `models` 时行为与以前相同：只用 `MERIS_PROVIDER` / `.env`。
+- 未来可选：用便宜模型做意图分类再路由（需另开 API 调用，暂未内置）。
+- 示例片段可复制进 `settings.json`：[templates/settings.models.example.json](../templates/settings.models.example.json)。
+
 ## 自动推断
 
 未设置 `MERIS_PROVIDER` 时，按已配置的 API key / `MERIS_BASE_URL` 推断（例如仅有 `DEEPSEEK_API_KEY` → DeepSeek；仅有 `OPENAI_API_KEY` → OpenAI）。

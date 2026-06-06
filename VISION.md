@@ -18,6 +18,20 @@ Agent = Model + Harness
 | **因用户而异** | 从 session、PROGRESS、批准/拒绝模式里沉淀偏好 |
 | **可验证的进化** | 改 Harness（规则 / skill / hook / sensor），用 benchmark 与 pytest 验证，不是只改一次 prompt |
 
+## 模型怎么用（Harness，不是让模型猜）
+
+多厂商能力在 **Model** 层；**选哪家、哪个型号**应写在 Harness（如 `.meris/settings.json` 的 `models` 路由）：
+
+> **问句用便宜模型，大改用强模型** — 写进规则，而不是每次让模型自己猜。
+
+- `ask` / 轻量检索 → 快、省  
+- `plan` / `run` / 重构类任务 → 更强  
+- 特殊任务（含关键词）→ `rules` 命中再切换  
+
+这与「进化发生在 Harness」一致：路由表可审阅、可改、可进 PR，而不是黑盒 meta-prompt。
+
+见 [docs/MODELS.md](docs/MODELS.md)（多厂商配置与 `models` 路由）。
+
 ## 进化机制（Ratchet）
 
 1. **Instructions** — `AGENTS.md`：项目约定、路径、DoD  

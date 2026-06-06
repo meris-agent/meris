@@ -1,0 +1,17 @@
+{
+  "models": {
+    "byMode": {
+      "ask": { "provider": "openai", "model": "gpt-4o-mini" },
+      "plan": { "provider": "deepseek", "model": "deepseek-chat" },
+      "run": { "provider": "deepseek", "model": "deepseek-reasoner" }
+    },
+    "rules": [
+      {
+        "name": "heavy-refactor",
+        "match": { "mode": "run", "taskContains": ["重构", "refactor", "架构"] },
+        "provider": "anthropic",
+        "model": "claude-sonnet-4-20250514"
+      }
+    ]
+  }
+}
