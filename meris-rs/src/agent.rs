@@ -1,6 +1,7 @@
-//! Native agent loop — P5-4 M1/M2 (tools + session + sensors).
+//! Native agent loop — P5-4 M1/M2/M3 (tools + MCP + session + sensors).
 
 use crate::context::compress_messages;
+use crate::mcp::{has_mcp_servers, is_mcp_tool, McpBridge};
 use crate::permissions::check_tool_allowed;
 use crate::provider::{chat_completions, resolve_config, ProviderConfig};
 use crate::sensors::{on_complete_enabled, run_on_complete_sensors, run_post_edit_sensors};
@@ -44,7 +45,8 @@ fn mode_read_only(mode: &str) -> bool {
 fn system_prompt(mode: &str) -> String {
     format!(
         "You are Meris, a harness-first coding agent. Mode: {mode}. \
-         Use read_file/glob/grep for exploration; write_file/edit_file/bash only when mode=run."
+         Use read_file/glob/grep for exploration; write_file/edit_file/bash when mode=run; \
+         MCP tools are prefixed mcp_."
     )
 }
 
@@ -72,7 +74,17 @@ fn ask_approval(tool: &str, args: &Value) -> bool {
     v.get("approved").and_then(|b| b.as_bool()).unwrap_or(false)
 }
 
-fn execute_tool(
+fn needs_approval(name: &str, require: bool, mcp: Option<&McpBridge>) -> bool {
+    if !require {
+        return false;
+    }
+    if is_mcp_tool(name) {
+        return mcp.map(|b| b.tool_needs_approval(name)).unwrap_or(false);
+    }
+    tool_needs_approval(name)
+}
+
+fn run_builtin(
     workspace: &Path,
     tool: &str,
     args: &Value,
@@ -83,11 +95,28 @@ fn execute_tool(
         return format!("Error: tool '{tool}' not allowed in read-only mode");
     }
     if !BUILTIN_TOOL_NAMES.contains(&tool) {
-        return format!(
-            "Error: tool '{tool}' not available in native loop — use Python meris for MCP/extras"
-        );
+        return format!("Error: tool '{tool}' not available in native loop");
     }
     run_builtin_tool(workspace, tool, args, settings)
+}
+
+fn run_tool(
+    workspace: &Path,
+    tool: &str,
+    args: &Value,
+    settings: &HashMap<String, Value>,
+    read_only: bool,
+    mcp: Option<&mut McpBridge>,
+) -> String {
+    if is_mcp_tool(tool) {
+        let Some(bridge) = mcp else {
+            return format!("Error: MCP tool '{tool}' but MCP bridge unavailable");
+        };
+        return bridge
+            .call_tool(tool, args)
+            .unwrap_or_else(|| format!("Error: MCP call failed for {tool}"));
+    }
+    run_builtin(workspace, tool, args, settings, read_only)
 }
 
 fn apply_post_edit(
@@ -130,7 +159,18 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
     let settings = load_settings(&ws);
     let read_only = mode_read_only(&config.mode);
     let provider_cfg: ProviderConfig = resolve_config(None, None)?;
-    let tool_defs = tool_schemas(read_only);
+
+    let mut tool_defs = tool_schemas(read_only);
+    let mut mcp_bridge = if has_mcp_servers(&settings) {
+        McpBridge::start(&ws)
+    } else {
+        None
+    };
+    if let Some(bridge) = mcp_bridge.as_mut() {
+        if let Some(mcp_schemas) = bridge.load_schemas(read_only) {
+            tool_defs.extend(mcp_schemas);
+        }
+    }
 
     let mut lines: Vec<String> = Vec::new();
     let mut status = "running".to_string();
@@ -168,6 +208,11 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
         &mut lines,
         format!("[meris] native loop session={} mode={}", session.id, session.mode),
     );
+    if let Some(bridge) = mcp_bridge.as_ref() {
+        for note in &bridge.notes {
+            push_line(&mut lines, format!("[mcp] {note}"));
+        }
+    }
 
     let start_turn = session.turn;
     for turn_idx in start_turn..config.max_turns {
@@ -219,10 +264,11 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
             let args = parse_tool_args(args_raw);
             let tc_id = tc.get("id").and_then(|i| i.as_str()).unwrap_or("");
 
+            let mcp_ref = mcp_bridge.as_ref();
             let mut result = if let Some(err) = check_tool_allowed(name, &args, &settings) {
                 push_line(&mut lines, format!("\n[tool] {name} BLOCKED: {err}"));
                 err
-            } else if config.require_approval && tool_needs_approval(name) {
+            } else if needs_approval(name, config.require_approval, mcp_ref) {
                 if !ask_approval(name, &args) {
                     push_line(&mut lines, format!("\n[tool] {name} DENIED by user"));
                     "User denied tool execution".into()
@@ -234,7 +280,14 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
                             args_raw.chars().take(120).collect::<String>()
                         ),
                     );
-                    let out = execute_tool(&ws, name, &args, &settings, read_only);
+                    let out = run_tool(
+                        &ws,
+                        name,
+                        &args,
+                        &settings,
+                        read_only,
+                        mcp_bridge.as_mut(),
+                    );
                     apply_post_edit(&ws, &settings, name, &out, &mut lines)
                 }
             } else {
@@ -245,7 +298,14 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
                         args_raw.chars().take(120).collect::<String>()
                     ),
                 );
-                let out = execute_tool(&ws, name, &args, &settings, read_only);
+                let out = run_tool(
+                    &ws,
+                    name,
+                    &args,
+                    &settings,
+                    read_only,
+                    mcp_bridge.as_mut(),
+                );
                 apply_post_edit(&ws, &settings, name, &out, &mut lines)
             };
 
@@ -285,6 +345,10 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
                 let _ = save_session(&ws, &mut session);
             }
         }
+    }
+
+    if let Some(bridge) = mcp_bridge {
+        bridge.close();
     }
 
     push_line(&mut lines, "\n[meris] done.");

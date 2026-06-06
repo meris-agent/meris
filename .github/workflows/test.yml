@@ -35,6 +35,9 @@ jobs:
       - name: Benchmark mock (offline)
         run: python scripts/run_benchmark_mock.py
 
+      - name: MCP schemas JSON smoke
+        run: meris mcp schemas --cwd . --json | grep -q '"schemas"'
+
       - name: Ratchet status
         run: meris ratchet status --cwd .
 

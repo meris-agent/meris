@@ -33,7 +33,7 @@
 |------|------|------|
 | **M1** ✅ | `agent run` + session 读写 + read-only 工具链 | `cargo test` + `test_rust_agent.py` + CI smoke |
 | **M2** ✅ | `run` 模式 write/edit + postEdit + on-complete 桥 | mock benchmark + schema parity |
-| **M3** | MCP client（stdio）、动态工具 schema 合并 | integration test + `meris mcp` 对齐 |
+| **M3** ✅ | MCP JSONL 桥（`meris mcp serve`）+ native loop schema 合并 | `test_mcp_bridge.py` |
 | **M4** | hooks（pre/post/onSave）、Ratchet 事件、plan 输出 | parity 与 Python loop |
 | **M5** | TUI/CLI 默认 native loop；Python 仅插件 | 冷启动 <1s；Release 二进制 |
 
@@ -52,11 +52,12 @@
 3. postEdit：Rust 直接跑 `sensors.postEdit`；onComplete：`meris harness on-complete --json`
 4. Python：`MERIS_NATIVE_LOOP` 支持 `run` 模式；`write_file`/`edit_file` native 回退
 
-## M3 计划
+## M3 范围（已实现）
 
-- 评估 `rmcp` vs 自研 stdio JSON-RPC
-- `build_all_tools` 等价：builtin + MCP merge schemas
-- 会话内 MCP 生命周期（connect/disconnect）
+1. `meris mcp serve` — JSONL 长连接桥（schemas / call / close）
+2. `meris mcp schemas --json` / `meris mcp call --json` — 一次性调用
+3. `meris-rs` 启动 agent 时合并 builtin + MCP schemas；`mcp_*` 工具走桥
+4. 审批：`MCPManager.tool_read_only_flags` 与 Python loop 对齐
 
 ## M4 计划
 

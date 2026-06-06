@@ -1388,6 +1388,66 @@ def mcp_list(
         console.print(line)
 
 
+@mcp_app.command("schemas")
+def mcp_schemas_cmd(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    read_only: bool = typer.Option(False, "--read-only"),
+    json_out: bool = typer.Option(False, "--json", help="Emit JSON for meris-rs bridge"),
+) -> None:
+    """Export MCP tool schemas (OpenAI function format)."""
+    from meris.tools.mcp_bridge import fetch_schemas
+
+    schemas, meta, notes = _run_async(fetch_schemas(cwd.resolve(), read_only=read_only))
+    if json_out:
+        import json
+
+        console.print(
+            json.dumps({"ok": True, "schemas": schemas, "read_only": meta, "notes": notes})
+        )
+    else:
+        for n in notes:
+            console.print(n)
+        for s in schemas:
+            console.print(f"  {s['function']['name']}")
+
+
+@mcp_app.command("call")
+def mcp_call_cmd(
+    tool: str = typer.Option(..., "--tool", help="Meris MCP tool name (mcp_server_tool)"),
+    args: str = typer.Option("{}", "--args", help="JSON arguments"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Call one MCP tool by meris-safe name."""
+    import json
+
+    from meris.tools.mcp_bridge import call_tool_once
+
+    try:
+        parsed = json.loads(args)
+    except json.JSONDecodeError as e:
+        raise typer.BadParameter(str(e)) from e
+    if not isinstance(parsed, dict):
+        raise typer.BadParameter("args must be a JSON object")
+    ok, result = _run_async(call_tool_once(cwd.resolve(), tool, parsed))
+    if json_out:
+        console.print(json.dumps({"ok": ok, "result": result}))
+    else:
+        console.print(result)
+    if not ok:
+        raise typer.Exit(1)
+
+
+@mcp_app.command("serve")
+def mcp_serve_cmd(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+) -> None:
+    """JSONL MCP bridge for meris-rs agent (stdin/stdout protocol)."""
+    from meris.tools.mcp_bridge import serve_jsonl
+
+    _run_async(serve_jsonl(cwd.resolve()))
+
+
 @native_app.command("status")
 def native_status_cmd() -> None:
     """Show meris-rs binary availability."""

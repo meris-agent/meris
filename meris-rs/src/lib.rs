@@ -2,6 +2,7 @@
 
 pub mod agent;
 pub mod context;
+pub mod mcp;
 pub mod permissions;
 pub mod provider;
 pub mod sandbox;
@@ -11,6 +12,7 @@ pub mod settings;
 pub mod tools;
 
 pub use agent::{run_agent, AgentConfig, AgentResult};
+pub use mcp::{has_mcp_servers, is_mcp_tool, McpBridge};
 pub use context::{compress_messages, estimate_messages_tokens, estimate_tokens};
 pub use permissions::check_tool_allowed;
 pub use provider::{

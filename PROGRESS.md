@@ -18,7 +18,8 @@
 - [x] **P5-3** — Rust tools + schemas + bash native
 - [x] **P5-4 M1** — Rust agent loop（read-only）+ [PLAN_P5_4.md](docs/PLAN_P5_4.md)
 - [x] **P5-4 M2** — run 模式写工具 + postEdit/onComplete sensors
-- [ ] **P5-4 M3–M5** — MCP / hooks / 单二进制
+- [x] **P5-4 M3** — MCP JSONL 桥 + native loop 工具合并
+- [ ] **P5-4 M4–M5** — hooks / EventStream / 单二进制
 
 ## 近期落地（E0 / P5-1）
 - [x] `settings.local` 文档（[USER_SETUP.md](docs/USER_SETUP.md)）

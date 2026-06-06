@@ -271,6 +271,91 @@ class MCPManager:
 
         return count
 
+    def tool_schemas_for_llm(self, *, read_only: bool = False) -> list[dict[str, Any]]:
+        """OpenAI function schemas for connected MCP tools (no handlers)."""
+        schemas: list[dict[str, Any]] = []
+        for server_name, conn in self.servers.items():
+            for mcp_tool in conn.tools:
+                meris_name = _safe_name(server_name, mcp_tool.name)
+                schema = dict(mcp_tool.inputSchema or {"type": "object", "properties": {}})
+                schemas.append(
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": meris_name,
+                            "description": f"[MCP:{server_name}] {mcp_tool.description or mcp_tool.name}",
+                            "parameters": schema,
+                        },
+                    }
+                )
+            if conn.resources:
+                schemas.append(
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": f"mcp_{server_name}_read_resource",
+                            "description": f"[MCP:{server_name}] Read MCP resource by URI",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {"uri": {"type": "string"}},
+                                "required": ["uri"],
+                            },
+                        },
+                    }
+                )
+            if conn.prompts:
+                schemas.append(
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": f"mcp_{server_name}_get_prompt",
+                            "description": f"[MCP:{server_name}] Get MCP prompt template",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {"type": "string"},
+                                    "arguments": {"type": "object"},
+                                },
+                                "required": ["name"],
+                            },
+                        },
+                    }
+                )
+        return schemas
+
+    def tool_read_only_flags(self, *, read_only: bool = False) -> dict[str, bool]:
+        flags: dict[str, bool] = {}
+        for server_name, conn in self.servers.items():
+            for mcp_tool in conn.tools:
+                meris_name = _safe_name(server_name, mcp_tool.name)
+                schema = dict(mcp_tool.inputSchema or {"type": "object", "properties": {}})
+                flags[meris_name] = read_only or not schema.get("properties")
+            if conn.resources:
+                flags[f"mcp_{server_name}_read_resource"] = True
+            if conn.prompts:
+                flags[f"mcp_{server_name}_get_prompt"] = True
+        return flags
+
+    async def call_meris_tool(self, meris_name: str, args: dict[str, Any]) -> str:
+        for server_name, conn in self.servers.items():
+            for mcp_tool in conn.tools:
+                if _safe_name(server_name, mcp_tool.name) == meris_name:
+                    return await conn.call(mcp_tool.name, args)
+            if meris_name == f"mcp_{server_name}_read_resource":
+                uri = args.get("uri", "")
+                if not uri:
+                    uris = [getattr(r, "uri", str(r)) for r in conn.resources[:20]]
+                    return f"Error: uri required. Available: {uris}"
+                return await conn.read_resource(uri)
+            if meris_name == f"mcp_{server_name}_get_prompt":
+                name = args.get("name", "")
+                arguments = args.get("arguments") or {}
+                if not name:
+                    names = [getattr(p, "name", str(p)) for p in conn.prompts[:20]]
+                    return f"Error: name required. Available prompts: {names}"
+                return await conn.get_prompt(name, arguments)
+        return f"Error: unknown MCP tool {meris_name}"
+
     def list_tools_summary(self) -> list[str]:
         lines: list[str] = []
         for server_name, conn in self.servers.items():
