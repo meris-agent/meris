@@ -54,6 +54,7 @@ jobs:
 
   build-python:
     runs-on: ubuntu-latest
+    needs: [build-rust]
     steps:
       - uses: actions/checkout@v4
 
@@ -61,11 +62,24 @@ jobs:
         with:
           python-version: "3.12"
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: meris-rs-x86_64-unknown-linux-gnu
+          path: _artifacts/rust
+
+      - name: Stage bundled meris-rs (linux wheel)
+        run: python scripts/stage_bundled_binary.py --src _artifacts/rust/meris-rs-x86_64-unknown-linux-gnu --clean
+
       - name: Install build
         run: pip install build
 
       - name: Build sdist + wheel
         run: python -m build
+
+      - name: Verify wheel contains bundled binary
+        run: |
+          pip install wheel
+          python -c "import zipfile,glob; w=glob.glob('dist/*linux*.whl')[0]; z=zipfile.ZipFile(w); assert any('meris/_bundled/meris-rs' in n for n in z.namelist()), z.namelist()"
 
       - uses: actions/upload-artifact@v4
         with:

@@ -30,6 +30,26 @@ cd meris-rs && cargo build --release
 
 Windows 若被 App Control 拦截，请用 Linux CI artifact 或 WSL。
 
+## 方式 C — pip wheel（Linux 含 bundled 二进制）
+
+Release / `workflow_dispatch` 构建的 **manylinux wheel** 会在 `meris/_bundled/meris-rs` 内附带 Linux 二进制。
+安装后无需单独下载：
+
+```bash
+pip install meris-agent
+meris native status   # binarySource: bundled
+```
+
+本地打 wheel 前先 stage：
+
+```bash
+meris native build
+python scripts/stage_bundled_binary.py --clean
+python -m build
+```
+
+Windows / macOS 的 PyPI wheel 仍建议用方式 A 下载对应 artifact，或本地 `meris native build`（F3-M2 后续可扩展多平台 wheel matrix）。
+
 ## 启用 native loop
 
 ```bash

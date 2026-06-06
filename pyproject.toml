@@ -37,6 +37,9 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["meris"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"meris/_bundled" = "meris/_bundled"
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

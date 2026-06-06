@@ -33,7 +33,7 @@ meris-rs run ask|plan|run|review   ──► native agent（冷启动）
 | **F2-M2** ✅ | `--max-turns` / `--resume` + `run_entry.rs` 单测 | `cargo test run_entry` |
 | **F2-M3** ✅ | DoD 失败 `harness dod-failed` + ratchet 提示 | `test_dod_bridge.py` |
 | **F3-M1** ✅ | [NATIVE_BINARY.md](NATIVE_BINARY.md) artifact 下载 | USER_SETUP 链接 |
-| **F3-M2** | pip wheel 可选 bundled binary（平台 wheel 或 post-install 脚本） | 长期；需 hatchling 策略 |
+| **F3-M2** ✅ | pip wheel bundled `meris-rs`（Linux CI + `stage_bundled_binary.py`） | `test_bundled_binary.py` |
 | **F4** ✅ | native_* 离线 benchmark + `--native` / `--native-only` | `test_benchmark_native.py` + CI |
 | **F5** | E0 正式发布 | tag `v0.0.1` + PyPI（**用户明确要求后再做**） |
 
@@ -56,6 +56,13 @@ meris-rs run ask|plan|run|review   ──► native agent（冷启动）
 2. 默认 mock benchmark 仍 **8/8**（排除 `native_*`）
 3. `python scripts/run_benchmark_mock.py --native-only` — 3 项 bridge smoke
 4. `meris benchmark run --native-only` / `--native` — CLI 对齐
+
+## F3-M2 范围（pip bundled binary）
+
+1. `meris/_bundled/meris-rs` — wheel 内嵌路径（hatch `force-include`）
+2. `scripts/stage_bundled_binary.py` — 构建前拷贝二进制
+3. Release CI：`build-python` 依赖 Linux artifact 并验证 wheel 含 `_bundled`
+4. `meris native status` → `binarySource: bundled|dev|path`
 
 ## 环境变量（推荐 dogfood）
 

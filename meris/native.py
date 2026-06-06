@@ -21,10 +21,26 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def _bundled_dir() -> Path:
+    return Path(__file__).resolve().parent / "_bundled"
+
+
+def _bundled_binary_names() -> list[str]:
+    if os.name == "nt":
+        return ["meris-rs.exe", "meris-rs"]
+    return ["meris-rs"]
+
+
+def _bundled_candidates() -> list[Path]:
+    bundled = _bundled_dir()
+    return [bundled / name for name in _bundled_binary_names()]
+
+
 def candidate_binaries() -> list[Path]:
     root = _repo_root()
     names = ["meris-rs.exe", "meris-rs"] if os.name == "nt" else ["meris-rs"]
     paths: list[Path] = []
+    paths.extend(_bundled_candidates())
     for profile in ("release", "debug"):
         for name in names:
             paths.append(root / "meris-rs" / "target" / profile / name)
@@ -34,8 +50,33 @@ def candidate_binaries() -> list[Path]:
     return paths
 
 
+def _binary_source(path: Path | None) -> str | None:
+    if path is None:
+        return None
+    try:
+        resolved = path.resolve()
+    except OSError:
+        return "path"
+    bundled = _bundled_dir()
+    try:
+        if resolved.parent == bundled.resolve() or bundled.resolve() in resolved.parents:
+            return "bundled"
+    except OSError:
+        pass
+    root = _repo_root()
+    try:
+        if root.resolve() in resolved.parents and "meris-rs" in str(resolved):
+            return "dev"
+    except OSError:
+        pass
+    return "path"
+
+
 def find_native_binary() -> Path | None:
-    existing = [p for p in candidate_binaries() if p.is_file()]
+    for p in _bundled_candidates():
+        if p.is_file():
+            return p
+    existing = [p for p in candidate_binaries() if p.is_file() and p not in _bundled_candidates()]
     if not existing:
         return None
     return max(existing, key=lambda p: p.stat().st_mtime)
@@ -76,11 +117,13 @@ def native_status() -> dict[str, Any]:
             version = (out.stdout or out.stderr).strip()
         except OSError:
             version = None
+    source = _binary_source(binary)
     return {
         "available": binary is not None,
         "binary": str(binary) if binary else None,
         "version": version,
-        "source": str(_repo_root() / "meris-rs"),
+        "source": source or str(_repo_root() / "meris-rs"),
+        "binarySource": source,
         "nativeEnabled": native_enabled(),
         "nativeProviderEnabled": native_provider_enabled(),
         "nativeLoopEnabled": native_loop_enabled(),

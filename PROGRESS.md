@@ -14,21 +14,14 @@
 - [x] Windows `doctor` WSL/bwrap 检测
 - [x] **Live benchmark** — `run_benchmark_live.py` + GitHub workflow_dispatch
 - [x] **E0 发布准备** — `meris release check` 全绿（不打 tag）
-- [ ] **E0 发布** — 打 tag `v0.0.1`（暂缓）
+- [ ] **E0 发布** — 打 tag `v0.0.1`（暂缓）· [E0_RELEASE_CHECKLIST.md](docs/E0_RELEASE_CHECKLIST.md)
 - [x] **P5-3** — Rust tools + schemas + bash native
 - [x] **P5-4 M1** — Rust agent loop（read-only）+ [PLAN_P5_4.md](docs/PLAN_P5_4.md)
 - [x] **P5-4 M2** — run 模式写工具 + postEdit/onComplete sensors
 - [x] **P5-4 M3** — MCP JSONL 桥 + native loop 工具合并
 - [x] **P5-4 M4** — hooks / EventStream / plan 模式
 - [x] **P5-4 M5** — system-prompt 桥 + `meris-rs run` 原生入口
-- [ ] **Phase F** — native 稳定化与发布准备（见 [docs/PLAN_PHASE_F.md](docs/PLAN_PHASE_F.md)）
-  - [x] F1 文档同步
-  - [x] F2-M1 review 桥 + `meris-rs run review`
-  - [x] F2-M2 CLI 旗标 parity（max-turns / resume）
-  - [x] F2-M3 DoD 失败 ratchet 提示
-  - [x] F3-M1 分发 artifact 文档（[NATIVE_BINARY.md](docs/NATIVE_BINARY.md)）
-  - [ ] F3-M2 pip bundled binary
-  - [x] F4 benchmark native 路径（`run_benchmark_mock.py --native-only`）
+- [x] **Phase F** — native 稳定化与发布准备（F1–F4 + F3-M2 ✅；F5 tag 暂缓）· [PLAN_PHASE_F.md](docs/PLAN_PHASE_F.md)
 
 ## 近期落地（E0 / P5-1）
 - [x] `settings.local` 文档（[USER_SETUP.md](docs/USER_SETUP.md)）
@@ -68,6 +61,7 @@ python scripts/run_benchmark_mock.py --native        # mock + native (11 tasks)
 python scripts/run_benchmark_live.py    # 需 API
 meris benchmark run --local-only
 meris release check                     # E0 发布前自检
+# 详见 docs/E0_RELEASE_CHECKLIST.md
 meris doctor
 meris run "…" --event-stream .meris/events/run.jsonl
 meris exec "…" --json
