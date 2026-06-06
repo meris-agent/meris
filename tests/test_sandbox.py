@@ -79,7 +79,41 @@ def test_probe_os_sandbox(workspace: Path) -> None:
 
     probe = probe_os_sandbox(workspace)
     assert probe["osSandbox"] in ("off", "auto", "require")
+    assert probe["network"] in ("shared", "isolated")
     assert "wouldUseBubblewrap" in probe
+    assert "maskedPaths" in probe
+
+
+def test_collect_mask_paths(workspace: Path) -> None:
+    from meris.harness.sandbox import collect_mask_paths, get_mask_secrets
+
+    (workspace / ".env").write_text("KEY=secret\n", encoding="utf-8")
+    settings = {"sandbox": {"maskSecrets": True}}
+    paths = collect_mask_paths(workspace, settings)
+    assert any(p.name == ".env" for p in paths)
+    settings_off = {"sandbox": {"maskSecrets": False}}
+    assert collect_mask_paths(workspace, settings_off) == []
+
+
+def test_bwrap_args_network_isolated(workspace: Path) -> None:
+    from meris.harness.sandbox import bwrap_base_args, get_network_mode
+
+    settings = {"sandbox": {"network": "isolated"}}
+    assert get_network_mode(settings) == "isolated"
+    args = bwrap_base_args(workspace, settings)
+    assert "--unshare-net" in args
+    assert "--share-net" not in args
+
+
+def test_wsl_probe_non_windows() -> None:
+    import sys
+
+    from meris.harness.wsl import probe_wsl_bwrap
+
+    if sys.platform == "win32":
+        pytest.skip("Windows WSL probe tested manually")
+    info = probe_wsl_bwrap()
+    assert info.get("wslAvailable") is False
 
 
 def test_run_bash_sync_plain(workspace: Path, monkeypatch) -> None:

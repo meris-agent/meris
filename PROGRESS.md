@@ -10,6 +10,8 @@
 
 ## 进行中
 - [x] Linux bubblewrap OS 沙箱（`sandbox.osSandbox: auto|require`）
+- [x] 网络隔离（`network: isolated`）+ `.env` 遮罩（`maskSecrets`）
+- [x] Windows `doctor` WSL/bwrap 检测
 - [ ] **E0 发布** — 打 tag `v0.0.1` 触发 release workflow（暂缓）
 - [ ] **P5** — meris-rs 全量 Agent loop（长期）
 - [ ] **Live benchmark** — 定期 `meris benchmark run`（需 API）

@@ -3,7 +3,8 @@
 use clap::{Parser, Subcommand};
 use meris_rs::{
     check_bash_sandbox, check_tool_allowed, compress_messages, estimate_tokens, get_bash_timeout,
-    get_sandbox_mode, load_settings, os_sandbox_probe, run_bash_in_workspace, verdict_to_json,
+    get_sandbox_mode, load_settings, os_sandbox_probe_workspace, run_bash_in_workspace,
+    verdict_to_json,
 };
 use serde_json::Value;
 use std::fs;
@@ -220,7 +221,10 @@ fn main() {
                 let settings = load_settings(&workspace);
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&os_sandbox_probe(&settings)).unwrap()
+                    serde_json::to_string_pretty(&os_sandbox_probe_workspace(
+                        &workspace, &settings
+                    ))
+                    .unwrap()
                 );
                 0
             }

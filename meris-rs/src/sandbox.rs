@@ -11,6 +11,15 @@ use std::time::Duration;
 const DEFAULT_MODE: &str = "warn";
 const DEFAULT_TIMEOUT: u64 = 120;
 const DEFAULT_OS_SANDBOX: &str = "auto";
+const DEFAULT_NETWORK: &str = "shared";
+
+const DEFAULT_MASK_REL: &[&str] = &[
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.development",
+    ".env.test",
+];
 
 fn bash_rules() -> Vec<(Regex, &'static str)> {
     vec![
@@ -55,6 +64,58 @@ pub fn get_os_sandbox_mode(settings: &HashMap<String, Value>) -> String {
         .map(|m| m.trim().to_lowercase())
         .filter(|m| matches!(m.as_str(), "off" | "auto" | "require"))
         .unwrap_or_else(|| DEFAULT_OS_SANDBOX.to_string())
+}
+
+pub fn get_network_mode(settings: &HashMap<String, Value>) -> String {
+    settings
+        .get("sandbox")
+        .and_then(|s| s.get("network"))
+        .and_then(|m| m.as_str())
+        .map(|m| m.trim().to_lowercase())
+        .filter(|m| matches!(m.as_str(), "shared" | "isolated"))
+        .unwrap_or_else(|| DEFAULT_NETWORK.to_string())
+}
+
+pub fn get_mask_secrets(settings: &HashMap<String, Value>) -> bool {
+    settings
+        .get("sandbox")
+        .and_then(|s| s.get("maskSecrets"))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true)
+}
+
+pub fn collect_mask_paths(workspace: &Path, settings: &HashMap<String, Value>) -> Vec<PathBuf> {
+    if !get_mask_secrets(settings) {
+        return vec![];
+    }
+    let ws = match workspace.canonicalize() {
+        Ok(p) => p,
+        Err(_) => return vec![],
+    };
+    let mut rels: Vec<String> = DEFAULT_MASK_REL.iter().map(|s| (*s).to_string()).collect();
+    if let Some(extra) = settings.get("sandbox").and_then(|s| s.get("maskPaths")).and_then(|v| v.as_array())
+    {
+        for item in extra {
+            if let Some(s) = item.as_str() {
+                let t = s.trim().replace('\\', "/");
+                if !t.is_empty() {
+                    rels.push(t);
+                }
+            }
+        }
+    }
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for rel in rels {
+        if !seen.insert(rel.clone()) {
+            continue;
+        }
+        let p = ws.join(&rel);
+        if p.is_file() {
+            out.push(p);
+        }
+    }
+    out
 }
 
 pub fn get_bash_timeout(settings: &HashMap<String, Value>) -> u64 {
@@ -115,13 +176,29 @@ pub fn os_sandbox_probe(settings: &HashMap<String, Value>) -> Value {
     let bwrap = find_bubblewrap();
     let version = bwrap.as_ref().and_then(|p| bubblewrap_version(p));
     let would_use = should_use_bubblewrap(settings).unwrap_or(false);
+    let network = get_network_mode(settings);
+    let mask_secrets = get_mask_secrets(settings);
     json!({
         "platform": std::env::consts::OS,
         "osSandbox": os_mode,
+        "network": network,
+        "maskSecrets": mask_secrets,
         "bubblewrap": bwrap.map(|p| p.to_string_lossy().to_string()),
         "bubblewrapVersion": version,
         "wouldUseBubblewrap": would_use,
     })
+}
+
+pub fn os_sandbox_probe_workspace(workspace: &Path, settings: &HashMap<String, Value>) -> Value {
+    let mut probe = os_sandbox_probe(settings);
+    if let Some(obj) = probe.as_object_mut() {
+        let masked: Vec<String> = collect_mask_paths(workspace, settings)
+            .iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect();
+        obj.insert("maskedPaths".into(), json!(masked));
+    }
+    probe
 }
 
 pub fn scan_bash_command(command: &str) -> Vec<String> {
@@ -215,19 +292,20 @@ fn build_bwrap_command(
     bwrap: &Path,
     workspace: &Path,
     command: &str,
+    settings: &HashMap<String, Value>,
 ) -> Result<Command, String> {
     let ws = workspace
         .canonicalize()
         .map_err(|e| format!("workspace: {e}"))?;
     let ws_s = ws.to_string_lossy();
     let mut cmd = Command::new(bwrap);
+    cmd.arg("--ro-bind").arg("/").arg("/");
+    cmd.arg("--bind").arg(ws_s.as_ref()).arg(ws_s.as_ref());
+    for mask in collect_mask_paths(&ws, settings) {
+        let ms = mask.to_string_lossy();
+        cmd.arg("--ro-bind").arg("/dev/null").arg(ms.as_ref());
+    }
     cmd.args([
-        "--ro-bind",
-        "/",
-        "/",
-        "--bind",
-        ws_s.as_ref(),
-        ws_s.as_ref(),
         "--tmpfs",
         "/tmp",
         "--proc",
@@ -237,13 +315,14 @@ fn build_bwrap_command(
         "--die-with-parent",
         "--new-session",
         "--unshare-pid",
-        "--share-net",
-        "--chdir",
-        ws_s.as_ref(),
-        "sh",
-        "-c",
-        command,
     ]);
+    if get_network_mode(settings) == "isolated" {
+        cmd.arg("--unshare-net");
+    } else {
+        cmd.arg("--share-net");
+    }
+    cmd.arg("--chdir").arg(ws_s.as_ref());
+    cmd.arg("sh").arg("-c").arg(command);
     Ok(cmd)
 }
 
@@ -251,9 +330,10 @@ pub fn run_bash_bubblewrap(
     workspace: &Path,
     command: &str,
     timeout_secs: u64,
+    settings: &HashMap<String, Value>,
 ) -> Result<(i32, String), String> {
     let bwrap = find_bubblewrap().ok_or_else(|| "bubblewrap (bwrap) not found".to_string())?;
-    let cmd = build_bwrap_command(&bwrap, workspace, command)?;
+    let cmd = build_bwrap_command(&bwrap, workspace, command, settings)?;
     run_command_with_timeout(cmd, timeout_secs)
 }
 
@@ -285,7 +365,7 @@ pub fn run_bash_in_workspace(
     settings: &HashMap<String, Value>,
 ) -> Result<(i32, String), String> {
     if should_use_bubblewrap(settings)? {
-        run_bash_bubblewrap(workspace, command, timeout_secs)
+        run_bash_bubblewrap(workspace, command, timeout_secs, settings)
     } else {
         run_bash_plain(workspace, command, timeout_secs)
     }
@@ -321,10 +401,33 @@ mod tests {
     #[test]
     fn os_sandbox_off_skips_bwrap() {
         let mut settings = HashMap::new();
-        settings.insert(
-            "sandbox".into(),
-            json!({"osSandbox": "off"}),
-        );
+        settings.insert("sandbox".into(), json!({"osSandbox": "off"}));
         assert!(!should_use_bubblewrap(&settings).unwrap());
+    }
+
+    #[test]
+    fn network_isolated_mode() {
+        let mut settings = HashMap::new();
+        settings.insert("sandbox".into(), json!({"network": "isolated"}));
+        assert_eq!(get_network_mode(&settings), "isolated");
+    }
+
+    #[test]
+    fn mask_paths_skipped_when_disabled() {
+        let dir = tempfile::tempdir().unwrap();
+        let env = dir.path().join(".env");
+        std::fs::write(&env, "SECRET=1").unwrap();
+        let mut settings = HashMap::new();
+        settings.insert("sandbox".into(), json!({"maskSecrets": false}));
+        assert!(collect_mask_paths(dir.path(), &settings).is_empty());
+    }
+
+    #[test]
+    fn mask_paths_includes_env() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(".env"), "SECRET=1").unwrap();
+        let settings = HashMap::new();
+        let masked = collect_mask_paths(dir.path(), &settings);
+        assert_eq!(masked.len(), 1);
     }
 }

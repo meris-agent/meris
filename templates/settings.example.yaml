@@ -47,6 +47,11 @@ sandbox:
   bashTimeoutSec: 120
   # Linux bubblewrap: off | auto | require
   osSandbox: auto
+  # bubblewrap only: shared | isolated
+  network: shared
+  # overlay /dev/null on .env files in bash sandbox
+  maskSecrets: true
+  maskPaths: []
 
 # --- 工具钩子（Claude Code 风格，见 README）---
 hooks:

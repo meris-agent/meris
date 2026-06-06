@@ -89,3 +89,13 @@ jobs:
           ./meris-rs/target/release/meris-rs sandbox run --workspace "$root" --timeout 30 -- \
             sh -c "touch .meris-bwrap-ci-ok && test -f .meris-bwrap-ci-ok"
           rm -f "$root/.meris-bwrap-ci-ok"
+
+      - name: Bubblewrap masks .env from bash
+        run: |
+          set -e
+          root="$(cd .. && pwd)"
+          echo 'SECRET=ci-leak' > "$root/.env.test"
+          trap 'rm -f "$root/.env.test"' EXIT
+          out=$(./meris-rs/target/release/meris-rs sandbox run --workspace "$root" --timeout 30 -- \
+            sh -c 'cat .env.test 2>/dev/null || true')
+          test -z "$out" || ! echo "$out" | grep -q SECRET=ci-leak

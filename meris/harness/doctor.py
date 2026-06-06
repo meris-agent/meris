@@ -2,12 +2,22 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 from meris.config import env_tri
 from meris.harness.paths import harness_root
 from meris.harness.settings import load_settings, shared_settings_relpath
+from meris.harness.sandbox import (
+    get_bash_timeout,
+    get_mask_secrets,
+    get_network_mode,
+    get_os_sandbox_mode,
+    get_sandbox_mode,
+    probe_os_sandbox,
+)
+from meris.native import find_native_binary, native_enabled
 from meris.provider import ProviderError, get_provider
 from meris.provider.resolve import resolve_provider_config
 
@@ -70,8 +80,6 @@ def check_harness(workspace: Path) -> list[CheckResult]:
 
     try:
         from meris.harness.guides import estimate_prompt_chars
-        from meris.harness.sandbox import get_bash_timeout, get_os_sandbox_mode, get_sandbox_mode, probe_os_sandbox
-        from meris.native import find_native_binary, native_enabled
 
         chars = estimate_prompt_chars(ws, mode="run")
         if chars > 28_000:
@@ -98,13 +106,18 @@ def check_harness(workspace: Path) -> list[CheckResult]:
     mode = get_sandbox_mode(settings)
     timeout = get_bash_timeout(settings)
     os_mode = get_os_sandbox_mode(settings)
+    net_mode = get_network_mode(settings)
+    mask_on = get_mask_secrets(settings)
     probe = probe_os_sandbox(ws, settings)
+    masked_n = len(probe.get("maskedPaths") or [])
     if probe.get("wouldUseBubblewrap"):
-        os_note = ", osSandbox=bubblewrap active"
+        os_note = f", bwrap active, net={net_mode}"
+        if mask_on and masked_n:
+            os_note += f", mask {masked_n} secret file(s)"
     elif os_mode == "require" and not probe.get("bubblewrap"):
         os_note = ", osSandbox=require but bwrap missing"
     elif probe.get("bubblewrap"):
-        os_note = f", osSandbox={os_mode}, bwrap ok"
+        os_note = f", osSandbox={os_mode}, bwrap ok, net={net_mode}"
     elif os_mode != "off":
         os_note = f", osSandbox={os_mode} (Linux bwrap only)"
     else:
@@ -140,6 +153,30 @@ def check_harness(workspace: Path) -> list[CheckResult]:
                 f"mode={mode}, bashTimeout={timeout}s — risky bash warns only{native_note}{os_note}",
             )
         )
+
+    if sys.platform == "win32":
+        from meris.harness.wsl import probe_wsl_bwrap
+
+        wsl = probe_wsl_bwrap()
+        if wsl.get("bwrapInWsl"):
+            ver = wsl.get("bwrapVersion") or "ok"
+            results.append(CheckResult("WSL sandbox", "ok", f"bwrap in WSL ({ver}) — run meris in WSL"))
+        elif wsl.get("wslAvailable"):
+            results.append(
+                CheckResult(
+                    "WSL sandbox",
+                    "warn",
+                    wsl.get("hint", "Install bubblewrap in WSL: sudo apt install bubblewrap"),
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    "WSL sandbox",
+                    "warn",
+                    wsl.get("hint", "Install WSL2 for Linux OS sandbox"),
+                )
+            )
 
     return results
 

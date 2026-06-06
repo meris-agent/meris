@@ -45,6 +45,8 @@ DEFAULT_SETTINGS: dict = {
         "mode": "warn",
         "bashTimeoutSec": 120,
         "osSandbox": "auto",
+        "network": "shared",
+        "maskSecrets": True,
     },
     "hooks": {
         "preToolUse": [],

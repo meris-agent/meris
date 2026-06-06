@@ -12,9 +12,19 @@ from pathlib import Path
 
 SANDBOX_MODES = frozenset({"off", "warn", "strict"})
 OS_SANDBOX_MODES = frozenset({"off", "auto", "require"})
+NETWORK_MODES = frozenset({"shared", "isolated"})
 DEFAULT_MODE = "warn"
 DEFAULT_OS_SANDBOX = "auto"
+DEFAULT_NETWORK = "shared"
 DEFAULT_BASH_TIMEOUT = 120
+
+DEFAULT_MASK_REL: tuple[str, ...] = (
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.development",
+    ".env.test",
+)
 
 # Exploratory / cwd-escape patterns — align with .meris/rules/bash-permissions.md
 _BASH_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
@@ -54,6 +64,72 @@ def get_os_sandbox_mode(settings: dict) -> str:
     return mode if mode in OS_SANDBOX_MODES else DEFAULT_OS_SANDBOX
 
 
+def get_network_mode(settings: dict) -> str:
+    raw = (settings.get("sandbox") or {}).get("network", DEFAULT_NETWORK)
+    mode = str(raw).strip().lower()
+    return mode if mode in NETWORK_MODES else DEFAULT_NETWORK
+
+
+def get_mask_secrets(settings: dict) -> bool:
+    raw = (settings.get("sandbox") or {}).get("maskSecrets", True)
+    if isinstance(raw, bool):
+        return raw
+    return str(raw).strip().lower() in ("1", "true", "yes")
+
+
+def collect_mask_paths(workspace: Path, settings: dict) -> list[Path]:
+    if not get_mask_secrets(settings):
+        return []
+    ws = workspace.resolve()
+    rels: list[str] = list(DEFAULT_MASK_REL)
+    extra = (settings.get("sandbox") or {}).get("maskPaths") or []
+    if isinstance(extra, list):
+        for item in extra:
+            rel = str(item).strip().replace("\\", "/")
+            if rel and rel not in rels:
+                rels.append(rel)
+    out: list[Path] = []
+    for rel in rels:
+        p = ws / rel
+        if p.is_file():
+            out.append(p)
+    return out
+
+
+def bwrap_base_args(workspace: Path, settings: dict) -> list[str]:
+    ws = workspace.resolve()
+    ws_s = str(ws)
+    args = [
+        "--ro-bind",
+        "/",
+        "/",
+        "--bind",
+        ws_s,
+        ws_s,
+    ]
+    for mask in collect_mask_paths(ws, settings):
+        args.extend(["--ro-bind", "/dev/null", str(mask)])
+    args.extend(
+        [
+            "--tmpfs",
+            "/tmp",
+            "--proc",
+            "/proc",
+            "--dev",
+            "/dev",
+            "--die-with-parent",
+            "--new-session",
+            "--unshare-pid",
+        ]
+    )
+    if get_network_mode(settings) == "isolated":
+        args.append("--unshare-net")
+    else:
+        args.append("--share-net")
+    args.extend(["--chdir", ws_s])
+    return args
+
+
 def find_bubblewrap() -> Path | None:
     if sys.platform != "linux":
         return None
@@ -85,6 +161,8 @@ def probe_os_sandbox(workspace: Path, settings: dict | None = None) -> dict:
     settings = settings or load_settings(ws)
     native = native_os_sandbox_probe(ws)
     if native is not None:
+        if "maskedPaths" not in native:
+            native["maskedPaths"] = [str(p) for p in collect_mask_paths(ws, settings)]
         return native
     bwrap = find_bubblewrap()
     os_mode = get_os_sandbox_mode(settings)
@@ -94,6 +172,9 @@ def probe_os_sandbox(workspace: Path, settings: dict | None = None) -> dict:
     return {
         "platform": sys.platform,
         "osSandbox": os_mode,
+        "network": get_network_mode(settings),
+        "maskSecrets": get_mask_secrets(settings),
+        "maskedPaths": [str(p) for p in collect_mask_paths(ws, settings)],
         "bubblewrap": str(bwrap) if bwrap else None,
         "bubblewrapVersion": None,
         "wouldUseBubblewrap": would,
@@ -106,37 +187,12 @@ def _truncate_output(text: str, limit: int = 8000) -> str:
     return text[-limit:]
 
 
-def _run_bwrap_sync(workspace: Path, command: str, timeout: int) -> tuple[int, str]:
+def _run_bwrap_sync(workspace: Path, command: str, timeout: int, settings: dict) -> tuple[int, str]:
     bwrap = find_bubblewrap()
     if not bwrap:
         return 1, "bubblewrap (bwrap) not found"
-    ws = workspace.resolve()
-    ws_s = str(ws)
     proc = subprocess.run(
-        [
-            str(bwrap),
-            "--ro-bind",
-            "/",
-            "/",
-            "--bind",
-            ws_s,
-            ws_s,
-            "--tmpfs",
-            "/tmp",
-            "--proc",
-            "/proc",
-            "--dev",
-            "/dev",
-            "--die-with-parent",
-            "--new-session",
-            "--unshare-pid",
-            "--share-net",
-            "--chdir",
-            ws_s,
-            "sh",
-            "-c",
-            command,
-        ],
+        [str(bwrap), *bwrap_base_args(workspace, settings), "sh", "-c", command],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -195,7 +251,7 @@ def run_bash_sync(workspace: Path, command: str, settings: dict) -> str:
 
     try:
         if should_use_bubblewrap(settings):
-            code, out = _run_bwrap_sync(workspace, command, timeout)
+            code, out = _run_bwrap_sync(workspace, command, timeout, settings)
         else:
             code, out = _run_plain_sync(workspace, command, timeout)
     except subprocess.TimeoutExpired:
