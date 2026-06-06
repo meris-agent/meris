@@ -105,3 +105,10 @@ jobs:
 
       - name: Provider probe
         run: ./meris-rs/target/release/meris-rs provider probe | grep -q baseUrl
+
+      - name: Tools read_file smoke
+        run: |
+          ./meris-rs/target/release/meris-rs tools run \
+            --workspace .. \
+            --tool read_file \
+            --args '{"path":"README.md","limit":3}' | grep -q README

@@ -24,7 +24,8 @@ meris-rs sandbox check --workspace . --command "pwd" --mode strict
 meris-rs sandbox run --workspace . --timeout 120 -- pytest tests/ -q
 meris-rs sandbox probe --workspace .   # bubblewrap availability (Linux)
 meris-rs provider probe                # LLM env (base URL, model, key set)
-meris-rs provider chat --model M < msgs.json
+meris-rs tools list
+meris-rs tools run --workspace . --tool read_file --args '{"path":"README.md","limit":5}'
 meris-rs run doctor          # delegates to Python `meris`
 ```
 

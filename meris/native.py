@@ -257,6 +257,34 @@ def native_sandbox_check(
     return None
 
 
+NATIVE_READONLY_TOOLS = frozenset({"read_file", "glob", "grep"})
+
+
+def native_run_tool(workspace: Path, tool: str, args: dict[str, Any]) -> str | None:
+    """Execute read_file/glob/grep via meris-rs; None if unavailable."""
+    if not native_enabled() or tool not in NATIVE_READONLY_TOOLS:
+        return None
+    if find_native_binary() is None:
+        return None
+    proc = _run_native(
+        [
+            "tools",
+            "run",
+            "--workspace",
+            str(workspace.resolve()),
+            "--tool",
+            tool,
+            "--args",
+            json.dumps(args, ensure_ascii=False),
+        ],
+        timeout=60,
+    )
+    if proc is None or proc.returncode != 0:
+        return None
+    out = (proc.stdout or "").strip()
+    return out or None
+
+
 def native_os_sandbox_probe(workspace: Path) -> dict[str, Any] | None:
     """JSON from meris-rs sandbox probe; None if binary unavailable."""
     proc = _run_native(

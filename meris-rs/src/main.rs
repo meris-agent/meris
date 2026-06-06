@@ -4,7 +4,8 @@ use clap::{Parser, Subcommand};
 use meris_rs::{
     chat_completions, check_bash_sandbox, check_tool_allowed, compress_messages, estimate_tokens,
     get_bash_timeout, get_sandbox_mode, load_settings, os_sandbox_probe_workspace,
-    probe_provider, resolve_config, run_bash_in_workspace, verdict_to_json,
+    probe_provider, resolve_config, run_bash_in_workspace, run_readonly_tool, verdict_to_json,
+    READONLY_TOOLS,
 };
 use serde_json::Value;
 use std::fs;
@@ -43,6 +44,11 @@ enum Commands {
     Provider {
         #[command(subcommand)]
         action: ProviderAction,
+    },
+    /// Read-only tools (P5-3)
+    Tools {
+        #[command(subcommand)]
+        action: ToolsAction,
     },
     /// Print version and build info
     Version,
@@ -118,6 +124,21 @@ enum ProviderAction {
         tools: Option<PathBuf>,
         #[arg(long, default_value_t = 120)]
         timeout: u64,
+    },
+}
+
+#[derive(Subcommand)]
+enum ToolsAction {
+    /// List native read-only tools
+    List,
+    /// Execute read_file | glob | grep
+    Run {
+        #[arg(long)]
+        workspace: PathBuf,
+        #[arg(long)]
+        tool: String,
+        #[arg(long, default_value = "{}")]
+        args: String,
     },
 }
 
@@ -313,6 +334,25 @@ fn main() {
                     1
                 }
             },
+        },
+        Commands::Tools { action } => match action {
+            ToolsAction::List => {
+                for t in READONLY_TOOLS {
+                    println!("{t}");
+                }
+                0
+            }
+            ToolsAction::Run {
+                workspace,
+                tool,
+                args,
+            } => {
+                let args_v: Value =
+                    serde_json::from_str(&args).unwrap_or(Value::Object(Default::default()));
+                let out = run_readonly_tool(&workspace, &tool, &args_v);
+                print!("{out}");
+                0
+            }
         },
         Commands::Version => {
             println!("meris-rs {}", env!("CARGO_PKG_VERSION"));

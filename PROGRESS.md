@@ -15,8 +15,7 @@
 - [x] **Live benchmark** — `run_benchmark_live.py` + GitHub workflow_dispatch
 - [x] **E0 发布准备** — `meris release check`（不打 tag）
 - [ ] **E0 发布** — 打 tag `v0.0.1`（暂缓）
-- [ ] **P5-2+** — Rust tools / 全量 loop（长期）
-- [x] **P5-2** — Rust OpenAI provider + Python `RustOpenAIProvider`
+- [ ] **P5-4** — Rust 全量 Agent loop（长期）
 
 ## 近期落地（E0 / P5-1）
 - [x] `settings.local` 文档（[USER_SETUP.md](docs/USER_SETUP.md)）

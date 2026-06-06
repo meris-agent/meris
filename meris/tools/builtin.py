@@ -6,6 +6,7 @@ import asyncio
 import glob as globlib
 import os
 import re
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 from meris.tools.registry import Tool, ToolRegistry
@@ -18,20 +19,37 @@ def _resolve(root: Path, rel: str) -> Path:
     return p
 
 
+async def _native_or(
+    workspace: Path,
+    tool: str,
+    args: dict,
+    fallback: Callable[[dict], Awaitable[str]],
+) -> str:
+    from meris.native import native_run_tool
+
+    out = await asyncio.to_thread(native_run_tool, workspace, tool, args)
+    if out is not None:
+        return out
+    return await fallback(args)
+
+
 def build_tools(workspace: Path, read_only: bool = False) -> ToolRegistry:
     reg = ToolRegistry()
 
     async def read_file(args: dict) -> str:
-        p = _resolve(workspace, args["path"])
-        if not p.is_file():
-            return f"Error: not a file: {args['path']}"
-        text = p.read_text(encoding="utf-8", errors="replace")
-        lines = text.splitlines()
-        offset = max(0, int(args.get("offset", 1)) - 1)
-        limit = int(args.get("limit", 200))
-        chunk = lines[offset : offset + limit]
-        numbered = "\n".join(f"{i + offset + 1:4}| {ln}" for i, ln in enumerate(chunk))
-        return numbered or "(empty file)"
+        async def _py(a: dict) -> str:
+            p = _resolve(workspace, a["path"])
+            if not p.is_file():
+                return f"Error: not a file: {a['path']}"
+            text = p.read_text(encoding="utf-8", errors="replace")
+            lines = text.splitlines()
+            offset = max(0, int(a.get("offset", 1)) - 1)
+            limit = int(a.get("limit", 200))
+            chunk = lines[offset : offset + limit]
+            numbered = "\n".join(f"{i + offset + 1:4}| {ln}" for i, ln in enumerate(chunk))
+            return numbered or "(empty file)"
+
+        return await _native_or(workspace, "read_file", args, _py)
 
     reg.register(
         Tool(
@@ -126,30 +144,38 @@ def build_tools(workspace: Path, read_only: bool = False) -> ToolRegistry:
         )
 
     async def glob_search(args: dict) -> str:
-        pattern = args["pattern"]
-        matches = sorted(globlib.glob(str(workspace / pattern), recursive=True))[:50]
-        rel = [os.path.relpath(m, workspace) for m in matches]
-        return "\n".join(rel) if rel else "(no matches)"
+        async def _py(a: dict) -> str:
+            pattern = a["pattern"]
+            matches = sorted(globlib.glob(str(workspace / pattern), recursive=True))[:50]
+            rel = [os.path.relpath(m, workspace) for m in matches]
+            return "\n".join(rel) if rel else "(no matches)"
+
+        return await _native_or(workspace, "glob", args, _py)
 
     async def grep(args: dict) -> str:
-        pattern = args["pattern"]
-        path = args.get("path", ".")
-        root = _resolve(workspace, path)
-        hits: list[str] = []
-        rx = re.compile(pattern)
-        for fp in root.rglob("*") if root.is_dir() else [root]:
-            if not fp.is_file() or fp.stat().st_size > 500_000:
-                continue
-            try:
-                for i, line in enumerate(fp.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
-                    if rx.search(line):
-                        rel = fp.relative_to(workspace)
-                        hits.append(f"{rel}:{i}:{line[:200]}")
-                        if len(hits) >= 40:
-                            return "\n".join(hits)
-            except OSError:
-                continue
-        return "\n".join(hits) if hits else "(no matches)"
+        async def _py(a: dict) -> str:
+            pattern = a["pattern"]
+            path = a.get("path", ".")
+            root = _resolve(workspace, path)
+            hits: list[str] = []
+            rx = re.compile(pattern)
+            for fp in root.rglob("*") if root.is_dir() else [root]:
+                if not fp.is_file() or fp.stat().st_size > 500_000:
+                    continue
+                try:
+                    for i, line in enumerate(
+                        fp.read_text(encoding="utf-8", errors="replace").splitlines(), 1
+                    ):
+                        if rx.search(line):
+                            rel = fp.relative_to(workspace)
+                            hits.append(f"{rel}:{i}:{line[:200]}")
+                            if len(hits) >= 40:
+                                return "\n".join(hits)
+                except OSError:
+                    continue
+            return "\n".join(hits) if hits else "(no matches)"
+
+        return await _native_or(workspace, "grep", args, _py)
 
     reg.register(
         Tool(

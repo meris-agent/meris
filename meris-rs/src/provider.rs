@@ -85,7 +85,7 @@ fn normalize_base_url(url: &str) -> String {
 
 pub fn resolve_config(base_url: Option<&str>, model: Option<&str>) -> Result<ProviderConfig, String> {
     let api_key = resolve_api_key().ok_or_else(|| {
-        "API key not set — use OPENAI_API_KEY, DEEPSEEK_API_KEY, or MERIS_API_KEY".into()
+        "API key not set — use OPENAI_API_KEY, DEEPSEEK_API_KEY, or MERIS_API_KEY".to_string()
     })?;
     Ok(ProviderConfig {
         api_key,

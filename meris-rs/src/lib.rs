@@ -5,6 +5,7 @@ pub mod permissions;
 pub mod provider;
 pub mod sandbox;
 pub mod settings;
+pub mod tools;
 
 pub use context::{compress_messages, estimate_messages_tokens, estimate_tokens};
 pub use permissions::check_tool_allowed;
@@ -19,3 +20,4 @@ pub use sandbox::{
     verdict_to_json, SandboxVerdict,
 };
 pub use settings::load_settings;
+pub use tools::{run_readonly_tool, READONLY_TOOLS};
