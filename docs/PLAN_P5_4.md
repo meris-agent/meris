@@ -32,7 +32,7 @@
 | 阶段 | 交付 | 验收 |
 |------|------|------|
 | **M1** ✅ | `agent run` + session 读写 + read-only 工具链 | `cargo test` + `test_rust_agent.py` + CI smoke |
-| **M2** | `run` 模式：write_file / edit_file native + postEdit sensors 回调 Python | mock benchmark 通过 |
+| **M2** ✅ | `run` 模式 write/edit + postEdit + on-complete 桥 | mock benchmark + schema parity |
 | **M3** | MCP client（stdio）、动态工具 schema 合并 | integration test + `meris mcp` 对齐 |
 | **M4** | hooks（pre/post/onSave）、Ratchet 事件、plan 输出 | parity 与 Python loop |
 | **M5** | TUI/CLI 默认 native loop；Python 仅插件 | 冷启动 <1s；Release 二进制 |
@@ -45,11 +45,12 @@
 - Python：`MERIS_NATIVE_LOOP=1|auto`，`ask/plan/review` 且未指定 provider 时走 native
 - 工具集：read_file / glob / grep（+ run 模式 bash 经 tools，loop M1 仍 read-only）
 
-## M2 计划
+## M2 范围（已实现）
 
-1. Rust `write_file` / `edit_file`（路径逃逸检查 parity）
-2. `agent run --mode run` 启用写工具 + `require_approval` 协议（stdin JSONL）
-3. postEdit：子进程调用 `meris harness check` 或 Python hook 桥
+1. Rust `write_file` / `edit_file` + schemas parity（6 tools in run mode）
+2. `agent run --mode run` + `--require-approval`（`@meris-approve` stdin 协议）
+3. postEdit：Rust 直接跑 `sensors.postEdit`；onComplete：`meris harness on-complete --json`
+4. Python：`MERIS_NATIVE_LOOP` 支持 `run` 模式；`write_file`/`edit_file` native 回退
 
 ## M3 计划
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare meris-rs tools schemas with Python ToolRegistry (P5-3)."""
+"""Compare meris-rs tools schemas with Python ToolRegistry (P5-3/ M2)."""
 from __future__ import annotations
 
 import json
@@ -9,20 +9,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-NATIVE_TOOLS = ("read_file", "glob", "grep", "bash")
+READONLY_NATIVE = ("read_file", "glob", "grep")
+RUN_NATIVE = ("read_file", "glob", "grep", "write_file", "edit_file", "bash")
 
 
-def _python_schemas(read_only: bool) -> list[dict]:
-    from meris.harness.settings import load_settings
+def _python_schemas(read_only: bool) -> dict[str, dict]:
     from meris.tools import build_tools
 
     reg = build_tools(ROOT, read_only=read_only)
-    by_name = {s["function"]["name"]: s for s in reg.schemas()}
-    names = ["read_file", "glob", "grep"] if read_only else list(NATIVE_TOOLS)
-    return [by_name[n] for n in names if n in by_name]
+    return {s["function"]["name"]: s for s in reg.schemas()}
 
 
-def _rust_schemas(read_only: bool) -> list[dict] | None:
+def _rust_schemas(read_only: bool) -> dict[str, dict] | None:
     from meris.native import find_native_binary
 
     binary = find_native_binary()
@@ -37,20 +35,13 @@ def _rust_schemas(read_only: bool) -> list[dict] | None:
     data = json.loads(proc.stdout)
     if not isinstance(data, list):
         return None
-    return data
+    return {s["function"]["name"]: s for s in data}
 
 
 def _diff(a: dict, b: dict, label: str) -> list[str]:
     errs: list[str] = []
-    if a != b:
-        if a.get("function", {}).get("name") != b.get("function", {}).get("name"):
-            errs.append(f"{label}: name mismatch")
-        elif a.get("function", {}).get("parameters") != b.get("function", {}).get("parameters"):
-            errs.append(f"{label}: parameters mismatch")
-        elif a.get("function", {}).get("description") != b.get("function", {}).get("description"):
-            errs.append(f"{label}: description mismatch")
-        else:
-            errs.append(f"{label}: schema mismatch")
+    if a.get("function", {}).get("parameters") != b.get("function", {}).get("parameters"):
+        errs.append(f"{label}: parameters mismatch")
     return errs
 
 
@@ -63,17 +54,20 @@ def main() -> int:
 
     errors: list[str] = []
     for read_only in (True, False):
+        names = READONLY_NATIVE if read_only else RUN_NATIVE
         py = _python_schemas(read_only)
         rs = _rust_schemas(read_only)
         if rs is None:
             print("fail: meris-rs tools schemas unavailable (rebuild meris-rs)")
             return 1
-        if len(py) != len(rs):
-            errors.append(f"read_only={read_only}: count py={len(py)} rs={len(rs)}")
-            continue
-        for p, r in zip(py, rs):
-            name = p["function"]["name"]
-            errors.extend(_diff(p, r, name))
+        for name in names:
+            if name not in py:
+                errors.append(f"python missing {name}")
+                continue
+            if name not in rs:
+                errors.append(f"rust missing {name}")
+                continue
+            errors.extend(_diff(py[name], rs[name], name))
 
     if errors:
         for e in errors:

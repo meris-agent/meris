@@ -118,6 +118,14 @@ jobs:
           ./meris-rs/target/release/meris-rs tools schemas --read-only | grep -q read_file
           python scripts/check_tool_schemas_parity.py
 
+      - name: Tools write_file smoke
+        run: |
+          ./meris-rs/target/release/meris-rs tools run \
+            --workspace .. \
+            --tool write_file \
+            --args '{"path":".meris-ci-write.txt","content":"ok"}' | grep -q Wrote
+          rm -f ../.meris-ci-write.txt
+
       - name: Agent session smoke
         run: |
           ./meris-rs/target/release/meris-rs agent session list --workspace .. | true

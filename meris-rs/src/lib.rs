@@ -5,6 +5,7 @@ pub mod context;
 pub mod permissions;
 pub mod provider;
 pub mod sandbox;
+pub mod sensors;
 pub mod session;
 pub mod settings;
 pub mod tools;
@@ -22,9 +23,13 @@ pub use sandbox::{
     os_sandbox_probe_workspace, run_bash_in_workspace, scan_bash_command, should_use_bubblewrap,
     verdict_to_json, SandboxVerdict,
 };
+pub use sensors::{
+    on_complete_enabled, post_edit_commands, run_on_complete_sensors, run_post_edit_sensors,
+    run_shell_commands,
+};
 pub use session::{list_sessions, load_session, new_session_id, save_session, SessionRecord};
 pub use settings::load_settings;
 pub use tools::{
-    run_builtin_tool, run_readonly_tool, tool_schemas, tool_schemas_json, BUILTIN_TOOL_NAMES,
-    READONLY_TOOLS,
+    run_builtin_tool, run_readonly_tool, tool_needs_approval, tool_schemas, tool_schemas_json,
+    BUILTIN_TOOL_NAMES, EDIT_TOOLS, READONLY_TOOLS,
 };

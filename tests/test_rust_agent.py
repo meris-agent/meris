@@ -71,6 +71,22 @@ def test_native_loop_opt_in(monkeypatch) -> None:
     assert native_loop_enabled() is True
 
 
+def test_harness_on_complete_json(workspace: Path) -> None:
+    from typer.testing import CliRunner
+
+    from meris.cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        ["harness", "on-complete", "--cwd", str(workspace), "--json"],
+    )
+    assert result.exit_code == 0, result.stdout + result.stderr
+    data = json.loads(result.stdout.strip())
+    assert "ok" in data
+    assert "output" in data
+
+
 def test_tool_schemas_parity_script() -> None:
     import sys
 

@@ -41,6 +41,40 @@ async def test_glob_python(workspace: Path, monkeypatch) -> None:
     assert "a.py" in out
 
 
+@pytest.mark.asyncio
+async def test_write_file_python_fallback(workspace: Path, monkeypatch) -> None:
+    monkeypatch.setenv("MERIS_NATIVE", "0")
+    tools = build_tools(workspace, read_only=False)
+    out = await tools.execute("write_file", {"path": "out.txt", "content": "hi"})
+    assert "Wrote out.txt" in out
+    assert (workspace / "out.txt").read_text(encoding="utf-8") == "hi"
+
+
+@pytest.mark.skipif(
+    __import__("meris.native", fromlist=["find_native_binary"]).find_native_binary() is None,
+    reason="meris-rs not built",
+)
+@pytest.mark.asyncio
+async def test_native_write_file(workspace: Path) -> None:
+    import subprocess
+
+    from meris.native import find_native_binary
+
+    binary = find_native_binary()
+    probe = subprocess.run(
+        [str(binary), "tools", "run", "--workspace", str(workspace), "--tool", "write_file", "--args", "{}"],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    if "unknown tool" in (probe.stderr or probe.stdout):
+        pytest.skip("write_file not in binary")
+    tools = build_tools(workspace, read_only=False)
+    out = await tools.execute("write_file", {"path": "native.txt", "content": "data"})
+    assert "Wrote" in out or "native.txt" in out
+
+
 def test_parity_fixtures_tools_json() -> None:
     root = Path(__file__).resolve().parents[1]
     path = root / "scripts" / "benchmark" / "fixtures" / "parity.json"

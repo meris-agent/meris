@@ -187,6 +187,64 @@ pub fn tool_grep(workspace: &Path, args: &Value) -> String {
     }
 }
 
+pub fn tool_write_file(workspace: &Path, args: &Value) -> String {
+    let path = match args.get("path").and_then(|v| v.as_str()) {
+        Some(p) => p,
+        None => return "Error: missing path".into(),
+    };
+    let content = match args.get("content").and_then(|v| v.as_str()) {
+        Some(c) => c,
+        None => return "Error: missing content".into(),
+    };
+    let resolved = match resolve_in_workspace(workspace, path) {
+        Ok(p) => p,
+        Err(e) => return format!("Error: {e}"),
+    };
+    if let Some(parent) = resolved.parent() {
+        if let Err(e) = fs::create_dir_all(parent) {
+            return format!("Error: {e}");
+        }
+    }
+    match fs::write(&resolved, content) {
+        Ok(()) => format!("Wrote {path} ({} bytes)", content.len()),
+        Err(e) => format!("Error: {e}"),
+    }
+}
+
+pub fn tool_edit_file(workspace: &Path, args: &Value) -> String {
+    let path = match args.get("path").and_then(|v| v.as_str()) {
+        Some(p) => p,
+        None => return "Error: missing path".into(),
+    };
+    let old = match args.get("old_string").and_then(|v| v.as_str()) {
+        Some(s) => s,
+        None => return "Error: missing old_string".into(),
+    };
+    let new = match args.get("new_string").and_then(|v| v.as_str()) {
+        Some(s) => s,
+        None => return "Error: missing new_string".into(),
+    };
+    let resolved = match resolve_in_workspace(workspace, path) {
+        Ok(p) => p,
+        Err(e) => return format!("Error: {e}"),
+    };
+    if !resolved.is_file() {
+        return format!("Error: not a file: {path}");
+    }
+    let text = match fs::read_to_string(&resolved) {
+        Ok(t) => t,
+        Err(e) => return format!("Error: {e}"),
+    };
+    if !text.contains(old) {
+        return "Error: old_string not found in file".into();
+    }
+    let updated = text.replacen(old, new, 1);
+    match fs::write(&resolved, updated) {
+        Ok(()) => format!("Edited {path}"),
+        Err(e) => format!("Error: {e}"),
+    }
+}
+
 pub fn tool_bash(
     workspace: &Path,
     args: &Value,
@@ -266,6 +324,31 @@ pub fn tool_schemas(read_only: bool) -> Vec<Value> {
     ];
     if !read_only {
         schemas.push(fn_schema(
+            "write_file",
+            "Create or overwrite a file.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string"},
+                    "content": {"type": "string"},
+                },
+                "required": ["path", "content"],
+            }),
+        ));
+        schemas.push(fn_schema(
+            "edit_file",
+            "Replace exactly one occurrence of old_string with new_string.",
+            json!({
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string"},
+                    "old_string": {"type": "string"},
+                    "new_string": {"type": "string"},
+                },
+                "required": ["path", "old_string", "new_string"],
+            }),
+        ));
+        schemas.push(fn_schema(
             "bash",
             "Run shell command in repo root. Prefer rg/grep/test over cat.",
             json!({
@@ -292,9 +375,15 @@ pub fn run_builtin_tool(
         "read_file" => tool_read_file(workspace, args),
         "glob" => tool_glob(workspace, args),
         "grep" => tool_grep(workspace, args),
+        "write_file" => tool_write_file(workspace, args),
+        "edit_file" => tool_edit_file(workspace, args),
         "bash" => tool_bash(workspace, args, settings),
         _ => format!("Error: unknown tool {tool}"),
     }
+}
+
+pub fn tool_needs_approval(tool: &str) -> bool {
+    !READONLY_TOOLS.contains(&tool)
 }
 
 pub fn run_readonly_tool(workspace: &Path, tool: &str, args: &Value) -> String {
@@ -303,7 +392,15 @@ pub fn run_readonly_tool(workspace: &Path, tool: &str, args: &Value) -> String {
 }
 
 pub const READONLY_TOOLS: &[&str] = &["read_file", "glob", "grep"];
-pub const BUILTIN_TOOL_NAMES: &[&str] = &["read_file", "glob", "grep", "bash"];
+pub const BUILTIN_TOOL_NAMES: &[&str] = &[
+    "read_file",
+    "glob",
+    "grep",
+    "write_file",
+    "edit_file",
+    "bash",
+];
+pub const EDIT_TOOLS: &[&str] = &["write_file", "edit_file"];
 
 #[cfg(test)]
 mod tests {
@@ -345,9 +442,26 @@ mod tests {
     }
 
     #[test]
+    fn write_and_edit_file() {
+        let dir = TempDir::new().unwrap();
+        let out = tool_write_file(
+            dir.path(),
+            &json!({"path": "sub/a.txt", "content": "hello world"}),
+        );
+        assert!(out.contains("Wrote sub/a.txt"));
+        let out = tool_edit_file(
+            dir.path(),
+            &json!({"path": "sub/a.txt", "old_string": "world", "new_string": "meris"}),
+        );
+        assert!(out.contains("Edited sub/a.txt"));
+        let text = fs::read_to_string(dir.path().join("sub/a.txt")).unwrap();
+        assert_eq!(text, "hello meris");
+    }
+
+    #[test]
     fn schemas_match_readonly_count() {
         assert_eq!(tool_schemas(true).len(), 3);
-        assert_eq!(tool_schemas(false).len(), 4);
+        assert_eq!(tool_schemas(false).len(), 6);
     }
 
     #[test]

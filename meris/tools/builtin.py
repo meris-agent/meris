@@ -72,21 +72,27 @@ def build_tools(workspace: Path, read_only: bool = False) -> ToolRegistry:
     if not read_only:
 
         async def write_file(args: dict) -> str:
-            p = _resolve(workspace, args["path"])
-            p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(args["content"], encoding="utf-8")
-            return f"Wrote {args['path']} ({len(args['content'])} bytes)"
+            async def _py(a: dict) -> str:
+                p = _resolve(workspace, a["path"])
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(a["content"], encoding="utf-8")
+                return f"Wrote {a['path']} ({len(a['content'])} bytes)"
+
+            return await _native_or(workspace, "write_file", args, _py)
 
         async def edit_file(args: dict) -> str:
-            p = _resolve(workspace, args["path"])
-            if not p.is_file():
-                return f"Error: not a file: {args['path']}"
-            text = p.read_text(encoding="utf-8")
-            old, new = args["old_string"], args["new_string"]
-            if old not in text:
-                return "Error: old_string not found in file"
-            p.write_text(text.replace(old, new, 1), encoding="utf-8")
-            return f"Edited {args['path']}"
+            async def _py(a: dict) -> str:
+                p = _resolve(workspace, a["path"])
+                if not p.is_file():
+                    return f"Error: not a file: {a['path']}"
+                text = p.read_text(encoding="utf-8")
+                old, new = a["old_string"], a["new_string"]
+                if old not in text:
+                    return "Error: old_string not found in file"
+                p.write_text(text.replace(old, new, 1), encoding="utf-8")
+                return f"Edited {a['path']}"
+
+            return await _native_or(workspace, "edit_file", args, _py)
 
         reg.register(
             Tool(

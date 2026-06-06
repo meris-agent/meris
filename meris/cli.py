@@ -280,6 +280,44 @@ def harness_check_cmd(
         raise typer.Exit(1)
 
 
+@harness_app.command("post-edit")
+def harness_post_edit_cmd(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    json_out: bool = typer.Option(False, "--json", help="Emit JSON for meris-rs bridge"),
+) -> None:
+    """Run sensors.postEdit commands from settings."""
+    from meris.harness.sensors import run_post_edit_sensors
+
+    ok, out = asyncio.run(run_post_edit_sensors(cwd.resolve()))
+    if json_out:
+        import json
+
+        console.print(json.dumps({"ok": ok, "output": out}))
+    elif out:
+        console.print(out)
+    if not ok:
+        raise typer.Exit(1)
+
+
+@harness_app.command("on-complete")
+def harness_on_complete_cmd(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    json_out: bool = typer.Option(False, "--json", help="Emit JSON for meris-rs bridge"),
+) -> None:
+    """Run DoD / onComplete sensors (AGENTS.md)."""
+    from meris.harness.sensors import run_sensors
+
+    ok, out = asyncio.run(run_sensors(cwd.resolve()))
+    if json_out:
+        import json
+
+        console.print(json.dumps({"ok": ok, "output": out}))
+    elif out:
+        console.print(out)
+    if not ok:
+        raise typer.Exit(1)
+
+
 @app.command("version")
 def version_cmd() -> None:
     """Print package version."""

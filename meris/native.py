@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import os
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable, Union
+
+ApproveFn = Callable[[str, dict], Union[bool, Awaitable[bool]]]
 
 from meris.config import env_get, env_tri
 
@@ -259,7 +262,7 @@ def native_sandbox_check(
     return None
 
 
-NATIVE_BUILTIN_TOOLS = frozenset({"read_file", "glob", "grep", "bash"})
+NATIVE_BUILTIN_TOOLS = frozenset({"read_file", "glob", "grep", "write_file", "edit_file", "bash"})
 NATIVE_READONLY_TOOLS = frozenset({"read_file", "glob", "grep"})
 
 
@@ -346,6 +349,9 @@ async def stream_native_agent_loop(
     max_turns: int = 30,
     session_id: str | None = None,
     resume: bool = False,
+    require_approval: bool = False,
+    run_sensors_at_end: bool = True,
+    approve_fn: ApproveFn | None = None,
 ):
     """Yield progress lines from meris-rs agent run (async iterator)."""
     binary = find_native_binary()
@@ -368,16 +374,43 @@ async def stream_native_agent_loop(
         cmd.extend(["--session-id", session_id])
     if resume:
         cmd.append("--resume")
+    if require_approval:
+        cmd.append("--require-approval")
+    if not run_sensors_at_end:
+        cmd.append("--no-sensor")
+    stdin_pipe = asyncio.subprocess.PIPE if require_approval else None
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
+        stdin=stdin_pipe,
     )
     assert proc.stdout is not None
+
+    async def _respond_approval(line: str) -> None:
+        if not require_approval or proc.stdin is None:
+            return
+        payload = json.loads(line.removeprefix("@meris-approve ").strip())
+        tool = payload.get("tool", "")
+        args = payload.get("args") or {}
+        approved = False
+        if approve_fn is not None:
+            result = approve_fn(tool, args)
+            if inspect.isawaitable(result):
+                approved = await result
+            else:
+                approved = bool(result)
+        proc.stdin.write((json.dumps({"approved": approved}) + "\n").encode("utf-8"))
+        await proc.stdin.drain()
+
     async for raw in proc.stdout:
         line = raw.decode("utf-8", errors="replace").rstrip("\n\r")
-        if line:
-            yield line
+        if not line:
+            continue
+        if line.startswith("@meris-approve "):
+            await _respond_approval(line)
+            continue
+        yield line
     await proc.wait()
 
 

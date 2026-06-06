@@ -81,9 +81,8 @@ async def agent_loop(
 
     if (
         native_loop_enabled()
-        and mode in ("ask", "plan", "review")
+        and mode in ("ask", "plan", "review", "run")
         and provider is None
-        and not require_approval
     ):
         async for line in stream_native_agent_loop(
             ws,
@@ -92,6 +91,9 @@ async def agent_loop(
             max_turns=max_turns,
             session_id=session_id,
             resume=resume,
+            require_approval=require_approval,
+            run_sensors_at_end=run_sensors_at_end and mode == "run",
+            approve_fn=approve_fn,
         ):
             yield line
         return

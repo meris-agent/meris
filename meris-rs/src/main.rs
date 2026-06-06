@@ -168,6 +168,10 @@ enum AgentAction {
         session_id: Option<String>,
         #[arg(long)]
         resume: bool,
+        #[arg(long, help = "Prompt stdin for non-readonly tools (@meris-approve protocol)")]
+        require_approval: bool,
+        #[arg(long, help = "Skip DoD sensors at end (run mode)")]
+        no_sensor: bool,
     },
     /// Session management (Python-compatible JSON)
     Session {
@@ -417,6 +421,8 @@ fn main() {
                 max_turns,
                 session_id,
                 resume,
+                require_approval,
+                no_sensor,
             } => match run_agent(AgentConfig {
                 workspace,
                 task,
@@ -424,15 +430,17 @@ fn main() {
                 max_turns,
                 session_id,
                 resume,
+                require_approval,
+                run_sensors_at_end: !no_sensor,
             }) {
                 Ok(result) => {
                     for line in result.lines {
                         println!("{line}");
                     }
-                    if result.status != "completed" {
-                        2
-                    } else {
-                        0
+                    match result.status.as_str() {
+                        "completed" => 0,
+                        "dod_failed" | "max_turns" => 2,
+                        _ => 2,
                     }
                 }
                 Err(e) => {
