@@ -23,6 +23,8 @@ meris-rs permissions --workspace . --tool bash --args '{"command":"git status"}'
 meris-rs sandbox check --workspace . --command "pwd" --mode strict
 meris-rs sandbox run --workspace . --timeout 120 -- pytest tests/ -q
 meris-rs sandbox probe --workspace .   # bubblewrap availability (Linux)
+meris-rs provider probe                # LLM env (base URL, model, key set)
+meris-rs provider chat --model M < msgs.json
 meris-rs run doctor          # delegates to Python `meris`
 ```
 

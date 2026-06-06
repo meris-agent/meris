@@ -105,6 +105,7 @@ End-user onboarding (install → API key → `init-harness` → `doctor`): **[do
 | `MERIS_MODEL` | Model name |
 | `MERIS_PROVIDER=anthropic` | Use native Anthropic (`ANTHROPIC_API_KEY`) |
 | `MERIS_NATIVE` | `1`/`0` force on/off; unset + built `meris-rs` → auto native |
+| `MERIS_NATIVE_PROVIDER` | `0` to keep Python HTTP for chat while native harness on |
 
 **Context budget** in `.meris/settings.yaml`:
 

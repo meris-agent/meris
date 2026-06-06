@@ -102,3 +102,6 @@ jobs:
 
       - name: Native parity
         run: python scripts/check_native_parity.py
+
+      - name: Provider probe
+        run: ./meris-rs/target/release/meris-rs provider probe | grep -q baseUrl

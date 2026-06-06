@@ -34,6 +34,17 @@ def get_provider(
             ) from e
         return AnthropicProvider(api_key=cfg.api_key or None, model=cfg.model)
 
+    if cfg.backend == "openai_compat":
+        from meris.native import native_provider_enabled
+        from meris.provider.rust_openai import RustOpenAIProvider
+
+        if native_provider_enabled() and RustOpenAIProvider.available():
+            return RustOpenAIProvider(
+                api_key=cfg.api_key or None,
+                base_url=cfg.base_url or None,
+                model=cfg.model,
+            )
+
     return OpenAICompatProvider(
         api_key=cfg.api_key or None,
         base_url=cfg.base_url or None,

@@ -61,6 +61,8 @@ def test_anthropic_split_messages() -> None:
 def test_get_provider_openai_default(monkeypatch) -> None:
     monkeypatch.delenv("MERIS_PROVIDER", raising=False)
     monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.setenv("MERIS_NATIVE", "0")
+    monkeypatch.setenv("MERIS_NATIVE_PROVIDER", "0")
     p = get_provider()
     assert p.__class__.__name__ == "OpenAICompatProvider"
 

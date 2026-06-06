@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +47,16 @@ def native_enabled() -> bool:
     return find_native_binary() is not None
 
 
+def native_provider_enabled() -> bool:
+    """Use meris-rs for LLM chat when enabled (inherits MERIS_NATIVE auto unless MERIS_NATIVE_PROVIDER set)."""
+    tri = env_tri("NATIVE_PROVIDER")
+    if tri is False:
+        return False
+    if tri is True:
+        return find_native_binary() is not None
+    return native_enabled()
+
+
 def native_status() -> dict[str, Any]:
     binary = find_native_binary()
     version = None
@@ -66,6 +77,8 @@ def native_status() -> dict[str, Any]:
         "binary": str(binary) if binary else None,
         "version": version,
         "source": str(_repo_root() / "meris-rs"),
+        "nativeEnabled": native_enabled(),
+        "nativeProviderEnabled": native_provider_enabled(),
     }
 
 
@@ -289,3 +302,56 @@ def native_run_bash(
     if not out.strip() and proc.returncode != 0:
         return f"exit={proc.returncode}\n(native sandbox failed)"
     return out.strip() or f"exit={proc.returncode}"
+
+
+def native_provider_chat(
+    messages: list[dict[str, Any]],
+    tools: list[dict[str, Any]] | None,
+    base_url: str,
+    model: str,
+    *,
+    timeout: int = 120,
+) -> dict[str, Any] | None:
+    """Call meris-rs provider chat; returns assistant message dict or None."""
+    if not find_native_binary():
+        return None
+    tools_path: Path | None = None
+    try:
+        args = [
+            "provider",
+            "chat",
+            "--base-url",
+            base_url,
+            "--model",
+            model,
+            "--timeout",
+            str(timeout),
+        ]
+        if tools:
+            tmp = tempfile.NamedTemporaryFile(
+                mode="w",
+                suffix=".json",
+                delete=False,
+                encoding="utf-8",
+            )
+            json.dump(tools, tmp, ensure_ascii=False)
+            tmp.close()
+            tools_path = Path(tmp.name)
+            args.extend(["--tools", str(tools_path)])
+        proc = _run_native(
+            args,
+            timeout=timeout + 30,
+            input_text=json.dumps(messages, ensure_ascii=False),
+        )
+    finally:
+        if tools_path and tools_path.is_file():
+            tools_path.unlink(missing_ok=True)
+    if proc is None or proc.returncode != 0:
+        return None
+    try:
+        data = json.loads(proc.stdout)
+        if isinstance(data, dict):
+            return data
+    except json.JSONDecodeError:
+        return None
+    return None

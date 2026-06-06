@@ -2,9 +2,9 @@
 
 use clap::{Parser, Subcommand};
 use meris_rs::{
-    check_bash_sandbox, check_tool_allowed, compress_messages, estimate_tokens, get_bash_timeout,
-    get_sandbox_mode, load_settings, os_sandbox_probe_workspace, run_bash_in_workspace,
-    verdict_to_json,
+    chat_completions, check_bash_sandbox, check_tool_allowed, compress_messages, estimate_tokens,
+    get_bash_timeout, get_sandbox_mode, load_settings, os_sandbox_probe_workspace,
+    probe_provider, resolve_config, run_bash_in_workspace, verdict_to_json,
 };
 use serde_json::Value;
 use std::fs;
@@ -38,6 +38,11 @@ enum Commands {
     Sandbox {
         #[command(subcommand)]
         action: SandboxAction,
+    },
+    /// OpenAI-compatible LLM chat (P5-2)
+    Provider {
+        #[command(subcommand)]
+        action: ProviderAction,
     },
     /// Print version and build info
     Version,
@@ -89,6 +94,30 @@ enum SandboxAction {
     Probe {
         #[arg(long)]
         workspace: PathBuf,
+    },
+}
+
+#[derive(Subcommand)]
+enum ProviderAction {
+    /// Show resolved base URL / model / key presence (JSON)
+    Probe {
+        #[arg(long)]
+        base_url: Option<String>,
+        #[arg(long)]
+        model: Option<String>,
+    },
+    /// Chat completions — messages JSON on stdin or --input
+    Chat {
+        #[arg(long)]
+        base_url: Option<String>,
+        #[arg(long)]
+        model: Option<String>,
+        #[arg(long)]
+        input: Option<PathBuf>,
+        #[arg(long, help = "Tools JSON array")]
+        tools: Option<PathBuf>,
+        #[arg(long, default_value_t = 120)]
+        timeout: u64,
     },
 }
 
@@ -228,6 +257,62 @@ fn main() {
                 );
                 0
             }
+        },
+        Commands::Provider { action } => match action {
+            ProviderAction::Probe { base_url, model } => {
+                let probe = probe_provider(base_url.as_deref(), model.as_deref());
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&json!({
+                        "apiKeySet": probe.api_key_set,
+                        "baseUrl": probe.base_url,
+                        "model": probe.model,
+                    }))
+                    .unwrap()
+                );
+                0
+            }
+            ProviderAction::Chat {
+                base_url,
+                model,
+                input,
+                tools,
+                timeout,
+            } => match resolve_config(base_url.as_deref(), model.as_deref()) {
+                Ok(cfg) => match read_messages(input) {
+                    Ok(messages) => {
+                        let tools_v = match tools {
+                            Some(p) => match fs::read_to_string(&p) {
+                                Ok(t) => serde_json::from_str::<Vec<Value>>(&t).ok(),
+                                Err(e) => {
+                                    eprintln!("Error: tools file: {e}");
+                                    return 1;
+                                }
+                            },
+                            None => None,
+                        };
+                        let tools_slice = tools_v.as_deref();
+                        match chat_completions(&cfg, &messages, tools_slice, timeout) {
+                            Ok(msg) => {
+                                println!("{}", serde_json::to_string(&msg).unwrap());
+                                0
+                            }
+                            Err(e) => {
+                                eprintln!("{e}");
+                                1
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Error: {e}");
+                        1
+                    }
+                },
+                Err(e) => {
+                    eprintln!("{e}");
+                    1
+                }
+            },
         },
         Commands::Version => {
             println!("meris-rs {}", env!("CARGO_PKG_VERSION"));
