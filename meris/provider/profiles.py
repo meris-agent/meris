@@ -8,6 +8,7 @@ _DEFAULT_HINTS: dict[str, str] = {
     "ask": "只读问答、查位置、解释代码",
     "plan": "写计划、拆任务、不改仓库",
     "run": "改代码、跑命令、实现功能",
+    "review": "只读 code review、输出 checklist",
 }
 
 

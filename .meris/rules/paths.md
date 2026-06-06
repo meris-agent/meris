@@ -1,3 +1,7 @@
+---
+inject: always
+---
+
 # 路径规范（Meris 仓库 cwd）
 
 - Python **包**在 `meris/` 目录：`meris/cli.py`、`meris/harness/`、`meris/tools/`

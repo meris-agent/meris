@@ -55,8 +55,20 @@ def load_permissions(workspace) -> dict:
     return load_settings(workspace)
 
 
-def check_tool_allowed(tool_name: str, args: dict, settings: dict) -> str | None:
+def check_tool_allowed(
+    tool_name: str,
+    args: dict,
+    settings: dict,
+    workspace: Path | None = None,
+) -> str | None:
     """Return error message if blocked, else None."""
+    if workspace is not None:
+        from meris.native import native_check_tool_allowed
+
+        used, err = native_check_tool_allowed(workspace, tool_name, args)
+        if used:
+            return err
+
     perms = settings.get("permissions", {})
     deny = perms.get("deny", [])
     allow = perms.get("allow", [])

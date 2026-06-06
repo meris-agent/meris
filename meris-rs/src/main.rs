@@ -1,7 +1,10 @@
 //! `meris-rs` — native CLI for harness primitives; delegates full agent loop to Python `meris`.
 
 use clap::{Parser, Subcommand};
-use meris_rs::{check_tool_allowed, compress_messages, estimate_tokens, load_settings};
+use meris_rs::{
+    check_bash_sandbox, check_tool_allowed, compress_messages, estimate_tokens, get_bash_timeout,
+    get_sandbox_mode, load_settings, run_bash_in_workspace, verdict_to_json,
+};
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
@@ -30,6 +33,11 @@ enum Commands {
         #[arg(long, default_value = "{}")]
         args: String,
     },
+    /// Bash sandbox (cwd-locked run + policy check)
+    Sandbox {
+        #[command(subcommand)]
+        action: SandboxAction,
+    },
     /// Print version and build info
     Version,
     /// Delegate to Python `meris` CLI (same argv minus `run`)
@@ -53,6 +61,28 @@ enum ContextAction {
         max_tokens: Option<usize>,
         #[arg(long, default_value_t = 2000)]
         max_tool_tokens: usize,
+    },
+}
+
+#[derive(Subcommand)]
+enum SandboxAction {
+    /// Scan bash command for sandbox issues (JSON to stdout)
+    Check {
+        #[arg(long)]
+        workspace: PathBuf,
+        #[arg(long)]
+        command: String,
+        #[arg(long)]
+        mode: Option<String>,
+    },
+    /// Run shell command with cwd locked to workspace
+    Run {
+        #[arg(long)]
+        workspace: PathBuf,
+        #[arg(long)]
+        timeout: Option<u64>,
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        cmd: Vec<String>,
     },
 }
 
@@ -115,6 +145,68 @@ fn main() {
                 }
             }
         }
+        Commands::Sandbox { action } => match action {
+            SandboxAction::Check {
+                workspace,
+                command,
+                mode,
+            } => {
+                let settings = load_settings(&workspace);
+                let mode_s = mode
+                    .map(|m| m.trim().to_lowercase())
+                    .filter(|m| matches!(m.as_str(), "off" | "warn" | "strict"))
+                    .unwrap_or_else(|| get_sandbox_mode(&settings));
+                match check_bash_sandbox(&command, &mode_s) {
+                    Some(v) => {
+                        println!("{}", serde_json::to_string(&verdict_to_json(&v)).unwrap());
+                        if v.blocked { 1 } else { 0 }
+                    }
+                    None => {
+                        println!(r#"{{"ok":true,"mode":"{mode_s}"}}"#);
+                        0
+                    }
+                }
+            }
+            SandboxAction::Run {
+                workspace,
+                timeout,
+                cmd,
+            } => {
+                if cmd.is_empty() {
+                    eprintln!("Error: missing command after --");
+                    1
+                } else {
+                    let settings = load_settings(&workspace);
+                    let shell_cmd = if cmd.len() == 1 {
+                        cmd[0].clone()
+                    } else {
+                        cmd.join(" ")
+                    };
+                    let mode = get_sandbox_mode(&settings);
+                    let timeout_secs = timeout.unwrap_or_else(|| get_bash_timeout(&settings));
+                    let execute = || match run_bash_in_workspace(&workspace, &shell_cmd, timeout_secs) {
+                        Ok((code, out)) => {
+                            print!("exit={code}\n{out}");
+                            if code == 0 { 0 } else { code as i32 }
+                        }
+                        Err(e) => {
+                            eprintln!("{e}");
+                            1
+                        }
+                    };
+                    if let Some(v) = check_bash_sandbox(&shell_cmd, &mode) {
+                        if v.blocked {
+                            eprintln!("{}", v.message);
+                            1
+                        } else {
+                            execute()
+                        }
+                    } else {
+                        execute()
+                    }
+                }
+            }
+        },
         Commands::Version => {
             println!("meris-rs {}", env!("CARGO_PKG_VERSION"));
             0

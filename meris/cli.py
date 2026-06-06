@@ -31,6 +31,7 @@ ratchet_app = typer.Typer(help="Harness self-evolution (Ratchet)")
 insights_app = typer.Typer(help="Habit insights from session history (confirm → evolve)")
 models_app = typer.Typer(help="LLM provider presets (multi-vendor)")
 native_app = typer.Typer(help="Native Rust core (meris-rs)")
+harness_app = typer.Typer(help="Harness validation")
 app.add_typer(tui_app, name="tui")
 app.add_typer(mcp_app, name="mcp")
 app.add_typer(session_app, name="session")
@@ -40,6 +41,7 @@ app.add_typer(ratchet_app, name="ratchet")
 ratchet_app.add_typer(insights_app, name="insights")
 app.add_typer(models_app, name="models")
 app.add_typer(native_app, name="native")
+app.add_typer(harness_app, name="harness")
 
 console = Console()
 
@@ -84,16 +86,25 @@ async def _stream(
     resume: bool = False,
     plan_output: str | Path | None = "__default__",
     ratchet: bool = False,
-) -> None:
+    event_stream_path: str | Path | None = None,
+    json_output: bool = False,
+) -> dict | None:
+    from meris.harness.protocol import EventStream, emit_submission
+
     cancel = asyncio.Event()
     interrupted = False
+    stream = EventStream.memory() if json_output else EventStream.open(event_stream_path)
+    lines: list[str] = []
+    result: dict = {"status": "unknown", "session": "", "lines": lines, "events": []}
 
     def _on_sigint(_signum, _frame) -> None:
         nonlocal interrupted
         if not cancel.is_set():
             interrupted = True
             cancel.set()
-            console.print("\n[yellow]Ctrl+C — saving session, stopping after current step…[/yellow]")
+            emit_submission(stream, action="cancel", task=task[:200])
+            if not json_output:
+                console.print("\n[yellow]Ctrl+C — saving session, stopping after current step…[/yellow]")
 
     prev = signal.signal(signal.SIGINT, _on_sigint)
     kwargs: dict = {
@@ -104,24 +115,44 @@ async def _stream(
         "resume": resume,
         "cancel": cancel,
         "plan_output": plan_output,
+        "event_stream": stream,
     }
     if require_approval:
         kwargs["approve_fn"] = _make_approver()
+    emit_submission(stream, action="user", task=task[:200])
     try:
         async for line in agent_loop(workspace, task, mode=mode, **kwargs):
-            console.print(line)
+            lines.append(line)
+            if not json_output:
+                console.print(line)
     finally:
         signal.signal(signal.SIGINT, prev)
-        if interrupted:
+        if stream:
+            if stream.collector is not None:
+                result["events"] = stream.collector
+                for ev in reversed(stream.collector):
+                    if ev.get("kind") == "done":
+                        result["status"] = ev.get("status", "unknown")
+                        result["session"] = ev.get("session", "")
+                        break
+                    if ev.get("kind") == "session_start":
+                        result["session"] = result["session"] or ev.get("session", "")
+            if not json_output:
+                stream.close()
+        if interrupted and not json_output:
             console.print("[dim]Resume with: meris session list → meris session resume <id>[/dim]")
         if ratchet:
             from meris.harness.sessions import list_sessions
 
-            sid = session_id
+            sid = session_id or result.get("session")
             if not sid:
                 sessions = list_sessions(workspace)
                 sid = sessions[0].id if sessions else None
             _ratchet_after_run(workspace, sid)
+    if json_output:
+        result["lines"] = lines
+        return result
+    return None
 
 
 @models_app.command("list")
@@ -228,6 +259,25 @@ def doctor_cmd(
         raise typer.Exit(1)
 
 
+@harness_app.command("check")
+def harness_check_cmd(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+) -> None:
+    """Static harness checks (paths, imports). Exit 1 on failure."""
+    from meris.harness.check import harness_check_failed, run_harness_check
+
+    results = run_harness_check(cwd.resolve())
+    table = Table("Check", "Status", "Detail")
+    for r in results:
+        style = "green" if r.ok else "red"
+        table.add_row(r.name, f"[{style}]{'ok' if r.ok else 'fail'}[/]", r.detail[:70])
+        if not r.ok and r.hint:
+            console.print(f"  [dim]hint:[/dim] {r.hint}")
+    console.print(table)
+    if harness_check_failed(results):
+        raise typer.Exit(1)
+
+
 @app.command("version")
 def version_cmd() -> None:
     """Print package version."""
@@ -286,6 +336,12 @@ def init_harness(
         elif (tpl / "settings.json").is_file():
             shutil.copy(tpl / "settings.json", settings_json)
             console.print(f"[green]Created[/green] {settings_json}")
+
+    docs_harness = ws / "docs" / "harness"
+    tpl_docs = tpl / "docs" / "harness"
+    if tpl_docs.is_dir() and not docs_harness.exists():
+        shutil.copytree(tpl_docs, docs_harness)
+        console.print(f"[green]Created[/green] {docs_harness}/")
 
     console.print("[bold]Harness initialized.[/bold] Edit AGENTS.md for your stack.")
     console.print("[dim]Next: meris ratchet learn --init[/dim]")
@@ -384,6 +440,9 @@ def ask_cmd(
     ratchet: bool = typer.Option(
         False, "--ratchet", help="After run: refresh profile + scan for harness proposals"
     ),
+    event_stream: Path | None = typer.Option(
+        None, "--event-stream", help="Append JSONL events to path (- for stdout)"
+    ),
 ) -> None:
     """Read-only exploration (Cursor Ask mode)."""
     _run_async(
@@ -394,6 +453,7 @@ def ask_cmd(
             session_id=session_id,
             plan_output=None,
             ratchet=ratchet,
+            event_stream_path=event_stream,
         )
     )
 
@@ -406,6 +466,7 @@ def plan_cmd(
     out: Path | None = typer.Option(None, "--out", "-o", help="Plan output path"),
     no_save: bool = typer.Option(False, "--no-save", help="Do not write tasks.md"),
     ratchet: bool = typer.Option(False, "--ratchet", help="After run: refresh profile + scan proposals"),
+    event_stream: Path | None = typer.Option(None, "--event-stream", help="JSONL event log path"),
 ) -> None:
     """Generate plan / tasks without editing code (Cursor Plan + Kiro tasks)."""
     plan_out: str | Path | None = None if no_save else (out or "__default__")
@@ -417,8 +478,65 @@ def plan_cmd(
             session_id=session_id,
             plan_output=plan_out,
             ratchet=ratchet,
+            event_stream_path=event_stream,
         )
     )
+
+
+@app.command("review")
+def review_cmd(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    staged: bool = typer.Option(False, "--staged", help="Review staged diff only"),
+    max_turns: int = typer.Option(12, "--max-turns"),
+    event_stream: Path | None = typer.Option(None, "--event-stream"),
+) -> None:
+    """Read-only code review of git diff (markdown checklist output)."""
+    from meris.harness.review import build_review_task
+
+    ws = cwd.resolve()
+    try:
+        task = build_review_task(ws, staged=staged)
+    except RuntimeError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1) from e
+    _run_async(
+        _stream(
+            task,
+            ws,
+            "review",
+            max_turns=max_turns,
+            run_sensors_at_end=False,
+            plan_output=None,
+            event_stream_path=event_stream,
+        )
+    )
+
+
+@app.command("exec")
+def exec_cmd(
+    task: str = typer.Argument(...),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    mode: str = typer.Option("run", "--mode", "-m", help="run | ask | plan | review"),
+    max_turns: int = typer.Option(30, "--max-turns"),
+    json_out: bool = typer.Option(False, "--json", help="Print JSON result on stdout"),
+    no_sensor: bool = typer.Option(False, "--no-sensor"),
+) -> None:
+    """Headless agent run for CI/scripts (optional --json)."""
+    import json as json_mod
+
+    out = _run_async(
+        _stream(
+            task,
+            cwd.resolve(),
+            mode,
+            max_turns=max_turns,
+            run_sensors_at_end=not no_sensor and mode == "run",
+            plan_output=None if mode != "plan" else "__default__",
+            json_output=json_out,
+        )
+    )
+    if json_out and out is not None:
+        console.print(json_mod.dumps(out, ensure_ascii=False, indent=2))
 
 
 @app.command("run")
@@ -440,6 +558,7 @@ def run_cmd(
         "--ratchet",
         help="After run: refresh profile + scan for harness proposals",
     ),
+    event_stream: Path | None = typer.Option(None, "--event-stream", help="JSONL event log path"),
 ) -> None:
     """Full agent loop with tools + sensors (default mode)."""
     ws = cwd.resolve()
@@ -469,6 +588,7 @@ def run_cmd(
             session_id=session_id,
             plan_output=None,
             ratchet=ratchet,
+            event_stream_path=event_stream,
         )
     )
 
@@ -1092,6 +1212,9 @@ def ratchet_apply(
     cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
     verify: bool = typer.Option(False, "--verify", help="Run proposal verify commands"),
     force_agents: bool = typer.Option(False, "--force-agents", help="Allow AGENTS.md patches"),
+    force_settings: bool = typer.Option(
+        False, "--force-settings", help="Allow .meris/settings.* patches"
+    ),
 ) -> None:
     """Apply a pending proposal to harness files."""
     from meris.harness.ratchet import load_proposal
@@ -1101,7 +1224,7 @@ def ratchet_apply(
     if not p or p.status != "pending":
         console.print(f"[red]Pending proposal not found: {proposal_id}[/red]")
         raise typer.Exit(1)
-    _ratchet_apply_one(ws, p, verify=verify, force_agents=force_agents)
+    _ratchet_apply_one(ws, p, verify=verify, force_agents=force_agents, force_settings=force_settings)
 
 
 @ratchet_app.command("revert")
@@ -1125,11 +1248,17 @@ def _ratchet_apply_one(
     *,
     verify: bool = False,
     force_agents: bool = False,
+    force_settings: bool = False,
 ) -> None:
     from meris.harness.ratchet import apply_proposal
 
     try:
-        dest = apply_proposal(workspace, proposal, force_agents=force_agents)
+        dest = apply_proposal(
+            workspace,
+            proposal,
+            force_agents=force_agents,
+            force_settings=force_settings,
+        )
     except ValueError as e:
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1) from e

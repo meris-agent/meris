@@ -29,6 +29,15 @@ jobs:
       - name: Ruff check
         run: ruff check meris tests
 
+      - name: Harness check
+        run: meris harness check --cwd .
+
+      - name: Benchmark mock (offline)
+        run: python scripts/run_benchmark_mock.py
+
+      - name: Ratchet status
+        run: meris ratchet status --cwd .
+
   rust:
     runs-on: ubuntu-latest
     steps:
@@ -43,3 +52,17 @@ jobs:
       - name: Cargo build release
         working-directory: meris-rs
         run: cargo build --release
+
+      - name: Sandbox check smoke
+        run: |
+          ./meris-rs/target/release/meris-rs sandbox check \
+            --workspace .. \
+            --command "pwd" \
+            --mode strict | grep -q blocked
+
+      - name: Sandbox allow pytest pattern
+        run: |
+          ./meris-rs/target/release/meris-rs sandbox check \
+            --workspace .. \
+            --command 'pytest tests/ -m "not integration" -q' \
+            --mode warn | grep -q '"ok"'

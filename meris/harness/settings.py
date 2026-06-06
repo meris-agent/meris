@@ -41,6 +41,10 @@ DEFAULT_SETTINGS: dict = {
         "maxToolTokens": 2000,
     },
     "blockedPaths": ["**/generated/**", "**/node_modules/**"],
+    "sandbox": {
+        "mode": "warn",
+        "bashTimeoutSec": 120,
+    },
     "hooks": {
         "preToolUse": [],
         "postToolUse": [],
@@ -54,10 +58,46 @@ DEFAULT_SETTINGS: dict = {
 def _deep_merge(base: dict, override: dict) -> dict:
     out = dict(base)
     for key, val in override.items():
-        if isinstance(val, dict) and isinstance(out.get(key), dict):
+        if key == "models" and isinstance(val, dict) and isinstance(out.get("models"), dict):
+            out["models"] = _merge_models(out["models"], val)
+        elif isinstance(val, dict) and isinstance(out.get(key), dict):
             out[key] = _deep_merge(out[key], val)
         else:
             out[key] = val
+    return out
+
+
+def _merge_rules_by_name(base: list, override: list) -> list:
+    """Merge routing rules by ``name`` — local overrides shared without replacing whole list."""
+    named: dict[str, dict] = {}
+    unnamed: list = []
+    for item in base:
+        if isinstance(item, dict) and item.get("name"):
+            named[str(item["name"])] = dict(item)
+        else:
+            unnamed.append(item)
+    for item in override:
+        if isinstance(item, dict) and item.get("name"):
+            key = str(item["name"])
+            if key in named:
+                named[key] = _deep_merge(named[key], item)
+            else:
+                named[key] = dict(item)
+        else:
+            unnamed.append(item)
+    return unnamed + list(named.values())
+
+
+def _merge_models(base: dict, override: dict) -> dict:
+    out = _deep_merge({k: v for k, v in base.items() if k != "rules"}, {k: v for k, v in override.items() if k != "rules"})
+    base_rules = base.get("rules")
+    over_rules = override.get("rules")
+    if isinstance(base_rules, list) and isinstance(over_rules, list):
+        out["rules"] = _merge_rules_by_name(base_rules, over_rules)
+    elif over_rules is not None:
+        out["rules"] = over_rules
+    elif base_rules is not None:
+        out["rules"] = base_rules
     return out
 
 

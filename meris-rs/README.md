@@ -19,7 +19,9 @@ Requires [Rust](https://rustup.rs) 1.70+.
 meris-rs version
 meris-rs context tokens "hello world"
 meris-rs context compress --max-tokens 3000 < messages.json
-meris-rs permissions check --workspace . --tool bash --args '{"command":"git status"}'
+meris-rs permissions --workspace . --tool bash --args '{"command":"git status"}'
+meris-rs sandbox check --workspace . --command "pwd" --mode strict
+meris-rs sandbox run --workspace . --timeout 120 -- pytest tests/ -q
 meris-rs run doctor          # delegates to Python `meris`
 ```
 

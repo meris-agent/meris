@@ -67,6 +67,62 @@ def check_harness(workspace: Path) -> list[CheckResult]:
     except Exception:
         results.append(CheckResult("ratchet", "ok", "not initialized"))
 
+    try:
+        from meris.harness.guides import estimate_prompt_chars
+        from meris.harness.sandbox import get_bash_timeout, get_sandbox_mode
+        from meris.native import find_native_binary
+
+        chars = estimate_prompt_chars(ws, mode="run")
+        if chars > 28_000:
+            results.append(
+                CheckResult(
+                    "system prompt",
+                    "warn",
+                    f"~{chars} chars — slim AGENTS / use docs/harness (Phase E1)",
+                )
+            )
+        elif chars > 18_000:
+            results.append(
+                CheckResult(
+                    "system prompt",
+                    "warn",
+                    f"~{chars} chars — move detail to docs/harness/",
+                )
+            )
+        else:
+            results.append(CheckResult("system prompt", "ok", f"~{chars} chars"))
+    except Exception:
+        pass
+
+    mode = get_sandbox_mode(settings)
+    timeout = get_bash_timeout(settings)
+    native = find_native_binary()
+    native_note = ", meris-rs sandbox run" if native else ", build: meris native build"
+    if mode == "off":
+        results.append(
+            CheckResult(
+                "sandbox",
+                "warn",
+                f"mode=off, bashTimeout={timeout}s — consider warn/strict (Phase E3){native_note}",
+            )
+        )
+    elif mode == "strict":
+        results.append(
+            CheckResult(
+                "sandbox",
+                "ok",
+                f"mode=strict, bashTimeout={timeout}s — cd/find/pwd blocked{native_note}",
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "sandbox",
+                "ok",
+                f"mode={mode}, bashTimeout={timeout}s — risky bash warns only{native_note}",
+            )
+        )
+
     return results
 
 

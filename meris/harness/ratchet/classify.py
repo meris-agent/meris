@@ -12,6 +12,7 @@ LESSON_TARGETS: dict[str, str] = {
     "L-format": ".meris/skills/plan-format.md",
     "L-cwd": ".meris/rules/workspace.md",
     "L-path": ".meris/rules/paths.md",
+    "L-harness-check": ".meris/rules/paths.md",
 }
 
 
@@ -107,6 +108,30 @@ def _paths_proposal(ev: dict[str, Any]) -> Proposal:
     )
 
 
+def _harness_check_proposal(ev: dict[str, Any]) -> Proposal:
+    marker = "<!-- ratchet:L-harness-check -->"
+    content = f"""{marker}
+
+## Ratchet (auto)
+
+- 任务结束前运行 `meris harness check` 与 AGENTS DoD（pytest）。
+- 路径用 `README.md`，import 用 `from meris....`；禁止 `forge/`、`meris/README.md`。
+- 触发: {ev.get("detail", "")[:120]}
+"""
+    return Proposal(
+        id=new_proposal_id(),
+        lesson="L-harness-check",
+        summary="Harness 静态检查或 DoD 失败（路径/import/pytest）",
+        target=ProposalTarget(
+            path=".meris/rules/paths.md",
+            action="append",
+            content=content,
+        ),
+        signals=[ev.get("kind", "")],
+        verify=["meris harness check"],
+    )
+
+
 def classify_event(
     workspace: Path,
     ev: dict[str, Any],
@@ -119,6 +144,20 @@ def classify_event(
     if kind == "benchmark_fail" and "missing: [ ]" in det:
         if not _lesson_applied(workspace, "L-format", existing):
             return _plan_format_proposal(ev)
+
+    if kind in ("harness_check_fail", "dod_failed", "sensor_fail"):
+        if any(
+            x in det
+            for x in ("import:forge", "paths:readme", "harness check", "meris/readme", "forge/")
+        ):
+            if not _lesson_applied(workspace, "L-harness-check", existing):
+                return _harness_check_proposal(ev)
+
+    if kind == "benchmark_fail" and (
+        "meris/readme" in det or "readme.md" in det and "missing:" in det
+    ):
+        if not _lesson_applied(workspace, "L-path", existing):
+            return _paths_proposal(ev)
 
     if kind in ("benchmark_fail", "permission_denied", "approve_denied"):
         if "block" in det or "denied" in det or "permission" in det or "blocked" in det:

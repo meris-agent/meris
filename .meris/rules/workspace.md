@@ -1,3 +1,7 @@
+---
+inject: always
+---
+
 # 工作区 cwd
 
 | 任务 | cwd |

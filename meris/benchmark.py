@@ -12,10 +12,12 @@ from meris.loop import agent_loop
 @dataclass
 class BenchmarkTask:
     id: str
-    task: str
+    task: str = ""
     mode: str = "ask"
     expect: list[str] = field(default_factory=list)
+    reject: list[str] = field(default_factory=list)
     max_turns: int = 8
+    local: str = ""
 
 
 @dataclass
@@ -33,22 +35,54 @@ def load_benchmark_tasks(path: Path) -> list[BenchmarkTask]:
         tasks.append(
             BenchmarkTask(
                 id=item["id"],
-                task=item["task"],
+                task=item.get("task", ""),
                 mode=item.get("mode", "ask"),
                 expect=list(item.get("expect") or []),
+                reject=list(item.get("reject") or []),
                 max_turns=int(item.get("max_turns", 8)),
+                local=item.get("local", ""),
             )
         )
     return tasks
 
 
-def _check_expectations(output: str, expect: list[str]) -> tuple[bool, str]:
+def _check_expectations(
+    output: str, expect: list[str], reject: list[str] | None = None
+) -> tuple[bool, str]:
+    if reject:
+        found = [r for r in reject if r.lower() in output.lower()]
+        if found:
+            return False, f"rejected: {', '.join(found)}"
     if not expect:
         return True, "no expectations"
     missing = [e for e in expect if e.lower() not in output.lower()]
     if missing:
         return False, f"missing: {', '.join(missing)}"
     return True, "all expectations met"
+
+
+def _run_local_task(workspace: Path, local: str) -> tuple[str, str, str]:
+    """Run a non-agent benchmark task. Returns (output, status, detail)."""
+    if local == "harness_check":
+        from meris.harness.check import format_check_summary, harness_check_failed, run_harness_check
+
+        results = run_harness_check(workspace)
+        out = format_check_summary(results)
+        if harness_check_failed(results):
+            return out, "fail", out
+        return out, "pass", "harness check ok"
+    if local == "review_task":
+        from meris.harness.review import build_review_task_from_diff
+
+        fixture = workspace / "scripts" / "benchmark" / "fixtures" / "sample.diff"
+        if not fixture.is_file():
+            return "missing sample.diff fixture", "fail", "fixture not found"
+        task = build_review_task_from_diff(fixture.read_text(encoding="utf-8"))
+        for needle in ("## Summary", "## Issues", "- [ ]", "hello world"):
+            if needle not in task:
+                return task[:500], "fail", f"missing: {needle}"
+        return task[:400], "pass", "review task template ok"
+    raise ValueError(f"unknown local benchmark task: {local}")
 
 
 def _benchmark_output(workspace: Path, lines: list[str], task: BenchmarkTask) -> str:
@@ -74,6 +108,29 @@ async def run_benchmark(
     results: list[BenchmarkResult] = []
     for t in tasks:
         if task_filter and t.id != task_filter and not t.id.startswith(task_filter):
+            continue
+        if t.local:
+            try:
+                joined, status, detail = _run_local_task(workspace, t.local)
+            except Exception as e:
+                results.append(BenchmarkResult(t.id, "error", "", str(e)))
+                continue
+            ok, msg = _check_expectations(joined, t.expect, t.reject)
+            if status == "pass" and ok:
+                results.append(BenchmarkResult(t.id, "pass", "", detail or msg))
+            else:
+                fail_detail = detail if status != "pass" else msg
+                from meris.harness.ratchet import record_event
+
+                record_event(
+                    workspace,
+                    "benchmark_fail",
+                    task_id=t.id,
+                    task=t.local,
+                    detail=fail_detail[:500],
+                    tags=["benchmark", "local", t.local],
+                )
+                results.append(BenchmarkResult(t.id, "fail", "", fail_detail))
             continue
         lines: list[str] = []
         session_id = ""
@@ -103,7 +160,7 @@ async def run_benchmark(
             continue
 
         joined = _benchmark_output(workspace, lines, t)
-        ok, msg = _check_expectations(joined, t.expect)
+        ok, msg = _check_expectations(joined, t.expect, t.reject)
         if not ok:
             status = "fail"
             detail = msg

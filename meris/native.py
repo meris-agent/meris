@@ -30,10 +30,10 @@ def candidate_binaries() -> list[Path]:
 
 
 def find_native_binary() -> Path | None:
-    for p in candidate_binaries():
-        if p.is_file():
-            return p
-    return None
+    existing = [p for p in candidate_binaries() if p.is_file()]
+    if not existing:
+        return None
+    return max(existing, key=lambda p: p.stat().st_mtime)
 
 
 def native_status() -> dict[str, Any]:
@@ -147,3 +147,118 @@ def compress_messages_auto(
         max_tokens=max_tokens,
         max_tool_tokens=max_tool_tokens,
     )
+
+
+def _run_native(
+    args: list[str],
+    *,
+    timeout: int = 30,
+    input_text: str | None = None,
+) -> subprocess.CompletedProcess[str] | None:
+    binary = find_native_binary()
+    if not binary:
+        return None
+    try:
+        return subprocess.run(
+            [str(binary), *args],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def native_check_tool_allowed(
+    workspace: Path,
+    tool_name: str,
+    args: dict[str, Any],
+) -> tuple[bool, str | None]:
+    """(used_native, error). used_native=False → fall back to Python check."""
+    if not env_flag("NATIVE"):
+        return False, None
+    if find_native_binary() is None:
+        return False, None
+    proc = _run_native(
+        [
+            "permissions",
+            "--workspace",
+            str(workspace.resolve()),
+            "--tool",
+            tool_name,
+            "--args",
+            json.dumps(args, ensure_ascii=False),
+        ],
+        timeout=10,
+    )
+    if proc is None:
+        return False, None
+    if proc.returncode == 0:
+        return True, None
+    err = (proc.stderr or proc.stdout or "").strip()
+    return True, err or "Permission denied (native)"
+
+
+def native_sandbox_check(
+    workspace: Path,
+    command: str,
+    mode: str,
+) -> dict[str, Any] | None:
+    """Parse meris-rs sandbox check JSON; None if native unavailable."""
+    if not env_flag("NATIVE"):
+        return None
+    proc = _run_native(
+        [
+            "sandbox",
+            "check",
+            "--workspace",
+            str(workspace.resolve()),
+            "--command",
+            command,
+            "--mode",
+            mode,
+        ],
+        timeout=10,
+    )
+    if proc is None or not proc.stdout.strip():
+        return None
+    try:
+        data = json.loads(proc.stdout)
+        if isinstance(data, dict):
+            return data
+    except json.JSONDecodeError:
+        return None
+    return None
+
+
+def native_run_bash(
+    workspace: Path,
+    command: str,
+    *,
+    timeout: int = 120,
+) -> str | None:
+    """Run bash via meris-rs sandbox run; None if native unavailable."""
+    if not env_flag("NATIVE"):
+        return None
+    proc = _run_native(
+        [
+            "sandbox",
+            "run",
+            "--workspace",
+            str(workspace.resolve()),
+            "--timeout",
+            str(timeout),
+            "--",
+            command,
+        ],
+        timeout=timeout + 15,
+    )
+    if proc is None:
+        return None
+    out = (proc.stdout or "") + (proc.stderr or "")
+    if not out.strip() and proc.returncode != 0:
+        return f"exit={proc.returncode}\n(native sandbox failed)"
+    return out.strip() or f"exit={proc.returncode}"

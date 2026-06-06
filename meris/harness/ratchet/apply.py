@@ -16,9 +16,16 @@ ALLOWED_PREFIXES = (
 )
 
 
-def is_allowed_target(rel_path: str, *, force_agents: bool = False) -> bool:
+def is_allowed_target(
+    rel_path: str,
+    *,
+    force_agents: bool = False,
+    force_settings: bool = False,
+) -> bool:
     norm = rel_path.replace("\\", "/")
     if norm == ".meris/profile.md":
+        return True
+    if force_settings and norm.startswith(".meris/settings"):
         return True
     if any(norm.startswith(p) for p in ALLOWED_PREFIXES):
         return True
@@ -31,6 +38,20 @@ def _write_target(ws: Path, dest: Path, proposal: Proposal) -> None:
     content = proposal.target.content
     marker = proposal.marker()
     rel = proposal.target.path.replace("\\", "/")
+    action = proposal.target.action
+
+    if action == "patch_section" and dest.is_file():
+        text = dest.read_text(encoding="utf-8")
+        if marker in text:
+            return
+        heading = content.strip().splitlines()[0] if content.strip() else "## Ratchet"
+        body = content.strip()
+        if body.startswith(heading):
+            body = "\n".join(body.splitlines()[1:]).strip()
+        block = f"{marker}\n\n{heading}\n\n{body}\n"
+        sep = "\n" if text.endswith("\n") else "\n\n"
+        dest.write_text(text + sep + block, encoding="utf-8")
+        return
 
     if not dest.is_file():
         seed = seed_content(rel)
@@ -50,12 +71,13 @@ def apply_proposal(
     proposal: Proposal,
     *,
     force_agents: bool = False,
+    force_settings: bool = False,
     update_progress: bool = True,
 ) -> Path:
     """Write proposal content; archive proposal under applied/."""
     ws = workspace.resolve()
     rel = proposal.target.path.replace("\\", "/")
-    if not is_allowed_target(rel, force_agents=force_agents):
+    if not is_allowed_target(rel, force_agents=force_agents, force_settings=force_settings):
         raise ValueError(f"Target not allowed for auto-apply: {rel}")
 
     dest = ws / rel

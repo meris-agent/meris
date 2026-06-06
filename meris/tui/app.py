@@ -9,6 +9,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, Input, Label, ListItem, ListView, RichLog, Static
 
+from meris.harness.protocol import EventStream
 from meris.harness.settings import load_settings
 from meris.harness.sessions import list_sessions
 from meris.loop import agent_loop
@@ -42,14 +43,33 @@ class ApproveModal(ModalScreen[bool]):
             self.dismiss(False)
 
 
+class TUIEventStream(EventStream):
+    """Mirror structured events into RichLog (Phase E4.3)."""
+
+    def __init__(self, log: RichLog) -> None:
+        super().__init__(collector=[])
+        self._log = log
+
+    def emit(self, kind: str, *, message: str = "", **fields: object) -> None:
+        super().emit(kind, message=message, **fields)
+        if kind in ("tool_start", "tool_end", "sensor", "done", "session_start"):
+            hint = message or str(fields.get("tool") or fields.get("status") or "")
+            self._log.write(f"[dim][{kind}][/dim] {hint[:400]}")
+
+
 class MerisTUI(App):
     TITLE = "Meris Agent"
     SUB_TITLE = "Harness-first coding agent"
     CSS = """
     #main { height: 1fr; }
     #sessions-panel {
-        width: 28;
+        width: 24;
         border: solid $secondary;
+        height: 100%;
+    }
+    #ratchet-panel {
+        width: 26;
+        border: solid $warning;
         height: 100%;
     }
     #log-panel { width: 1fr; }
@@ -63,7 +83,7 @@ class MerisTUI(App):
         ("ctrl+l", "clear_log", "Clear"),
         ("ctrl+r", "resume_session", "Resume"),
         ("ctrl+s", "refresh_sessions", "Sessions"),
-        ("ctrl+enter", "submit_task", "Send"),
+        ("ctrl+g", "refresh_ratchet", "Ratchet"),
     ]
 
     def __init__(
@@ -90,6 +110,9 @@ class MerisTUI(App):
                 yield ListView(id="session-list")
             with Vertical(id="log-panel"):
                 yield RichLog(id="log", wrap=True, highlight=True, markup=True)
+            with Vertical(id="ratchet-panel"):
+                yield Static("[bold]Ratchet[/bold] pending")
+                yield ListView(id="ratchet-list")
         yield Input(
             placeholder="Enter task — Enter or Ctrl+Enter to send (CJK IME: Enter twice if needed)",
             id="task-input",
@@ -110,6 +133,29 @@ class MerisTUI(App):
         if not MCP_AVAILABLE and mcp:
             log.write("[yellow]Install MCP: pip install meris-agent[mcp][/yellow]")
         self._refresh_session_list()
+        self._refresh_ratchet_list()
+
+    def _refresh_ratchet_list(self) -> None:
+        lv = self.query_one("#ratchet-list", ListView)
+        lv.clear()
+        try:
+            from meris.harness.ratchet import count_pending_insights, list_proposals
+
+            props = list_proposals(self.workspace, status="pending")[:6]
+            n_ins = count_pending_insights(self.workspace)
+        except Exception:
+            lv.append(ListItem(Label("(ratchet n/a)"), disabled=True))
+            return
+        if not props and not n_ins:
+            lv.append(ListItem(Label("(none pending)"), disabled=True))
+            return
+        for p in props:
+            lv.append(ListItem(Label(f"{p.lesson} {p.summary[:22]}")))
+        if n_ins:
+            lv.append(ListItem(Label(f"{n_ins} insight(s)")))
+
+    def action_refresh_ratchet(self) -> None:
+        self._refresh_ratchet_list()
 
     def _refresh_session_list(self) -> None:
         lv = self.query_one("#session-list", ListView)
@@ -186,6 +232,7 @@ class MerisTUI(App):
         self._task_busy = True
         log = self.query_one("#log", RichLog)
         log.write(f"\n[bold cyan]>>> {task}[/bold cyan]")
+        events = TUIEventStream(log)
 
         kwargs: dict = {
             "mode": self.mode,
@@ -194,6 +241,7 @@ class MerisTUI(App):
             "session_id": session_id,
             "resume": resume,
             "plan_output": None,
+            "event_stream": events,
         }
         if self.approve:
             kwargs["approve_fn"] = self._approve
@@ -206,6 +254,7 @@ class MerisTUI(App):
         finally:
             self._task_busy = False
             self._refresh_session_list()
+            self._refresh_ratchet_list()
             self.query_one("#task-input", Input).focus()
 
 

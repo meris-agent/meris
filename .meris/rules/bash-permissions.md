@@ -1,3 +1,7 @@
+---
+inject: always
+---
+
 # Bash 与验证（Meris 仓库 cwd）
 
 <!-- ratchet:L-bash-verify -->

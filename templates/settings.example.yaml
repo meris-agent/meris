@@ -41,6 +41,11 @@ blockedPaths:
   - "**/generated/**"
   - "**/node_modules/**"
 
+# --- Bash 沙箱（Phase E3）：off | warn | strict ---
+sandbox:
+  mode: warn
+  bashTimeoutSec: 120
+
 # --- 工具钩子（Claude Code 风格，见 README）---
 hooks:
   preToolUse: []
@@ -73,6 +78,8 @@ models:
     ask:
       profile: fast
     plan:
+      profile: fast
+    review:
       profile: fast
     run:
       strategy: dynamic

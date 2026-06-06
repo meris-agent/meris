@@ -351,9 +351,9 @@ meris/cli.py        # ratchet 子命令组
 ### P2 — 部分已做
 
 - [x] `ratchet analyze` / `--last-fail` / `--dry-run`（LLM → JSON proposals）
-- [ ] AGENTS.md section patch（带 diff 确认）
-- [ ] `settings.json` deny 提案（`--force-settings`）
-- [ ] TUI：`Ratchet` 面板审阅 pending
+- [x] AGENTS.md section patch（`patch_section` + `--force-agents`）
+- [x] `settings.*` 提案（`--force-settings`）
+- [x] TUI：`Ratchet` 面板审阅 pending
 
 ---
 

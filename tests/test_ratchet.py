@@ -73,6 +73,17 @@ def test_scan_dedupes_lesson(workspace: Path) -> None:
     assert len(second) == 0
 
 
+def test_scan_harness_check_fail(workspace: Path) -> None:
+    record_event(
+        workspace,
+        "harness_check_fail",
+        detail="import:forge: FAIL — meris/bad.py",
+        tags=["dod"],
+    )
+    created = scan_workspace(workspace, since_days=30)
+    assert any(p.lesson == "L-harness-check" for p in created)
+
+
 def test_is_allowed_target() -> None:
     assert is_allowed_target(".meris/rules/foo.md") is True
     assert is_allowed_target("AGENTS.md") is False

@@ -17,6 +17,7 @@ from meris.harness.hooks import HookRunner
 from meris.harness.hooks_loader import build_hook_runner
 from meris.harness.memory import load_progress_for_prompt, update_progress_task
 from meris.harness.permissions import check_tool_allowed
+from meris.harness.protocol import EventStream
 from meris.harness.sensors import run_post_edit_sensors, run_sensors
 from meris.harness.sessions import SessionRecord, load_session, new_session_id, save_session
 from meris.harness.settings import load_settings
@@ -71,6 +72,7 @@ async def agent_loop(
     resume: bool = False,
     cancel: asyncio.Event | None = None,
     plan_output: str | Path | None = "__default__",
+    event_stream: EventStream | None = None,
 ) -> AsyncIterator[str]:
     """Yield human-readable progress lines."""
     ws = workspace.resolve()
@@ -108,7 +110,7 @@ async def agent_loop(
         state = AgentState(max_turns=max_turns)
         record = SessionRecord(id=sid, task=task, mode=mode, max_turns=max_turns, workspace=str(ws))
 
-    read_only = mode in ("ask", "plan")
+    read_only = mode in ("ask", "plan", "review")
     tools, mcp_mgr, mcp_notes = await build_all_tools(ws, read_only=read_only, settings=settings)
     hooks = build_hook_runner(ws, settings)
     blocked_paths = settings.get("blockedPaths", [])
@@ -124,10 +126,22 @@ async def agent_loop(
         yield f"[meris] session {session_id} not found, starting fresh"
 
     status = "completed"
+    dod_sensor_out = ""
     lines: list[str] = []
 
     def emit(line: str) -> None:
         lines.append(line)
+
+    def out(line: str, kind: str = "status", **kw: object) -> str:
+        if event_stream:
+            event_stream.emit(
+                kind,
+                message=line,
+                session=record.id,
+                mode=mode,
+                **{k: v for k, v in kw.items() if v is not None},
+            )
+        return line
 
     if not resumed and not record.messages:
         system = build_system_prompt(ws, mode=mode)
@@ -141,9 +155,11 @@ async def agent_loop(
         state.append({"role": "user", "content": task})
 
     route_suffix = f" {route_note}" if route_note else ""
-    yield (
+    yield out(
         f"[meris] workspace={ws} mode={mode} model={getattr(provider, 'model', '?')}"
-        f"{route_suffix} session={record.id}"
+        f"{route_suffix} session={record.id}",
+        "session_start",
+        model=getattr(provider, "model", "?"),
     )
     for note in mcp_notes:
         yield f"[meris] {note}"
@@ -197,6 +213,13 @@ async def agent_loop(
             msg = await provider.chat(compressed, tools=tools.schemas())
 
             if msg.get("content"):
+                if event_stream:
+                    event_stream.emit(
+                        "token",
+                        message=msg["content"][:800],
+                        session=record.id,
+                        turn=state.turn,
+                    )
                 yield f"\n[assistant]\n{msg['content']}"
 
             tool_calls = msg.get("tool_calls")
@@ -226,7 +249,7 @@ async def agent_loop(
                 except json.JSONDecodeError:
                     args = {}
 
-                denied = check_tool_allowed(name, args, settings)
+                denied = check_tool_allowed(name, args, settings, workspace=ws)
                 if denied:
                     result = denied
                     yield f"\n[tool] {name} BLOCKED: {denied}"
@@ -276,6 +299,13 @@ async def agent_loop(
                                 tags=["approve", name],
                             )
                         else:
+                            if event_stream:
+                                event_stream.emit(
+                                    "tool_start",
+                                    tool=name,
+                                    session=record.id,
+                                    turn=state.turn,
+                                )
                             result = await _run_tool(
                                 hooks, tools, name, args, ws, post_edit_cmds, settings, emit
                             )
@@ -283,12 +313,27 @@ async def agent_loop(
                                 yield line
                             lines.clear()
                     else:
+                        if event_stream:
+                            event_stream.emit(
+                                "tool_start",
+                                tool=name,
+                                session=record.id,
+                                turn=state.turn,
+                            )
                         result = await _run_tool(
                             hooks, tools, name, args, ws, post_edit_cmds, settings, emit
                         )
                         for line in lines:
                             yield line
                         lines.clear()
+
+                if event_stream:
+                    event_stream.emit(
+                        "tool_end",
+                        tool=name,
+                        session=record.id,
+                        preview=(result or "")[:240],
+                    )
 
                 state.append(
                     {
@@ -306,8 +351,11 @@ async def agent_loop(
 
         if status != "cancelled" and run_sensors_at_end and mode == "run":
             ok, out = await run_sensors(ws)
+            dod_sensor_out = out
             if not ok:
                 status = "dod_failed"
+            if event_stream:
+                event_stream.emit("sensor", message=out[:500], ok=ok, session=record.id)
             yield f"\n[sensor] DoD {'PASS' if ok else 'FAIL'}\n{out[:2000]}"
 
     except asyncio.CancelledError:
@@ -325,15 +373,20 @@ async def agent_loop(
         if mode == "run" and status != "running":
             update_progress_task(ws, task[:200], status)
         if status in ("dod_failed", "error"):
+            from meris.harness.check import is_harness_check_failure
             from meris.harness.ratchet import record_event
 
+            kind = status
+            detail = dod_sensor_out[:800] if dod_sensor_out else status
+            if status == "dod_failed" and is_harness_check_failure(dod_sensor_out):
+                kind = "harness_check_fail"
             record_event(
                 ws,
-                status,
+                kind,
                 session=record.id,
                 task=task[:200],
-                detail=status,
-                tags=["loop", mode],
+                detail=detail,
+                tags=["loop", mode, "dod"],
             )
 
     if mode == "plan" and plan_output is not None and status == "completed":
@@ -354,6 +407,8 @@ async def agent_loop(
         else:
             yield "[ratchet] meris ratchet scan — capture harness improvements"
 
+    if event_stream:
+        event_stream.emit("done", status=status, session=record.id, mode=mode)
     yield "\n[meris] done."
 
 
@@ -371,6 +426,16 @@ async def _run_tool(
     if pre.block:
         emit(f"\n[tool] {name} HOOK BLOCK: {pre.message}")
         return pre.message
+
+    if name == "bash":
+        from meris.harness.sandbox import check_bash_sandbox
+
+        verdict = check_bash_sandbox(workspace, args.get("command", ""), settings)
+        if verdict:
+            if verdict.blocked:
+                emit(f"\n[tool] bash SANDBOX: {verdict.message}")
+                return verdict.message
+            emit(f"\n[sandbox] WARN: {verdict.message}")
 
     emit(f"\n[tool] {name}({json.dumps(args, ensure_ascii=False)[:120]})")
     result = await tools.execute(name, args)
@@ -402,6 +467,17 @@ async def _run_tool(
             emit(f"\n[sensor] postEdit {tag}\n{sensor_out[:1500]}")
             if not ok:
                 result += f"\n\n[postEdit sensor FAIL]\n{sensor_out[:2000]}"
+                from meris.harness.check import is_harness_check_failure
+                from meris.harness.ratchet.events import record_event
+
+                kind = "harness_check_fail" if is_harness_check_failure(sensor_out) else "sensor_fail"
+                record_event(
+                    workspace,
+                    kind,
+                    detail=sensor_out[:800],
+                    tool=name,
+                    tags=["postEdit", name],
+                )
 
     await hooks.run_post(name, args, result)
     return result

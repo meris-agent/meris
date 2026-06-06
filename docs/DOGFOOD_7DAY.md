@@ -104,6 +104,7 @@ pytest tests/ -m "not integration" -q
 | 缺领域知识 | `.meris/skills/*.md` |
 | 跨会话失忆 | `PROGRESS.md` + session |
 | 改完没验证 | `AGENTS.md` DoD sensors |
+| 重复习惯 / 偏好 | 每日 `meris ratchet digest` → `insights review` → `.meris/rules/user-prefs.md` |
 
 ---
 
