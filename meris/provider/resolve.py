@@ -50,13 +50,50 @@ def _base_url_matches_preset(url: str, preset_id: str) -> bool:
     return any(h in u for h in hints)
 
 
+_PRESET_BASE_URL_ENV: dict[str, tuple[str, ...]] = {
+    "deepseek": ("DEEPSEEK_BASE_URL",),
+    "openai": ("OPENAI_BASE_URL",),
+    "gemini": ("GEMINI_BASE_URL", "GOOGLE_BASE_URL"),
+    "glm": ("GLM_BASE_URL", "ZHIPU_BASE_URL"),
+    "moonshot": ("MOONSHOT_BASE_URL", "KIMI_BASE_URL"),
+    "qwen": ("DASHSCOPE_BASE_URL", "QWEN_BASE_URL", "BAILIAN_BASE_URL"),
+    "volcengine": ("VOLCENGINE_BASE_URL", "ARK_BASE_URL", "DOUBAO_BASE_URL"),
+    "local": ("LOCAL_BASE_URL", "VLLM_BASE_URL"),
+    "groq": ("GROQ_BASE_URL",),
+    "mistral": ("MISTRAL_BASE_URL",),
+    "openrouter": ("OPENROUTER_BASE_URL",),
+    "ollama": ("OLLAMA_BASE_URL",),
+}
+
+
+def _preset_base_url_from_env(preset_id: str) -> str:
+    for name in _PRESET_BASE_URL_ENV.get(preset_id, ()):
+        val = os.getenv(name, "").strip()
+        if val:
+            return val
+    return ""
+
+
 def _global_base_url_from_env() -> str:
-    return (
-        env_get("BASE_URL")
-        or os.getenv("LLM_BASE_URL", "")
-        or os.getenv("DEEPSEEK_BASE_URL", "")
-        or ""
-    ).strip()
+    return (env_get("BASE_URL") or os.getenv("LLM_BASE_URL", "")).strip()
+
+
+def _resolve_base_url(
+    *,
+    preset_id: str,
+    default_base: str,
+    explicit_base: str | None,
+) -> str:
+    """Config overrides preset default: route/settings → vendor env → MERIS_BASE_URL → built-in."""
+    if explicit_base:
+        return explicit_base
+    preset_env = _preset_base_url_from_env(preset_id)
+    if preset_env:
+        return preset_env
+    global_base = _global_base_url_from_env()
+    if global_base and _base_url_matches_preset(global_base, preset_id):
+        return global_base
+    return default_base
 
 
 def _infer_preset_from_keys() -> str:
@@ -124,6 +161,45 @@ def _infer_preset_from_keys() -> str:
     return "openai"
 
 
+_PRESET_MODEL_ENV: dict[str, tuple[str, ...]] = {
+    "deepseek": ("DEEPSEEK_MODEL",),
+    "openai": ("OPENAI_MODEL",),
+    "anthropic": ("ANTHROPIC_MODEL",),
+    "gemini": ("GEMINI_MODEL",),
+    "glm": ("GLM_MODEL",),
+    "moonshot": ("MOONSHOT_MODEL", "KIMI_MODEL"),
+    "qwen": ("DASHSCOPE_MODEL", "QWEN_MODEL"),
+    "volcengine": ("VOLCENGINE_MODEL", "ARK_MODEL", "DOUBAO_MODEL"),
+    "groq": ("GROQ_MODEL",),
+    "mistral": ("MISTRAL_MODEL",),
+    "openrouter": ("OPENROUTER_MODEL",),
+    "ollama": ("OLLAMA_MODEL",),
+}
+
+
+def _preset_model_from_env(preset_id: str) -> str:
+    for name in _PRESET_MODEL_ENV.get(preset_id, ()):
+        val = os.getenv(name, "").strip()
+        if val:
+            return val
+    return ""
+
+
+def _resolve_model(
+    *,
+    preset_id: str,
+    default_model: str,
+    explicit_model: str | None,
+    has_explicit_model: bool,
+) -> str:
+    if has_explicit_model:
+        return explicit_model or ""
+    preset_env = _preset_model_from_env(preset_id)
+    if preset_env:
+        return preset_env
+    return env_get("MODEL") or os.getenv("LLM_MODEL", "") or default_model
+
+
 def resolve_provider_config(
     *,
     provider: str | None = None,
@@ -163,31 +239,25 @@ def resolve_provider_config(
     if api_key is not None:
         resolved_key = api_key
 
-    explicit_model = bool((model or "").strip())
+    has_explicit_model = bool((model or "").strip())
 
     if backend == "anthropic":
         resolved_base = ""
     else:
-        global_base = _global_base_url_from_env()
-        if base_url:
-            resolved_base = base_url
-        elif global_base and _base_url_matches_preset(global_base, preset_id):
-            resolved_base = global_base
-        else:
-            resolved_base = default_base
+        resolved_base = _resolve_base_url(
+            preset_id=preset_id,
+            default_base=default_base,
+            explicit_base=base_url,
+        )
         if preset_id == "ollama" and not resolved_key:
             resolved_key = os.getenv("OLLAMA_API_KEY") or "ollama"
 
-    if explicit_model:
-        resolved_model = model or ""
-    else:
-        resolved_model = (
-            env_get("MODEL")
-            or os.getenv("LLM_MODEL", "")
-            or os.getenv("ANTHROPIC_MODEL", "")
-            or os.getenv("DEEPSEEK_MODEL", "")
-            or default_model
-        )
+    resolved_model = _resolve_model(
+        preset_id=preset_id,
+        default_model=default_model,
+        explicit_model=model,
+        has_explicit_model=has_explicit_model,
+    )
 
     if not resolved_key and backend == "openai_compat" and preset_id == "ollama":
         resolved_key = "ollama"

@@ -4,7 +4,7 @@
 Load this skill when working on Meris harness configuration.
 
 ## Key paths
-- `.meris/settings.json` — permissions, sensors, hooks, mcpServers
+- `.meris/settings.yaml` — permissions, sensors, hooks, mcpServers, models
 - `.meris/sessions/` — persisted agent sessions
 - `.meris/skills/` — on-demand knowledge (this directory)
 

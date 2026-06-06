@@ -40,20 +40,38 @@ def test_route_rules_before_by_mode(workspace) -> None:
     _write_models(
         workspace,
         {
-            "byMode": {"run": {"provider": "deepseek", "model": "deepseek-chat"}},
+            "profiles": {
+                "chat": {"provider": "deepseek", "model": "deepseek-chat"},
+                "strong": {"provider": "anthropic", "model": "claude-sonnet-4-20250514"},
+            },
+            "byMode": {"run": {"profile": "chat"}},
             "rules": [
                 {
                     "name": "refactor",
                     "match": {"mode": "run", "taskContains": ["重构"]},
-                    "provider": "anthropic",
-                    "model": "claude-sonnet-4-20250514",
+                    "profile": "strong",
                 }
             ],
         },
     )
     overrides, note = resolve_task_routing(workspace, "run", "大规模重构模块")
     assert overrides["provider"] == "anthropic"
-    assert note == "refactor"
+    assert note == "refactor:strong"
+
+
+def test_route_by_profile(workspace) -> None:
+    _write_models(
+        workspace,
+        {
+            "profiles": {
+                "fast": {"provider": "openai", "model": "gpt-4o-mini"},
+            },
+            "byMode": {"ask": {"profile": "fast"}},
+        },
+    )
+    overrides, note = resolve_task_routing(workspace, "ask", "where is auth?")
+    assert overrides["provider"] == "openai"
+    assert note == "byMode:ask:fast"
 
 
 def test_no_models_config(workspace) -> None:

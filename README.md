@@ -67,7 +67,7 @@ On Windows, use `set VAR=value` instead of `export`. Copy [.env.example](.env.ex
 | `meris models list` | Show all provider presets + current env |
 | `meris models show <provider>` | Show model & env details for a provider |
 | `meris doctor` | Check API key, model, and harness files |
-| `meris init-harness .` | Scaffold `AGENTS.md`, `.meris/settings.json`, `PROGRESS.md` |
+| `meris init-harness .` | Scaffold `AGENTS.md`, `.meris/settings.yaml`, `PROGRESS.md` |
 
 ## Harness (your project)
 
@@ -76,7 +76,7 @@ After `meris init-harness`, these files steer the agent in **your** repo:
 | File | Role |
 |------|------|
 | `AGENTS.md` | Project rules, layout, DoD |
-| `.meris/settings.json` | Tool permissions, sensors, hooks, MCP |
+| `.meris/settings.yaml` | Tool permissions, sensors, hooks, MCP, models |
 | `PROGRESS.md` | Cross-session progress notes |
 | `.meris/skills/*.md` | Optional domain skills |
 | `.meris/spec/*.md` | Optional spec workflow (Kiro-style) |
@@ -97,13 +97,13 @@ End-user onboarding (install → API key → `init-harness` → `doctor`): **[do
 | `MERIS_PROVIDER=anthropic` | Use native Anthropic (`ANTHROPIC_API_KEY`) |
 | `MERIS_NATIVE=1` | Prefer Rust context compression (optional) |
 
-**Context budget** in `.meris/settings.json`:
+**Context budget** in `.meris/settings.yaml`:
 
 ```json
 "context": { "maxMessages": 48, "maxTokens": 32000, "maxToolTokens": 2000 }
 ```
 
-**Permissions** — allow/deny tool patterns (bash globs, path blocks). See generated `settings.json` or [`templates/settings.json`](templates/settings.json).
+**Permissions** — allow/deny tool patterns (bash globs, path blocks). See [`templates/settings.example.yaml`](templates/settings.example.yaml).
 
 ## Workflows
 

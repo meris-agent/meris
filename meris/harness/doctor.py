@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from meris.harness.paths import harness_root
-from meris.harness.settings import load_settings
+from meris.harness.settings import load_settings, shared_settings_relpath
 from meris.provider import ProviderError, get_provider
 from meris.provider.resolve import resolve_provider_config
 
@@ -35,13 +35,17 @@ def check_harness(workspace: Path) -> list[CheckResult]:
     ws = workspace.resolve()
     results: list[CheckResult] = []
     hroot = harness_root(ws)
-    settings_rel = f"{hroot.name}/settings.json"
-    for name in ("AGENTS.md", "PROGRESS.md", settings_rel):
-        p = ws / name
+    settings_name = shared_settings_relpath(ws)
+    file_checks = (
+        ("AGENTS.md", ws / "AGENTS.md"),
+        ("PROGRESS.md", ws / "PROGRESS.md"),
+        (f"{hroot.name}/{settings_name}", hroot / settings_name),
+    )
+    for label, p in file_checks:
         if p.is_file():
-            results.append(CheckResult(name, "ok", "present"))
+            results.append(CheckResult(label, "ok", "present"))
         else:
-            results.append(CheckResult(name, "warn", "missing — run meris init-harness"))
+            results.append(CheckResult(label, "warn", "missing — run meris init-harness"))
     settings = load_settings(ws)
     mcp_n = len(settings.get("mcpServers") or {})
     results.append(CheckResult("mcpServers", "ok" if mcp_n else "warn", f"{mcp_n} configured"))

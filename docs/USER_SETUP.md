@@ -104,7 +104,7 @@ meris init-harness .
 |------|------|
 | `AGENTS.md` | 项目规则、目录说明、验收标准 |
 | `PROGRESS.md` | 跨会话进度 |
-| `.meris/settings.json` | 工具权限、传感器、MCP 等 |
+| `.meris/settings.yaml` | 工具权限、传感器、MCP、models 等（见 templates/settings.example.yaml） |
 
 维护者应**根据项目改 `AGENTS.md`**（路径、测试命令、禁止操作）。模板只是起点。
 
@@ -176,13 +176,13 @@ MERIS_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
 **建议提交到 git：**
 
 - `AGENTS.md`、`PROGRESS.md`（若希望共享进度）
-- `.meris/settings.json`（权限、DoD、MCP、**团队 models 模板**）
+- `.meris/settings.yaml`（权限、DoD、MCP、**团队 models 模板**）
 - `.meris/rules/`、`.meris/skills/`（项目规则）
 
 **不要提交（已在 `.gitignore`）：**
 
 - `.env`（API Key）
-- `.meris/settings.local.json`（**个人 models 覆盖**，从 `templates/settings.models.example.json` 复制后改 `ep-...` 等）
+- `.meris/settings.local.yaml`（**个人覆盖**：`profiles.code.model`、`dynamic.enabled` 等，见 [MODELS.md](MODELS.md)）
 - `.meris/sessions/`、`.meris/plan/`、`.meris/ratchet/`、`.meris/profile.md`
 
 **给新同事的一句话：**

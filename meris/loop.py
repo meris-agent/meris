@@ -22,7 +22,8 @@ from meris.harness.sessions import SessionRecord, load_session, new_session_id, 
 from meris.harness.settings import load_settings
 from meris.harness.spec import load_spec_context
 from meris.provider import Provider
-from meris.provider.factory import get_provider_for_task
+from meris.provider.factory import get_provider_for_task, get_provider_from_overrides
+from meris.provider.dynamic_router import pick_model_for_turn
 from meris.state import AgentState
 from meris.tools import build_all_tools
 
@@ -74,7 +75,14 @@ async def agent_loop(
     """Yield human-readable progress lines."""
     ws = workspace.resolve()
     settings = load_settings(ws)
-    provider, route_note = get_provider_for_task(ws, mode, task, provider=provider)
+    explicit_provider = provider is not None
+    if explicit_provider:
+        route_note = ""
+    else:
+        provider, route_note = get_provider_for_task(ws, mode, task, provider=None)
+
+    models_cfg = settings.get("models") if isinstance(settings.get("models"), dict) else {}
+    turn_overrides: dict[str, str] | None = None
 
     record: SessionRecord
     resumed = False
@@ -163,6 +171,28 @@ async def agent_loop(
                 yield f"[meris] context compressed {len(state.messages)} → {len(compressed)} messages"
             elif before_t > after_t:
                 yield f"[meris] token budget: {before_t} → {after_t} tokens (limit {max_tokens})"
+
+            if not explicit_provider and isinstance(models_cfg.get("dynamic"), dict) and models_cfg["dynamic"].get("enabled"):
+                overrides, turn_note, reason = await pick_model_for_turn(
+                    ws,
+                    mode=mode,
+                    task=task,
+                    turn=state.turn,
+                    messages=state.messages,
+                    models_cfg=models_cfg,
+                    last_overrides=turn_overrides,
+                )
+                if overrides:
+                    prev_model = getattr(provider, "model", None)
+                    if overrides != turn_overrides:
+                        provider = get_provider_from_overrides(overrides)
+                        turn_overrides = dict(overrides)
+                        if prev_model != getattr(provider, "model", None) or turn_note.startswith("dynamic:"):
+                            extra = f" ({reason})" if reason and reason != "cached" else ""
+                            yield (
+                                f"[meris] model route={turn_note} "
+                                f"provider={overrides.get('provider')} model={overrides.get('model')}{extra}"
+                            )
 
             msg = await provider.chat(compressed, tools=tools.schemas())
 

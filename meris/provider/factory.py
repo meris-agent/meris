@@ -41,6 +41,15 @@ def get_provider(
     )
 
 
+def get_provider_from_overrides(overrides: dict[str, str]) -> Provider:
+    """Build a provider from routing overrides."""
+    return get_provider(
+        provider=overrides.get("provider"),
+        model=overrides.get("model"),
+        base_url=overrides.get("base_url"),
+    )
+
+
 def get_provider_for_task(
     workspace: Path,
     mode: str,

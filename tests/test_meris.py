@@ -213,6 +213,40 @@ def test_load_settings_local_json(workspace: Path) -> None:
     assert s["models"]["byMode"]["run"]["model"] == "ep-local"
 
 
+def test_load_settings_yaml(workspace: Path) -> None:
+    from meris.harness.paths import HARNESS_DIR
+
+    h = workspace / HARNESS_DIR
+    h.mkdir(parents=True, exist_ok=True)
+    (h / "settings.yaml").write_text(
+        """
+permissions:
+  allow: [Read]
+models:
+  profiles:
+    fast:
+      provider: openai
+      model: gpt-4o-mini
+  byMode:
+    ask:
+      profile: fast
+""",
+        encoding="utf-8",
+    )
+    (h / "settings.local.yaml").write_text(
+        """
+models:
+  dynamic:
+    enabled: true
+""",
+        encoding="utf-8",
+    )
+    s = load_settings(workspace)
+    assert s["permissions"]["allow"] == ["Read"]
+    assert s["models"]["byMode"]["ask"]["profile"] == "fast"
+    assert s["models"]["dynamic"]["enabled"] is True
+
+
 def test_compress_messages_drops_old() -> None:
     msgs = [{"role": "system", "content": "sys"}]
     msgs.append({"role": "user", "content": "task"})

@@ -115,57 +115,141 @@ export MERIS_MODEL=your-model-id
 
 ## 按任务自动选模型（Harness 路由）
 
-> **问句用便宜模型，大改用强模型** — 写进 Harness，而不是每次让模型猜。
+> **问句用便宜模型，大改用强模型** — 模型定义、策略、路由分工写进 Harness。
 
-在 **`.meris/settings.json`** 里配置团队共享项（权限、传感器、`models` 模板等）。
+Harness 配置使用 **YAML**（支持 `#` 注释，IDEA 原生识别）：
 
-模型路由以 [templates/settings.models.example.json](../templates/settings.models.example.json) 为模板：
+| 文件 | 用途 |
+|------|------|
+| [templates/settings.example.yaml](../templates/settings.example.yaml) | 全量模板（权限、传感器、models…，含注释） |
+| `.meris/settings.yaml` | 团队共享（可提交 Git） |
+| `.meris/settings.local.yaml` | 个人覆盖（如真实 `ep-...`，已在 `.gitignore`） |
 
-- **`.meris/settings.json`** — 团队共享的 `models`（占位 `ep-xxxxxxxx`，可提交）
-- **`.meris/settings.local.json`** — 个人覆盖（真实 `ep-...` 等，已在 `.gitignore`）
+`meris init-harness .` 会生成 `.meris/settings.yaml`。仍支持旧版 `settings.json` / `settings.local.json`（自动兼容，YAML 优先）。
 
 ```powershell
-# 个人接入点 ID 等：复制模板再改 run.model
-copy templates\settings.models.example.json .meris\settings.local.json
+# 个人覆盖示例
+notepad .meris\settings.local.yaml
 ```
 
-`.env` 里仍需各厂商 API Key。`models` 结构示例（与模板相同）：
+`.env` 里保留各 profile 对应厂商的 API Key。`models` 段 YAML 示例：
 
-```json
-{
-  "models": {
-    "byMode": {
-      "ask": { "provider": "openai", "model": "gpt-4o-mini" },
-      "plan": { "provider": "deepseek", "model": "deepseek-chat" },
-      "run": { "provider": "deepseek", "model": "deepseek-reasoner" }
-    },
-    "rules": [
-      {
-        "name": "heavy-refactor",
-        "match": { "mode": "run", "taskContains": ["重构", "refactor", "架构"] },
-        "provider": "anthropic",
-        "model": "claude-sonnet-4-20250514"
-      }
-    ]
-  }
-}
+```yaml
+models:
+  profiles:
+    fast:
+      provider: deepseek
+      model: deepseek-chat
+      hint: 只读问答、解释、轻量 plan
+    code:
+      provider: volcengine
+      model: ep-xxxxxxxx
+      hint: 改代码、跑测试、实现功能
+  byMode:
+    ask:
+      profile: fast
+    run:
+      strategy: dynamic
+      candidates: [fast, code, heavy]
+      defaultProfile: fast
+  dynamic:
+    enabled: false
+    router:
+      provider: deepseek
+      model: deepseek-chat
+    reRoute: onMutation
 ```
 
-**优先级**：`rules`（从上到下第一条命中）→ `byMode[mode]` → `models.default` → 仅环境变量。
+完整字段说明见 **`templates/settings.example.yaml`** 内 `#` 注释。
 
-预览某条任务会选谁：
+### 三层分工
+
+| 层 | 字段 | 作用 |
+|----|------|------|
+| **模型池** | `models.profiles` | 每个 profile 定义一次 provider / model / hint |
+| **策略** | `models.byMode` / `models.rules` | 每个 mode 用哪个 profile，或动态候选集 |
+| **路由引擎** | `models.dynamic` | 全局开关 + 便宜的路由模型（分类器） |
+
+### profiles — 模型池
+
+每个 key（如 `fast`、`code`）是一套可复用的模型连接：
+
+| 字段 | 必填 | 含义 |
+|------|------|------|
+| `provider` | 是 | 预设 id，见 `meris models list` |
+| `model` | 是 | 模型名或火山 `ep-...` 接入点 |
+| `hint` | 否 | 写给路由模型看的说明（动态路由时帮助选型） |
+| `baseUrl` | 否 | 覆盖该 profile 的 API 地址 |
+
+### `byMode` — 每个 CLI mode 的策略
+
+| 写法 | 含义 |
+|------|------|
+| `{ "profile": "fast" }` | **静态**：该 mode 始终用此 profile |
+| `{ "strategy": "dynamic", "candidates": [...], "defaultProfile": "fast" }` | **动态**：运行中由路由模型从候选里选（需 `dynamic.enabled`） |
+| `{ "provider": "...", "model": "..." }` | **旧写法**，仍兼容，等价于内联 profile |
+
+`candidates` 必须是 `profiles` 里已有的 id 列表。`defaultProfile` 是路由失败或未开动态时的兜底。
+
+### `rules` — 任务级覆盖（静态，优先级最高）
+
+| 字段 | 含义 |
+|------|------|
+| `match.mode` | 限定 `ask` / `plan` / `run` |
+| `match.taskContains` | 任务文本包含任一关键词即命中 |
+| `match.taskRegex` | 正则匹配任务 |
+| `profile` | **推荐**：引用 `profiles` 中的 id |
+| `provider` + `model` | **旧写法**，仍兼容 |
+
+**优先级**：`rules`（第一条命中）→ `byMode[mode]` → `models.default` → 仅环境变量。
+
+### `dynamic` — 运行时按需切换
+
+仅在 **`dynamic.enabled: true`** 且某 mode 为 **`strategy: dynamic`** 时，每轮（或按 `reRoute`）多调一次路由模型，从该 mode 的 `candidates` 里选一个 profile。
+
+| 字段 | 含义 |
+|------|------|
+| `enabled` | 总开关 |
+| `router` | **路由模型**（分类器），单独指定 `{ provider, model }`，不是候选之一 |
+| `reRoute` | `everyTurn`：每轮都问；`onMutation`：首轮 + 上一轮有写文件/bash 时才问（省调用） |
+
+`router` 是对象的原因：它和 profile 一样是「连哪家 API、用哪个 model」，但角色是**调度员**，与干活的 profile 分开配置。
+
+日志示例：
+
+```text
+[meris] model route=dynamic:code provider=volcengine model=ep-... (needs code edits)
+```
+
+预览静态路由（不含动态 LLM 判断）：
 
 ```bash
 meris models route "大规模重构 auth 模块" --mode run
-meris ask "..."   # 运行时日志会出现 route=byMode:ask ...
+meris ask "..."   # 静态 mode 日志: route=byMode:ask:fast
 ```
 
-说明：
+### 个人覆盖示例
 
-- 这是 **规则路由**（快、可测、无额外 LLM 调用），不是「让模型自己挑厂商」。
-- 未配 `models` 时行为与以前相同：只用 `MERIS_PROVIDER` / `.env`。
-- 未来可选：用便宜模型做意图分类再路由（需另开 API 调用，暂未内置）。
-- 完整示例见 [templates/settings.models.example.json](../templates/settings.models.example.json)；`settings.json` 与 `settings.local.json` 的 `models` 均由此复制/对齐，local 覆盖 team 默认值。
+团队 `settings.yaml` 用占位 `ep-xxxxxxxx`；本机 `settings.local.yaml` 只覆盖必要字段：
+
+```yaml
+models:
+  profiles:
+    code:
+      provider: volcengine
+      model: ep-你的接入点
+  dynamic:
+    enabled: true
+```
+
+深合并后继承团队的 `byMode`、`rules`、`router` 等。
+
+### 说明
+
+- **静态**（`profile` / `rules`）：快、可测、可 PR review，默认推荐。
+- **动态**（`strategy: dynamic` + `dynamic.enabled`）：多一次路由 API 调用，适合 `run` 里「先读后写、按需升档」。
+- 未配 `models` 时行为不变：只用 `MERIS_PROVIDER` / `.env`。
+- 旧配置（`byMode` 直接写 `provider`/`model`）无需迁移即可继续用；新仓库建议用 `profiles` + `profile` 引用。
 
 ## 自动推断
 

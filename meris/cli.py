@@ -236,7 +236,7 @@ def version_cmd() -> None:
 def init_harness(
     workspace: Path = typer.Argument(Path.cwd(), help="Target repository"),
 ) -> None:
-    """Install AGENTS.md, PROGRESS.md, .meris/settings.json into a repo."""
+    """Install AGENTS.md, PROGRESS.md, .meris/settings.yaml into a repo."""
     ws = workspace.resolve()
     tpl = _pkg_templates()
 
@@ -274,10 +274,16 @@ def init_harness(
             shutil.copy(rule_src, rule_dst)
             console.print(f"[green]Created[/green] {rule_dst}")
 
-    settings = harness / "settings.json"
-    if not settings.exists():
-        shutil.copy(tpl / "settings.json", settings)
-        console.print(f"[green]Created[/green] {settings}")
+    settings_yaml = harness / "settings.yaml"
+    settings_json = harness / "settings.json"
+    if not settings_yaml.exists() and not settings_json.exists():
+        src = tpl / "settings.example.yaml"
+        if src.is_file():
+            shutil.copy(src, settings_yaml)
+            console.print(f"[green]Created[/green] {settings_yaml}")
+        elif (tpl / "settings.json").is_file():
+            shutil.copy(tpl / "settings.json", settings_json)
+            console.print(f"[green]Created[/green] {settings_json}")
 
     console.print("[bold]Harness initialized.[/bold] Edit AGENTS.md for your stack.")
     console.print("[dim]Next: meris ratchet learn --init[/dim]")
