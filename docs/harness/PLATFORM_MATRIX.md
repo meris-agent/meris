@@ -23,7 +23,7 @@ Meris 与 [OpenAI Codex CLI](https://github.com/openai/codex) 在不同操作系
 | 网络隔离 (`--unshare-net`) | ✅ | ✅ bwrap | ✅ bwrap | ❌ | ❌ |
 | network allowlist | ✅ 代理级 | ✅ 命令级 | ✅ 命令级 | ⚠️ 仅策略 | ⚠️ 仅策略 |
 | `.env` 遮罩 | ✅ | ✅ bwrap | ✅ bwrap | ❌ | ❌ |
-| macOS Seatbelt | ✅ | — | — | — | ❌ Meris 未实现 |
+| macOS Seatbelt | ✅ | — | — | — | ✅ G6.2 `sandbox-exec` |
 | Windows 原生沙箱 | ✅ | — | — | ❌ | — |
 
 **说明**
@@ -60,7 +60,7 @@ WSL 内安装：`sudo apt install bubblewrap`
 
 ## 与 Codex 仍存在的差距
 
-1. **macOS Seatbelt** — 未实现（G6 spike：[G6_MACOS_SANDBOX.md](../spikes/G6_MACOS_SANDBOX.md)）
+1. **macOS Seatbelt** — G6.2 MVP（`read-only` / `workspace-write`）；TCC 扩展见 [G6_MACOS_SANDBOX.md](../spikes/G6_MACOS_SANDBOX.md)
 2. **Windows 原生 OS 沙箱** — 推荐 WSL；无 AppContainer 集成
 3. **network allowlist** — 命令级，非代理级
 4. **安装** — Codex npm/brew vs Meris pip（G5 待发 PyPI）

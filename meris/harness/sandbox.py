@@ -274,12 +274,78 @@ def find_sandbox_exec() -> Path | None:
 
 
 def should_use_seatbelt(settings: dict) -> bool:
-    """True when macOS sandbox-exec would be used (future G6.2; probe/doctor only)."""
+    """True when macOS sandbox-exec should wrap bash (G6.2)."""
     if sys.platform != "darwin":
         return False
-    if get_os_sandbox_mode(settings) == "off":
+    mode = get_os_sandbox_mode(settings)
+    if mode == "off":
         return False
+    if mode == "require":
+        return find_sandbox_exec() is not None
     return find_sandbox_exec() is not None
+
+
+def _seatbelt_base_policy() -> str:
+    policy_path = Path(__file__).resolve().parents[2] / "meris-rs" / "seatbelt" / "base_policy.sbpl"
+    if policy_path.is_file():
+        return policy_path.read_text(encoding="utf-8")
+    bundled = Path(__file__).resolve().parent / "seatbelt" / "base_policy.sbpl"
+    if bundled.is_file():
+        return bundled.read_text(encoding="utf-8")
+    raise RuntimeError("seatbelt base policy file not found")
+
+
+def build_seatbelt_policy(workspace: Path, settings: dict) -> tuple[str, list[str]]:
+    """Build SBPL policy and -D args for sandbox-exec (mirrors meris-rs)."""
+    ws = workspace.resolve()
+    policy = _seatbelt_base_policy()
+    params: list[str] = []
+
+    if get_effective_network_mode(settings) == "isolated":
+        policy += "\n(deny network*)\n"
+
+    for i, mask in enumerate(collect_mask_paths(ws, settings)):
+        try:
+            canonical = mask.resolve()
+        except OSError:
+            canonical = mask
+        policy += f'\n(deny file-read* file-write* (subpath (param "MASK_{i}")))\n'
+        params.append(f"-DMASK_{i}={canonical}")
+
+    if get_sandbox_preset(settings) == "workspace-write":
+        policy += '\n(allow file-write* (subpath (param "WRITABLE_ROOT_0")))\n'
+        params.append(f"-DWRITABLE_ROOT_0={ws}")
+        policy += "\n(allow file-write* (subpath \"/private/tmp\"))\n"
+        policy += "\n(allow file-write* (subpath \"/var/folders\"))\n"
+
+    return policy, params
+
+
+def _run_seatbelt_sync(
+    workspace: Path,
+    command: str,
+    timeout: int,
+    settings: dict,
+) -> tuple[int, str]:
+    sb = find_sandbox_exec()
+    if not sb:
+        return 1, "sandbox-exec not found"
+    ws = workspace.resolve()
+    policy, params = build_seatbelt_policy(ws, settings)
+    cmd = [str(sb), "-p", policy, *params, "--", "sh", "-c", command]
+    proc = subprocess.run(
+        cmd,
+        cwd=ws,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
+        check=False,
+    )
+    out = (proc.stdout or "") + (proc.stderr or "")
+    code = proc.returncode if proc.returncode is not None else 1
+    return code, _truncate_output(out.strip())
 
 
 def should_use_bubblewrap(settings: dict) -> bool:
@@ -354,18 +420,22 @@ def describe_platform_sandbox(workspace: Path, settings: dict) -> dict[str, Any]
             status = "warn"
         codex_gaps: list[str] = [] if would_bwrap else ["Linux OS sandbox inactive"]
     elif plat == "darwin":
+        would_seatbelt = bool(probe.get("wouldUseSeatbelt"))
         seatbelt = find_sandbox_exec()
-        if seatbelt and os_mode != "off":
+        if would_seatbelt:
+            detail = f"macOS: policy + Seatbelt (sandbox-exec) active; {codex}"
+            status = "ok"
+            codex_gaps = []
+        elif seatbelt and os_mode != "off":
             detail = (
-                f"macOS: policy + cwd; sandbox-exec present but Seatbelt not wired yet "
-                f"(G6 spike); {codex}"
+                f"macOS: sandbox-exec present but inactive — check osSandbox preset; {codex}"
             )
             status = "warn"
-            codex_gaps = ["Seatbelt enforcement not implemented — see docs/spikes/G6_MACOS_SANDBOX.md"]
+            codex_gaps = ["Seatbelt not active"]
         else:
             detail = (
-                f"macOS: policy + cwd lock only — Codex Seatbelt not implemented; "
-                f"use Linux/WSL for bubblewrap; {codex}"
+                f"macOS: policy + cwd lock only — install sandbox-exec / enable osSandbox; "
+                f"{codex}"
             )
             status = "warn"
             codex_gaps = ["no macOS Seatbelt sandbox"]
@@ -476,10 +546,14 @@ def run_bash_sync(workspace: Path, command: str, settings: dict) -> str:
 
     if os_mode == "require" and sys.platform == "linux" and not find_bubblewrap():
         return "exit=1\nsandbox.osSandbox=require but bubblewrap (bwrap) not found"
+    if os_mode == "require" and sys.platform == "darwin" and not find_sandbox_exec():
+        return "exit=1\nsandbox.osSandbox=require but sandbox-exec not found"
 
     try:
         if should_use_bubblewrap(settings):
             code, out = _run_bwrap_sync(workspace, command, timeout, settings)
+        elif should_use_seatbelt(settings):
+            code, out = _run_seatbelt_sync(workspace, command, timeout, settings)
         else:
             code, out = _run_plain_sync(workspace, command, timeout)
     except subprocess.TimeoutExpired:

@@ -1,5 +1,10 @@
 //! Bash sandbox — policy scan + cwd-locked run + optional Linux bubblewrap (Phase E3).
 
+#[path = "sandbox_macos.rs"]
+mod sandbox_macos;
+
+pub use sandbox_macos::{build_seatbelt_policy, find_sandbox_exec, run_bash_seatbelt, should_use_seatbelt};
+
 use regex::Regex;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -307,10 +312,12 @@ pub fn os_sandbox_probe(settings: &HashMap<String, Value>) -> Value {
     let os_mode = get_os_sandbox_mode(settings);
     let bwrap = find_bubblewrap();
     let version = bwrap.as_ref().and_then(|p| bubblewrap_version(p));
-    let would_use = should_use_bubblewrap(settings).unwrap_or(false);
+    let would_bwrap = should_use_bubblewrap(settings).unwrap_or(false);
+    let would_seatbelt = should_use_seatbelt(settings).unwrap_or(false);
     let network = get_effective_network_mode(settings);
     let allowlist = get_network_allowlist(settings);
     let mask_secrets = get_mask_secrets(settings);
+    let sandbox_exec = find_sandbox_exec();
     json!({
         "platform": std::env::consts::OS,
         "preset": get_sandbox_preset(settings),
@@ -320,7 +327,9 @@ pub fn os_sandbox_probe(settings: &HashMap<String, Value>) -> Value {
         "maskSecrets": mask_secrets,
         "bubblewrap": bwrap.map(|p| p.to_string_lossy().to_string()),
         "bubblewrapVersion": version,
-        "wouldUseBubblewrap": would_use,
+        "wouldUseBubblewrap": would_bwrap,
+        "sandboxExec": sandbox_exec.map(|p| p.to_string_lossy().to_string()),
+        "wouldUseSeatbelt": would_seatbelt,
     })
 }
 
@@ -398,7 +407,7 @@ pub fn verdict_to_json(v: &SandboxVerdict) -> Value {
     })
 }
 
-fn run_command_with_timeout(
+pub(crate) fn run_command_with_timeout(
     mut cmd: Command,
     timeout_secs: u64,
 ) -> Result<(i32, String), String> {
@@ -508,6 +517,8 @@ pub fn run_bash_in_workspace(
 ) -> Result<(i32, String), String> {
     if should_use_bubblewrap(settings)? {
         run_bash_bubblewrap(workspace, command, timeout_secs, settings)
+    } else if should_use_seatbelt(settings)? {
+        run_bash_seatbelt(workspace, command, timeout_secs, settings)
     } else {
         run_bash_plain(workspace, command, timeout_secs)
     }

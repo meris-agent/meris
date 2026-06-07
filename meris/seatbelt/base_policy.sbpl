@@ -1,0 +1,26 @@
+(version 1)
+
+; Meris G6.2 — minimal Seatbelt base (Codex-inspired, closed-by-default)
+(deny default)
+
+(allow process-exec)
+(allow process-fork)
+(allow signal (target same-sandbox))
+(allow process-info* (target same-sandbox))
+
+(allow file-read*)
+(allow file-write-data
+ (require-all
+ (path "/dev/null")
+ (vnode-type CHARACTER-DEVICE)))
+
+(allow sysctl-read)
+(allow sysctl-write (sysctl-name "kern.grade_cputype"))
+(allow mach-lookup)
+(allow ipc-posix-sem)
+(allow ipc-posix-shm-read-data ipc-posix-shm-write-create ipc-posix-shm-write-unlink)
+(allow pseudo-tty)
+(allow file-read* file-write* file-ioctl (literal "/dev/ptmx"))
+(allow file-read* file-write* (regex #"^/dev/ttys[0-9]+"))
+(allow file-ioctl (regex #"^/dev/ttys[0-9]+"))
+(allow user-preference-read)

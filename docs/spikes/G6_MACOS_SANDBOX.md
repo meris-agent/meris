@@ -1,6 +1,6 @@
 # G6 Spike — macOS Seatbelt 沙箱（对标 Codex CLI）
 
-> Phase G6 · 调研文档（**未实现**）· 平台矩阵见 [PLATFORM_MATRIX.md](../harness/PLATFORM_MATRIX.md)
+> Phase G6 · G6.2 **已实现** · 平台矩阵见 [PLATFORM_MATRIX.md](../harness/PLATFORM_MATRIX.md)
 
 ## 背景
 
@@ -72,7 +72,7 @@ Python `probe_os_sandbox` / doctor：增加 `seatbelt: true|false` 与 Codex 差
 | 阶段 | 交付 | 工作量 |
 |------|------|--------|
 | **G6.1**（本 spike） | 文档 + doctor 探测 stub | ✅ |
-| G6.2 | `read-only` + `workspace-write` Seatbelt MVP（仅 bash 工具） | ~3–5d |
+| **G6.2** | `read-only` + `workspace-write` Seatbelt MVP（bash） | ✅ meris-rs + Python |
 | G6.3 | 与 G2 allowlist / maskSecrets 对齐 | ~2d |
 | G6.4 | CI macOS job + parity tests | ~1d |
 

@@ -27,7 +27,7 @@
 - [x] **G3** — 平台矩阵 + doctor Codex preset 提示
 - [x] **G4** — Route B 完成标准（`.env` 默认 auto · live 3 task · doctor native loop）
 - [x] **G5** — E0 发版 `v0.0.2`（Phase G 完整 · Route B 就绪）
-- [x] **G6** — macOS Seatbelt spike + `sandbox-exec` 探测
+- [x] **G6** — macOS Seatbelt spike + **G6.2 MVP**（`sandbox-exec` · read-only / workspace-write）
 
 ## 进行中
 - [x] Linux bubblewrap OS 沙箱（`sandbox.osSandbox: auto|require`）

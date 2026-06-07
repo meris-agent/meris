@@ -124,14 +124,24 @@ def check_harness(workspace: Path) -> list[CheckResult]:
             os_note += f", allowlist={len(allowlist)}"
         if mask_on and masked_n:
             os_note += f", mask {masked_n} secret file(s)"
-    elif os_mode == "require" and not probe.get("bubblewrap"):
+    elif probe.get("wouldUseSeatbelt"):
+        os_note = f", seatbelt active, net={eff_net}"
+        if allowlist:
+            os_note += f", allowlist={len(allowlist)}"
+        if mask_on and masked_n:
+            os_note += f", mask {masked_n} secret file(s)"
+    elif os_mode == "require" and sys.platform == "linux" and not probe.get("bubblewrap"):
         os_note = ", osSandbox=require but bwrap missing"
+    elif os_mode == "require" and sys.platform == "darwin" and not probe.get("sandboxExec"):
+        os_note = ", osSandbox=require but sandbox-exec missing"
     elif probe.get("bubblewrap"):
         os_note = f", osSandbox={os_mode}, bwrap ok, net={eff_net}"
         if allowlist:
             os_note += f", allowlist={len(allowlist)}"
+    elif probe.get("sandboxExec") and os_mode != "off":
+        os_note = f", osSandbox={os_mode}, seatbelt ok, net={eff_net}"
     elif os_mode != "off":
-        os_note = f", osSandbox={os_mode} (Linux bwrap only)"
+        os_note = f", osSandbox={os_mode} (Linux bwrap / macOS seatbelt)"
     else:
         os_note = ""
     native = find_native_binary()

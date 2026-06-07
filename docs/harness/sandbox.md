@@ -89,9 +89,21 @@ meris doctor    # Windows 另显示 WSL + bwrap 状态
 |------|--------|-------|
 | Linux / WSL | ✅ | ✅ bubblewrap |
 | Windows 原生 | ✅ cwd | ❌ — `doctor` 提示 WSL + `apt install bubblewrap` |
-| macOS | ✅ cwd | ❌ — Codex Seatbelt 未实现 |
+| macOS | ✅ cwd | ❌ — Codex Seatbelt via `sandbox-exec` (G6.2) |
 
 安装（Debian/Ubuntu / WSL）：`sudo apt install bubblewrap`
+
+## Phase G6.2 — macOS Seatbelt
+
+Linux 以外，macOS 通过 `/usr/bin/sandbox-exec` 执行 bash（`osSandbox: auto|require`）：
+
+| preset | Seatbelt |
+|--------|----------|
+| `read-only` | 无 workspace 写权限 |
+| `workspace-write` | workspace + `/private/tmp` 可写 |
+| `danger-full-access` | `osSandbox: off`，不启用 |
+
+`network: isolated` 时在 SBPL 中加入 `(deny network*)`。详见 [G6_MACOS_SANDBOX.md](../spikes/G6_MACOS_SANDBOX.md)。
 
 ## 相关
 

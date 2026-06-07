@@ -153,3 +153,34 @@ jobs:
       - name: DoD failed bridge smoke
         run: |
           meris harness dod-failed --cwd .. --session ci --task t --detail fail --json | grep -q ratchet
+
+  macos-seatbelt:
+    name: macOS Seatbelt (G6.2)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Python
+        run: pip install -e ".[dev]"
+
+      - name: Seatbelt policy tests (Python)
+        run: pytest tests/test_seatbelt_macos.py -q
+
+      - name: Seatbelt policy tests (Rust)
+        working-directory: meris-rs
+        run: cargo test policy_includes workspace_write read_only --quiet
+
+      - name: Build meris-rs
+        working-directory: meris-rs
+        run: cargo build --release
+
+      - name: Seatbelt probe and bash smoke
+        run: |
+          ./meris-rs/target/release/meris-rs sandbox probe --workspace . | grep -q wouldUseSeatbelt
+          ./meris-rs/target/release/meris-rs sandbox run --workspace . --timeout 30 -- echo seatbelt_ci_ok | grep -q seatbelt_ci_ok

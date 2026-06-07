@@ -37,10 +37,10 @@ pub use provider::{
     ProviderConfig, ProviderProbe,
 };
 pub use sandbox::{
-    check_bash_sandbox, collect_mask_paths, find_bubblewrap, get_bash_timeout, get_mask_secrets,
-    get_network_mode, get_os_sandbox_mode, get_sandbox_mode, os_sandbox_probe,
+    check_bash_sandbox, collect_mask_paths, find_bubblewrap, find_sandbox_exec, get_bash_timeout,
+    get_mask_secrets, get_network_mode, get_os_sandbox_mode, get_sandbox_mode, os_sandbox_probe,
     os_sandbox_probe_workspace, run_bash_in_workspace, scan_bash_command, should_use_bubblewrap,
-    verdict_to_json, SandboxVerdict,
+    should_use_seatbelt, verdict_to_json, SandboxVerdict,
 };
 pub use sensors::{
     on_complete_enabled, post_edit_commands, run_on_complete_sensors, run_post_edit_sensors,
