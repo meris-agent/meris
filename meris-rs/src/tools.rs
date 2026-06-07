@@ -308,13 +308,13 @@ pub fn tool_schemas(read_only: bool) -> Vec<Value> {
     let mut schemas = vec![
         fn_schema(
             "read_file",
-            "Read a file with 1-based line numbers.",
+            "Read a file with line numbers. Use offset/limit for large files.",
             json!({
                 "type": "object",
                 "properties": {
-                    "path": {"type": "string"},
-                    "offset": {"type": "integer"},
-                    "limit": {"type": "integer"},
+                    "path": {"type": "string", "description": "Relative path from repo root"},
+                    "offset": {"type": "integer", "description": "Start line (1-based)"},
+                    "limit": {"type": "integer", "description": "Max lines to read"},
                 },
                 "required": ["path"],
             }),

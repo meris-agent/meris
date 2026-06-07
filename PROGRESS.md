@@ -8,6 +8,15 @@
 - [x] **Ratchet** — scan/analyze + digest/insights（`575d619`）
 - [x] **Phase E（E1–E6）** — 见 [docs/PLAN_PHASE_E.md](docs/PLAN_PHASE_E.md)
 
+## 线路 B — Dogfood（当前）
+
+见 [docs/ROUTE_B_DOGFOOD.md](docs/ROUTE_B_DOGFOOD.md) · `.env.example` 推荐 `MERIS_NATIVE_LOOP=auto`
+
+- [x] release workflow 验证 + `install_meris_rs_from_ci.ps1`
+- [ ] 日常真实任务 dogfood（1–2 周）
+- [ ] live benchmark 定期跑
+- [ ] Ratchet digest 闭环
+
 ## 进行中
 - [x] Linux bubblewrap OS 沙箱（`sandbox.osSandbox: auto|require`）
 - [x] 网络隔离（`network: isolated`）+ `.env` 遮罩（`maskSecrets`）

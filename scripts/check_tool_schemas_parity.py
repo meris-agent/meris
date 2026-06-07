@@ -29,7 +29,9 @@ def _rust_schemas(read_only: bool) -> dict[str, dict] | None:
     cmd = [str(binary), "tools", "schemas"]
     if read_only:
         cmd.append("--read-only")
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15, check=False)
+    proc = subprocess.run(
+        cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15, check=False
+    )
     if proc.returncode != 0:
         return None
     data = json.loads(proc.stdout)

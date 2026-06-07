@@ -35,7 +35,7 @@ meris-rs run ask|plan|run|review   ──► native agent（冷启动）
 | **F3-M1** ✅ | [NATIVE_BINARY.md](NATIVE_BINARY.md) artifact 下载 | USER_SETUP 链接 |
 | **F3-M2** ✅ | pip wheel bundled `meris-rs`（Linux CI + `stage_bundled_binary.py`） | `test_bundled_binary.py` |
 | **F4** ✅ | native_* 离线 benchmark + `--native` / `--native-only` | `test_benchmark_native.py` + CI |
-| **F5** | E0 正式发布 | tag `v0.0.1` + PyPI（**用户明确要求后再做**） |
+| **F5** | E0 正式发布 | tag `v0.0.1` + PyPI（**暂缓**；线路 B 见 [ROUTE_B_DOGFOOD.md](ROUTE_B_DOGFOOD.md)） |
 
 ## F1 范围（文档）
 

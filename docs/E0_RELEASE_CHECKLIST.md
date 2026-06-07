@@ -15,8 +15,8 @@ meris native status
 
 ## CI
 
-- [ ] `test` workflow green（push main）
-- [ ] 可选：`release` workflow_dispatch → 下载 `meris-rs-*` + `python-dist` artifacts
+- [x] `test` workflow green（push main）
+- [x] `release` workflow_dispatch → artifacts 可下载（`meris-rs-*` + `python-dist`）
 
 ## 打包（仍不打 tag 时可试跑）
 
@@ -42,4 +42,4 @@ PyPI 凭证：`TWINE_*` + `scripts/publish-pypi.ps1`
 |----|------|
 | F1–F4 | ✅ |
 | F3-M2 bundled binary | ✅ Linux wheel |
-| F5 E0 tag + PyPI | 暂缓 |
+| F5 E0 tag + PyPI | 暂缓 · dogfood 见 [ROUTE_B_DOGFOOD.md](ROUTE_B_DOGFOOD.md) |
