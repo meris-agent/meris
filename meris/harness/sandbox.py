@@ -9,6 +9,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 SANDBOX_MODES = frozenset({"off", "warn", "strict"})
 OS_SANDBOX_MODES = frozenset({"off", "auto", "require"})
@@ -70,6 +71,17 @@ def get_sandbox_preset(settings: dict) -> str:
     raw = _sandbox_block(settings).get("preset", DEFAULT_PRESET)
     preset = str(raw).strip().lower()
     return preset if preset in SANDBOX_PRESETS else DEFAULT_PRESET
+
+
+def format_codex_preset_hint(preset: str | None = None, *, settings: dict | None = None) -> str:
+    """Human-readable mapping to OpenAI Codex CLI ``--sandbox`` flag."""
+    name = preset if preset else (get_sandbox_preset(settings) if settings else DEFAULT_PRESET)
+    flag = {
+        "read-only": "read-only",
+        "workspace-write": "workspace-write",
+        "danger-full-access": "danger-full-access",
+    }.get(name, name)
+    return f"≈ Codex --sandbox {flag}"
 
 
 def _resolve_sandbox_field(
@@ -292,6 +304,80 @@ def probe_os_sandbox(workspace: Path, settings: dict | None = None) -> dict:
         "bubblewrap": str(bwrap) if bwrap else None,
         "bubblewrapVersion": None,
         "wouldUseBubblewrap": would,
+    }
+
+
+def describe_platform_sandbox(workspace: Path, settings: dict) -> dict[str, Any]:
+    """Summarize policy vs OS sandbox layers for doctor / platform matrix (Phase G3)."""
+    ws = workspace.resolve()
+    probe = probe_os_sandbox(ws, settings)
+    preset = get_sandbox_preset(settings)
+    codex = format_codex_preset_hint(preset)
+    plat = sys.platform
+    os_mode = get_os_sandbox_mode(settings)
+    would_bwrap = bool(probe.get("wouldUseBubblewrap"))
+    has_bwrap = bool(probe.get("bubblewrap"))
+
+    if plat == "linux":
+        if would_bwrap:
+            detail = f"linux: policy + bubblewrap active; {codex}"
+            status = "ok"
+        elif has_bwrap and os_mode == "auto":
+            detail = f"linux: policy only (bwrap present, osSandbox=auto inactive); {codex}"
+            status = "warn"
+        elif os_mode == "require" and not has_bwrap:
+            detail = f"linux: osSandbox=require but bwrap missing; {codex}"
+            status = "warn"
+        else:
+            detail = (
+                f"linux: policy + cwd lock only — install bubblewrap for OS layer; {codex}"
+            )
+            status = "warn"
+        codex_gaps: list[str] = [] if would_bwrap else ["Linux OS sandbox inactive"]
+    elif plat == "darwin":
+        detail = (
+            f"macOS: policy + cwd lock only — Codex Seatbelt not implemented; "
+            f"use Linux/WSL for bubblewrap; {codex}"
+        )
+        status = "warn"
+        codex_gaps = ["no macOS Seatbelt sandbox"]
+    elif plat == "win32":
+        from meris.harness.wsl import probe_wsl_bwrap
+
+        wsl = probe_wsl_bwrap()
+        if wsl.get("bwrapInWsl"):
+            detail = f"win32: policy on native; bubblewrap via WSL; {codex}"
+            status = "ok"
+            codex_gaps = ["Windows native has no OS sandbox — use WSL for bwrap"]
+        elif wsl.get("wslAvailable"):
+            detail = (
+                f"win32: policy + cwd only — install bwrap in WSL "
+                f"(sudo apt install bubblewrap); {codex}"
+            )
+            status = "warn"
+            codex_gaps = ["Windows native has no OS sandbox"]
+        else:
+            detail = (
+                f"win32: policy + cwd only — install WSL2 + bubblewrap for Codex-like OS sandbox; "
+                f"{codex}"
+            )
+            status = "warn"
+            codex_gaps = ["Windows native has no OS sandbox", "WSL2 not detected"]
+    else:
+        detail = f"{plat}: policy layer only; {codex}"
+        status = "warn"
+        codex_gaps = ["unknown platform"]
+
+    return {
+        "platform": plat,
+        "preset": preset,
+        "codexEquivalent": codex,
+        "policyLayer": True,
+        "osLayerActive": would_bwrap,
+        "codexGaps": codex_gaps,
+        "status": status,
+        "detail": detail,
+        "probe": probe,
     }
 
 

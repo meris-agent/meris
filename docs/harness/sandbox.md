@@ -83,11 +83,13 @@ meris doctor    # Windows 另显示 WSL + bwrap 状态
 
 ## 平台说明
 
+详见 **[PLATFORM_MATRIX.md](PLATFORM_MATRIX.md)**（Phase G3 · Codex 对照）。
+
 | 平台 | 策略层 | OS 层 |
 |------|--------|-------|
 | Linux / WSL | ✅ | ✅ bubblewrap |
 | Windows 原生 | ✅ cwd | ❌ — `doctor` 提示 WSL + `apt install bubblewrap` |
-| macOS | ✅ cwd | ❌ |
+| macOS | ✅ cwd | ❌ — Codex Seatbelt 未实现 |
 
 安装（Debian/Ubuntu / WSL）：`sudo apt install bubblewrap`
 

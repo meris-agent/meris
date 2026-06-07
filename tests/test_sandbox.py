@@ -57,6 +57,7 @@ def test_doctor_reports_sandbox(workspace: Path) -> None:
     sandbox = next(r for r in results if r.name == "sandbox")
     assert sandbox.status == "ok"
     assert "mode=" in sandbox.detail
+    assert "Codex --sandbox" in sandbox.detail
 
 
 def test_default_os_sandbox_auto(workspace: Path) -> None:
@@ -79,7 +80,7 @@ def test_probe_os_sandbox(workspace: Path) -> None:
 
     probe = probe_os_sandbox(workspace)
     assert probe["osSandbox"] in ("off", "auto", "require")
-    assert probe["network"] in ("shared", "isolated")
+    assert probe["network"] in ("shared", "isolated", "allowlist")
     assert "wouldUseBubblewrap" in probe
     assert "maskedPaths" in probe
 

@@ -24,7 +24,7 @@
 
 - [x] **G1** — Codex 风格 `sandbox.preset`（workspace-write 默认 · network isolated）
 - [x] **G2** — network allowlist（命令级 + bwrap share-net）
-- [ ] **G3** — 平台矩阵 + doctor 完善
+- [x] **G3** — 平台矩阵 + doctor Codex preset 提示
 - [ ] **G4** — Route B 完成标准
 - [ ] **G5** — E0 发版（暂缓 tag）
 - [ ] **G6** — macOS sandbox spike

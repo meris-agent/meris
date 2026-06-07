@@ -18,6 +18,8 @@ from meris.harness.sandbox import (
     get_os_sandbox_mode,
     get_sandbox_mode,
     get_sandbox_preset,
+    format_codex_preset_hint,
+    describe_platform_sandbox,
     probe_os_sandbox,
 )
 from meris.native import find_native_binary, native_enabled
@@ -139,7 +141,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
         native_note = ", meris-rs built — auto when MERIS_NATIVE unset"
     else:
         native_note = ", build: meris native build"
-    preset_note = f", preset={preset}"
+    preset_note = f", preset={preset} ({format_codex_preset_hint(preset)})"
     if mode == "off":
         results.append(
             CheckResult(
@@ -164,6 +166,15 @@ def check_harness(workspace: Path) -> list[CheckResult]:
                 f"mode={mode}, bashTimeout={timeout}s{preset_note}, net={eff_net}{native_note}{os_note}",
             )
         )
+
+    plat = describe_platform_sandbox(ws, settings)
+    results.append(
+        CheckResult(
+            "platform sandbox",
+            str(plat["status"]),
+            str(plat["detail"]) + " — docs/harness/PLATFORM_MATRIX.md",
+        )
+    )
 
     if sys.platform == "win32":
         from meris.harness.wsl import probe_wsl_bwrap
