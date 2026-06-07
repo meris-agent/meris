@@ -18,16 +18,16 @@
 - [ ] 日常真实任务 dogfood（1–2 周）
 - [ ] Ratchet digest 闭环
 
-## Phase G — Codex CLI 对标（进行中）
+## Phase G — Codex CLI 对标（✅ 完成）
 
-见 [docs/PLAN_PHASE_G.md](docs/PLAN_PHASE_G.md)
+见 [docs/PLAN_PHASE_G.md](docs/PLAN_PHASE_G.md) · 发版 [docs/RELEASE_v0.0.2.md](docs/RELEASE_v0.0.2.md)
 
 - [x] **G1** — Codex 风格 `sandbox.preset`（workspace-write 默认 · network isolated）
 - [x] **G2** — network allowlist（命令级 + bwrap share-net）
 - [x] **G3** — 平台矩阵 + doctor Codex preset 提示
 - [x] **G4** — Route B 完成标准（`.env` 默认 auto · live 3 task · doctor native loop）
-- [ ] **G5** — E0 发版（暂缓 tag）
-- [ ] **G6** — macOS sandbox spike
+- [x] **G5** — E0 发版 `v0.0.2`（Phase G 完整 · Route B 就绪）
+- [x] **G6** — macOS Seatbelt spike + `sandbox-exec` 探测
 
 ## 进行中
 - [x] Linux bubblewrap OS 沙箱（`sandbox.osSandbox: auto|require`）
@@ -35,7 +35,7 @@
 - [x] Windows `doctor` WSL/bwrap 检测
 - [x] **Live benchmark** — `run_benchmark_live.py` + GitHub workflow_dispatch
 - [x] **E0 发布准备** — `meris release check` 全绿（不打 tag）
-- [ ] **E0 发布** — 打 tag `v0.0.1`（暂缓）· [E0_RELEASE_CHECKLIST.md](docs/E0_RELEASE_CHECKLIST.md)
+- [x] **E0 发布** — tag `v0.0.2` · [RELEASE_v0.0.2.md](docs/RELEASE_v0.0.2.md)
 - [x] **P5-3** — Rust tools + schemas + bash native
 - [x] **P5-4 M1** — Rust agent loop（read-only）+ [PLAN_P5_4.md](docs/PLAN_P5_4.md)
 - [x] **P5-4 M2** — run 模式写工具 + postEdit/onComplete sensors

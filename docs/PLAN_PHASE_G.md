@@ -13,7 +13,7 @@
 | 默认无网络 bash | ✅ | shared 默认 | **G1 ✅ isolated 默认** |
 | 网络 allowlist | ✅ | ✅ G2 | — |
 | macOS Seatbelt / Win 沙箱 | ✅ | ❌ / WSL | **G3 ✅ 文档 + WSL 优先** |
-| 一键安装 | npm/brew | pip 未发 | G5 tag/PyPI |
+| 一键安装 | npm/brew | pip 未发 | **G5 ✅ v0.0.2 tag** |
 | Ratchet 闭环 | ❌ | ✅ | 维持（差异化） |
 
 ## 里程碑
@@ -24,8 +24,8 @@
 | **G2** | `sandbox.networkAllowlist`（命令级域名检查 + bwrap share-net） | 单测 + sandbox.md |
 | **G3** | 平台矩阵文档 + doctor 提示 Codex 等价 preset | ✅ `PLATFORM_MATRIX.md` + doctor |
 | **G4** | 默认 `MERIS_NATIVE_LOOP=auto` 进模板；Route B 完成标准 | ✅ `ROUTE_B_COMPLETION.md` + live 3 task |
-| **G5** | E0 发版（tag + PyPI + Release 页） | 用户明确「打 tag」 |
-| **G6** | 可选：macOS sandbox 调研 / execpolicy 加强 | spike 文档 |
+| **G5** | E0 发版（tag + PyPI + Release 页） | ✅ `v0.0.2`（`v0.0.1` 为早期 tag） |
+| **G6** | macOS sandbox 调研 | ✅ [spikes/G6_MACOS_SANDBOX.md](spikes/G6_MACOS_SANDBOX.md) |
 
 ## G1 preset 映射（Codex → Meris）
 

@@ -27,12 +27,14 @@ python -m build
 # 检查 wheel: meris/_bundled/meris-rs 存在（Linux 构建）
 ```
 
-## 正式发布（需你明确说「打 tag」后再做）
+## 正式发布
 
 ```bash
-git tag v0.0.1 && git push origin v0.0.1
+git tag v0.0.2 && git push origin v0.0.2
 # release workflow 自动：GitHub Release + 可选 PyPI
 ```
+
+> 早期 tag `v0.0.1` 不含 Phase G；请使用 **v0.0.2**。详见 [RELEASE_v0.0.2.md](RELEASE_v0.0.2.md)
 
 PyPI 凭证：`TWINE_*` + `scripts/publish-pypi.ps1`
 
@@ -42,4 +44,4 @@ PyPI 凭证：`TWINE_*` + `scripts/publish-pypi.ps1`
 |----|------|
 | F1–F4 | ✅ |
 | F3-M2 bundled binary | ✅ Linux wheel |
-| F5 E0 tag + PyPI | 暂缓 · dogfood 见 [ROUTE_B_DOGFOOD.md](ROUTE_B_DOGFOOD.md) |
+| F5 E0 tag + PyPI | ✅ v0.0.2 |

@@ -265,6 +265,23 @@ def find_bubblewrap() -> Path | None:
     return None
 
 
+def find_sandbox_exec() -> Path | None:
+    """macOS Seatbelt helper (G6 spike — detection only, not enforced yet)."""
+    if sys.platform != "darwin":
+        return None
+    found = shutil.which("sandbox-exec")
+    return Path(found) if found else None
+
+
+def should_use_seatbelt(settings: dict) -> bool:
+    """True when macOS sandbox-exec would be used (future G6.2; probe/doctor only)."""
+    if sys.platform != "darwin":
+        return False
+    if get_os_sandbox_mode(settings) == "off":
+        return False
+    return find_sandbox_exec() is not None
+
+
 def should_use_bubblewrap(settings: dict) -> bool:
     if sys.platform != "linux":
         return False
@@ -304,6 +321,8 @@ def probe_os_sandbox(workspace: Path, settings: dict | None = None) -> dict:
         "bubblewrap": str(bwrap) if bwrap else None,
         "bubblewrapVersion": None,
         "wouldUseBubblewrap": would,
+        "sandboxExec": str(find_sandbox_exec()) if find_sandbox_exec() else None,
+        "wouldUseSeatbelt": should_use_seatbelt(settings),
     }
 
 
@@ -335,12 +354,21 @@ def describe_platform_sandbox(workspace: Path, settings: dict) -> dict[str, Any]
             status = "warn"
         codex_gaps: list[str] = [] if would_bwrap else ["Linux OS sandbox inactive"]
     elif plat == "darwin":
-        detail = (
-            f"macOS: policy + cwd lock only — Codex Seatbelt not implemented; "
-            f"use Linux/WSL for bubblewrap; {codex}"
-        )
-        status = "warn"
-        codex_gaps = ["no macOS Seatbelt sandbox"]
+        seatbelt = find_sandbox_exec()
+        if seatbelt and os_mode != "off":
+            detail = (
+                f"macOS: policy + cwd; sandbox-exec present but Seatbelt not wired yet "
+                f"(G6 spike); {codex}"
+            )
+            status = "warn"
+            codex_gaps = ["Seatbelt enforcement not implemented — see docs/spikes/G6_MACOS_SANDBOX.md"]
+        else:
+            detail = (
+                f"macOS: policy + cwd lock only — Codex Seatbelt not implemented; "
+                f"use Linux/WSL for bubblewrap; {codex}"
+            )
+            status = "warn"
+            codex_gaps = ["no macOS Seatbelt sandbox"]
     elif plat == "win32":
         from meris.harness.wsl import probe_wsl_bwrap
 

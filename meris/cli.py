@@ -1046,7 +1046,7 @@ def release_check_cmd(
         table.add_row(c.name, f"[{style}]{c.status}[/{style}]", c.detail[:70])
     console.print(table)
     if release_ready(checks):
-        console.print("\n[green]Ready to tag[/green] — see docs/RELEASE_v0.0.1.md")
+        console.print("\n[green]Ready to tag[/green] — see docs/RELEASE_v0.0.2.md")
     else:
         console.print("\n[red]Fix failed checks before release[/red]")
         raise typer.Exit(1)
