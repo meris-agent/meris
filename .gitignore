@@ -54,6 +54,10 @@ Desktop.ini
 .meris/settings.local.yml
 .meris/settings.local.json
 .meris/ratchet/
+meris/.meris/
+
+# Local wheel / packaging smoke (do not commit)
+dist-test/
 
 # Commit shared harness: .meris/settings.yaml, .meris/rules/, .meris/skills/
 # Personal overrides: .meris/settings.local.yaml (see templates/settings.example.yaml)
