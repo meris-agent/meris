@@ -48,6 +48,8 @@ sandbox:
   bashTimeoutSec: 120
   osSandbox: auto
   network: isolated         # shared | isolated — workspace-write 默认 isolated（对标 Codex 关网络）
+  # 非空 allowlist 时：isolated → allowlist 模式（bwrap --share-net + 命令级域名检查）
+  networkAllowlist: []      # 例: ["api.deepseek.com", "*.github.com", "pypi.org"]
   maskSecrets: true
   maskPaths: []
 

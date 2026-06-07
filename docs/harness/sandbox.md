@@ -1,4 +1,4 @@
-# Bash 沙箱（Phase E3 · Phase G1 Codex preset）
+# Bash 沙箱（Phase E3 · Phase G1 Codex preset · Phase G2 network allowlist）
 
 Meris 在 **permissions** 之外增加两层 **sandbox**：
 
@@ -24,6 +24,7 @@ sandbox:
   bashTimeoutSec: 120
   osSandbox: auto           # off | auto | require（Linux bubblewrap）
   network: isolated         # shared | isolated — preset 默认 isolated
+  networkAllowlist: []      # 非空 → allowlist 模式（见下）
   maskSecrets: true
   maskPaths: []
 ```
@@ -44,6 +45,32 @@ sandbox:
 |---------|----------------------|
 | `shared` | `--share-net`（需 git/curl 时显式开启或 danger preset） |
 | `isolated` | `--unshare-net`，bash 无法访问网络（**workspace-write 默认**） |
+| `allowlist` | 显式 allowlist 模式；或 `isolated` + 非空 `networkAllowlist` |
+
+## Phase G2 — network allowlist
+
+Codex CLI 可在沙箱内按域名放行网络。Meris 采用 **命令级检查 + bwrap share-net**（非内核 MITM 代理）：
+
+```yaml
+sandbox:
+  network: isolated
+  networkAllowlist:
+    - api.deepseek.com
+    - "*.github.com"
+    - pypi.org
+```
+
+| 条件 | 行为 |
+|------|------|
+| `networkAllowlist` 非空且 `network: isolated` | 有效模式 = `allowlist`；bwrap 使用 `--share-net` |
+| `network: allowlist` | 同上，需非空 allowlist |
+| 命令含 curl/git/ssh/pip 等 | 解析 URL/主机名，必须在 allowlist 内 |
+| `strict` 模式 | 违规 **拒绝** bash |
+| `warn` 模式 | 输出 `[sandbox] WARN`，仍执行 |
+
+支持 glob：`*.github.com` 匹配 `api.github.com` 与 `github.com`。
+
+**限制**：仅检查 bash 命令字符串中的可解析主机名；子进程、IP 直连、未列出的工具不受控。对标 Codex 的完整网络代理仍有差距。
 
 默认遮罩文件（存在则 `--ro-bind /dev/null`）：`.env`、`.env.local`、`.env.production` 等。
 

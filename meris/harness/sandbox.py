@@ -12,7 +12,7 @@ from pathlib import Path
 
 SANDBOX_MODES = frozenset({"off", "warn", "strict"})
 OS_SANDBOX_MODES = frozenset({"off", "auto", "require"})
-NETWORK_MODES = frozenset({"shared", "isolated"})
+NETWORK_MODES = frozenset({"shared", "isolated", "allowlist"})
 SANDBOX_PRESETS = frozenset({"read-only", "workspace-write", "danger-full-access"})
 DEFAULT_MODE = "warn"
 DEFAULT_OS_SANDBOX = "auto"
@@ -42,6 +42,14 @@ _BASH_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"\bfind\s", re.I), "`find` blocked — use glob / grep / read_file"),
     (re.compile(r"\bpwd\b", re.I), "`pwd` blocked — use glob for pyproject.toml"),
     (re.compile(r"(?:^|[;&|]\s*|\s&&\s*)ls(?:\s|$)", re.I), "`ls` blocked — use glob / read_file"),
+)
+
+_URL_HOST = re.compile(r"https?://([^/\s'\"#?]+)", re.I)
+_GIT_SSH_HOST = re.compile(r"git@([^:/\s]+)", re.I)
+_SSH_HOST = re.compile(r"\bssh\s+(?:[^\s@]+\@)?([^\s:/]+)", re.I)
+_NETWORK_TOOL = re.compile(
+    r"\b(curl|wget|pip\s+install|npm\s+install|git\s+clone|ssh)\b",
+    re.I,
 )
 
 
@@ -110,6 +118,71 @@ def get_network_mode(settings: dict) -> str:
     )
 
 
+def get_network_allowlist(settings: dict) -> list[str]:
+    """Host patterns: exact, suffix, or `*.example.com` (Phase G2)."""
+    raw = _sandbox_block(settings).get("networkAllowlist") or []
+    if not isinstance(raw, list):
+        return []
+    out: list[str] = []
+    for item in raw:
+        pat = str(item).strip().lower()
+        if pat and pat not in out:
+            out.append(pat)
+    return out
+
+
+def get_effective_network_mode(settings: dict) -> str:
+    """isolated + non-empty allowlist → allowlist (share-net + command checks)."""
+    mode = get_network_mode(settings)
+    if mode == "allowlist":
+        return "allowlist"
+    if mode == "isolated" and get_network_allowlist(settings):
+        return "allowlist"
+    return mode
+
+
+def host_allowed(host: str, pattern: str) -> bool:
+    host = host.lower().strip(".")
+    pat = pattern.lower().strip()
+    if not host or not pat:
+        return False
+    if pat.startswith("*."):
+        base = pat[2:]
+        return host == base or host.endswith("." + base)
+    return host == pat or host.endswith("." + pat)
+
+
+def extract_network_hosts(command: str) -> list[str]:
+    cmd = command or ""
+    seen: set[str] = set()
+    hosts: list[str] = []
+    for rx in (_URL_HOST, _GIT_SSH_HOST, _SSH_HOST):
+        for m in rx.finditer(cmd):
+            h = m.group(1).lower().strip(".")
+            if h and h not in seen:
+                seen.add(h)
+                hosts.append(h)
+    return hosts
+
+
+def check_network_allowlist(command: str, settings: dict) -> str | None:
+    """Return issue message when command violates allowlist; None if ok."""
+    if get_effective_network_mode(settings) != "allowlist":
+        return None
+    allowlist = get_network_allowlist(settings)
+    if not allowlist:
+        return "network allowlist mode but sandbox.networkAllowlist is empty"
+    if not _NETWORK_TOOL.search(command or ""):
+        return None
+    hosts = extract_network_hosts(command)
+    if not hosts:
+        return "network command without parseable host — not in networkAllowlist"
+    for host in hosts:
+        if not any(host_allowed(host, pat) for pat in allowlist):
+            return f"host `{host}` not in sandbox.networkAllowlist"
+    return None
+
+
 def get_mask_secrets(settings: dict) -> bool:
     raw = (settings.get("sandbox") or {}).get("maskSecrets", True)
     if isinstance(raw, bool):
@@ -162,7 +235,7 @@ def bwrap_base_args(workspace: Path, settings: dict) -> list[str]:
             "--unshare-pid",
         ]
     )
-    if get_network_mode(settings) == "isolated":
+    if get_effective_network_mode(settings) == "isolated":
         args.append("--unshare-net")
     else:
         args.append("--share-net")
@@ -212,7 +285,8 @@ def probe_os_sandbox(workspace: Path, settings: dict | None = None) -> dict:
     return {
         "platform": sys.platform,
         "osSandbox": os_mode,
-        "network": get_network_mode(settings),
+        "network": get_effective_network_mode(settings),
+        "networkAllowlist": get_network_allowlist(settings),
         "maskSecrets": get_mask_secrets(settings),
         "maskedPaths": [str(p) for p in collect_mask_paths(ws, settings)],
         "bubblewrap": str(bwrap) if bwrap else None,
@@ -326,9 +400,7 @@ def check_bash_sandbox(
     from meris.native import native_sandbox_check
 
     native = native_sandbox_check(workspace, command, mode)
-    if native is not None:
-        if native.get("ok"):
-            return None
+    if native is not None and not native.get("ok"):
         blocked = bool(native.get("blocked"))
         message = str(native.get("message", ""))
         if blocked or mode == "warn":
@@ -336,6 +408,9 @@ def check_bash_sandbox(
         return None
 
     issues = scan_bash_command(command)
+    net_issue = check_network_allowlist(command, settings)
+    if net_issue:
+        issues.insert(0, net_issue)
     if not issues:
         return None
     msg = issues[0]

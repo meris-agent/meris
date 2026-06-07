@@ -117,9 +117,95 @@ pub fn get_network_mode(settings: &HashMap<String, Value>) -> String {
     resolve_sandbox_field(
         settings,
         "network",
-        &["shared", "isolated"],
+        &["shared", "isolated", "allowlist"],
         DEFAULT_NETWORK,
     )
+}
+
+pub fn get_network_allowlist(settings: &HashMap<String, Value>) -> Vec<String> {
+    let Some(arr) = settings
+        .get("sandbox")
+        .and_then(|s| s.get("networkAllowlist"))
+        .and_then(|v| v.as_array())
+    else {
+        return vec![];
+    };
+    let mut out = Vec::new();
+    for item in arr {
+        if let Some(s) = item.as_str() {
+            let pat = s.trim().to_lowercase();
+            if !pat.is_empty() && !out.contains(&pat) {
+                out.push(pat);
+            }
+        }
+    }
+    out
+}
+
+pub fn get_effective_network_mode(settings: &HashMap<String, Value>) -> String {
+    let mode = get_network_mode(settings);
+    if mode == "allowlist" {
+        return "allowlist".to_string();
+    }
+    if mode == "isolated" && !get_network_allowlist(settings).is_empty() {
+        return "allowlist".to_string();
+    }
+    mode
+}
+
+pub fn host_allowed(host: &str, pattern: &str) -> bool {
+    let host = host.trim().trim_matches('.').to_lowercase();
+    let pat = pattern.trim().to_lowercase();
+    if host.is_empty() || pat.is_empty() {
+        return false;
+    }
+    if let Some(base) = pat.strip_prefix("*.") {
+        return host == base || host.ends_with(&format!(".{base}"));
+    }
+    host == pat || host.ends_with(&format!(".{pat}"))
+}
+
+pub fn extract_network_hosts(command: &str) -> Vec<String> {
+    let url_re = Regex::new("(?i)https?://([^/\\s'\"#?]+)").unwrap();
+    let git_re = Regex::new(r"(?i)git@([^:/\s]+)").unwrap();
+    let ssh_re = Regex::new(r"(?i)\bssh\s+(?:[^\s@]+\@)?([^\s:/]+)").unwrap();
+    let mut seen = std::collections::HashSet::new();
+    let mut hosts = Vec::new();
+    for re in [&url_re, &git_re, &ssh_re] {
+        for cap in re.captures_iter(command) {
+            if let Some(m) = cap.get(1) {
+                let h = m.as_str().trim().trim_matches('.').to_lowercase();
+                if !h.is_empty() && seen.insert(h.clone()) {
+                    hosts.push(h);
+                }
+            }
+        }
+    }
+    hosts
+}
+
+pub fn check_network_allowlist(command: &str, settings: &HashMap<String, Value>) -> Option<String> {
+    if get_effective_network_mode(settings) != "allowlist" {
+        return None;
+    }
+    let allowlist = get_network_allowlist(settings);
+    if allowlist.is_empty() {
+        return Some("network allowlist mode but sandbox.networkAllowlist is empty".into());
+    }
+    let tool_re = Regex::new(r"(?i)\b(curl|wget|pip\s+install|npm\s+install|git\s+clone|ssh)\b").unwrap();
+    if !tool_re.is_match(command) {
+        return None;
+    }
+    let hosts = extract_network_hosts(command);
+    if hosts.is_empty() {
+        return Some("network command without parseable host — not in networkAllowlist".into());
+    }
+    for host in hosts {
+        if !allowlist.iter().any(|p| host_allowed(&host, p)) {
+            return Some(format!("host `{host}` not in sandbox.networkAllowlist"));
+        }
+    }
+    None
 }
 
 pub fn get_mask_secrets(settings: &HashMap<String, Value>) -> bool {
@@ -222,13 +308,15 @@ pub fn os_sandbox_probe(settings: &HashMap<String, Value>) -> Value {
     let bwrap = find_bubblewrap();
     let version = bwrap.as_ref().and_then(|p| bubblewrap_version(p));
     let would_use = should_use_bubblewrap(settings).unwrap_or(false);
-    let network = get_network_mode(settings);
+    let network = get_effective_network_mode(settings);
+    let allowlist = get_network_allowlist(settings);
     let mask_secrets = get_mask_secrets(settings);
     json!({
         "platform": std::env::consts::OS,
         "preset": get_sandbox_preset(settings),
         "osSandbox": os_mode,
         "network": network,
+        "networkAllowlist": allowlist,
         "maskSecrets": mask_secrets,
         "bubblewrap": bwrap.map(|p| p.to_string_lossy().to_string()),
         "bubblewrapVersion": version,
@@ -269,11 +357,18 @@ pub struct SandboxVerdict {
     pub mode: String,
 }
 
-pub fn check_bash_sandbox(command: &str, mode: &str) -> Option<SandboxVerdict> {
+pub fn check_bash_sandbox(
+    command: &str,
+    mode: &str,
+    settings: &HashMap<String, Value>,
+) -> Option<SandboxVerdict> {
     if mode == "off" {
         return None;
     }
-    let issues = scan_bash_command(command);
+    let mut issues = scan_bash_command(command);
+    if let Some(net) = check_network_allowlist(command, settings) {
+        issues.insert(0, net);
+    }
     if issues.is_empty() {
         return None;
     }
@@ -363,7 +458,7 @@ fn build_bwrap_command(
         "--new-session",
         "--unshare-pid",
     ]);
-    if get_network_mode(settings) == "isolated" {
+    if get_effective_network_mode(settings) == "isolated" {
         cmd.arg("--unshare-net");
     } else {
         cmd.arg("--share-net");
@@ -435,7 +530,7 @@ mod tests {
 
     #[test]
     fn strict_blocks_pwd() {
-        let v = check_bash_sandbox("pwd", "strict").unwrap();
+        let v = check_bash_sandbox("pwd", "strict", &HashMap::new()).unwrap();
         assert!(v.blocked);
     }
 
@@ -495,5 +590,39 @@ mod tests {
         let settings = HashMap::new();
         let masked = collect_mask_paths(dir.path(), &settings);
         assert_eq!(masked.len(), 1);
+    }
+
+    #[test]
+    fn allowlist_effective_mode() {
+        let mut settings = HashMap::new();
+        settings.insert(
+            "sandbox".into(),
+            json!({
+                "network": "isolated",
+                "networkAllowlist": ["github.com"]
+            }),
+        );
+        assert_eq!(get_effective_network_mode(&settings), "allowlist");
+    }
+
+    #[test]
+    fn allowlist_blocks_unknown_host() {
+        let mut settings = HashMap::new();
+        settings.insert(
+            "sandbox".into(),
+            json!({"networkAllowlist": ["api.deepseek.com"]}),
+        );
+        let msg = check_network_allowlist(
+            "curl https://evil.example.com/x",
+            &settings,
+        );
+        assert!(msg.is_some());
+        assert!(msg.unwrap().contains("evil.example.com"));
+    }
+
+    #[test]
+    fn host_wildcard() {
+        assert!(host_allowed("api.github.com", "*.github.com"));
+        assert!(!host_allowed("evil.com", "*.github.com"));
     }
 }

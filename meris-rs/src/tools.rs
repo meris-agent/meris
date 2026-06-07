@@ -274,7 +274,7 @@ pub fn tool_bash(
         None => return "Error: missing command".into(),
     };
     let mode = get_sandbox_mode(settings);
-    if let Some(v) = check_bash_sandbox(command, &mode) {
+    if let Some(v) = check_bash_sandbox(command, &mode, settings) {
         if v.blocked {
             return v.message.clone();
         }

@@ -273,7 +273,7 @@ fn main() {
                     .map(|m| m.trim().to_lowercase())
                     .filter(|m| matches!(m.as_str(), "off" | "warn" | "strict"))
                     .unwrap_or_else(|| get_sandbox_mode(&settings));
-                match check_bash_sandbox(&command, &mode_s) {
+                match check_bash_sandbox(&command, &mode_s, &settings) {
                     Some(v) => {
                         println!("{}", serde_json::to_string(&verdict_to_json(&v)).unwrap());
                         if v.blocked { 1 } else { 0 }
@@ -316,7 +316,7 @@ fn main() {
                             1
                         }
                     };
-                    if let Some(v) = check_bash_sandbox(&shell_cmd, &mode) {
+                    if let Some(v) = check_bash_sandbox(&shell_cmd, &mode, &settings) {
                         if v.blocked {
                             eprintln!("{}", v.message);
                             1

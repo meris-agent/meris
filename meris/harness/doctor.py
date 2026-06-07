@@ -11,7 +11,9 @@ from meris.harness.paths import harness_root
 from meris.harness.settings import load_settings, shared_settings_relpath
 from meris.harness.sandbox import (
     get_bash_timeout,
+    get_effective_network_mode,
     get_mask_secrets,
+    get_network_allowlist,
     get_network_mode,
     get_os_sandbox_mode,
     get_sandbox_mode,
@@ -108,18 +110,24 @@ def check_harness(workspace: Path) -> list[CheckResult]:
     timeout = get_bash_timeout(settings)
     os_mode = get_os_sandbox_mode(settings)
     net_mode = get_network_mode(settings)
+    eff_net = get_effective_network_mode(settings)
+    allowlist = get_network_allowlist(settings)
     preset = get_sandbox_preset(settings)
     mask_on = get_mask_secrets(settings)
     probe = probe_os_sandbox(ws, settings)
     masked_n = len(probe.get("maskedPaths") or [])
     if probe.get("wouldUseBubblewrap"):
-        os_note = f", bwrap active, net={net_mode}"
+        os_note = f", bwrap active, net={eff_net}"
+        if allowlist:
+            os_note += f", allowlist={len(allowlist)}"
         if mask_on and masked_n:
             os_note += f", mask {masked_n} secret file(s)"
     elif os_mode == "require" and not probe.get("bubblewrap"):
         os_note = ", osSandbox=require but bwrap missing"
     elif probe.get("bubblewrap"):
-        os_note = f", osSandbox={os_mode}, bwrap ok, net={net_mode}"
+        os_note = f", osSandbox={os_mode}, bwrap ok, net={eff_net}"
+        if allowlist:
+            os_note += f", allowlist={len(allowlist)}"
     elif os_mode != "off":
         os_note = f", osSandbox={os_mode} (Linux bwrap only)"
     else:
@@ -153,7 +161,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
             CheckResult(
                 "sandbox",
                 "ok",
-                f"mode={mode}, bashTimeout={timeout}s{preset_note}, net={net_mode}{native_note}{os_note}",
+                f"mode={mode}, bashTimeout={timeout}s{preset_note}, net={eff_net}{native_note}{os_note}",
             )
         )
 

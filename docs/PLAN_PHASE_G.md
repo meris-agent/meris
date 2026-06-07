@@ -11,7 +11,7 @@
 | Rust agent loop | ✅ 全 Rust | ✅ 混合 | G4 默认 native |
 | 沙箱 preset | read-only / workspace-write / danger | warn/strict 手工配 | **G1 ✅ preset** |
 | 默认无网络 bash | ✅ | shared 默认 | **G1 ✅ isolated 默认** |
-| 网络 allowlist | ✅ | ❌ | G2 |
+| 网络 allowlist | ✅ | ✅ G2 | — |
 | macOS Seatbelt / Win 沙箱 | ✅ | ❌ / WSL | G3（文档 + WSL 优先） |
 | 一键安装 | npm/brew | pip 未发 | G5 tag/PyPI |
 | Ratchet 闭环 | ❌ | ✅ | 维持（差异化） |
@@ -21,7 +21,7 @@
 | 阶段 | 交付 | 验收 |
 |------|------|------|
 | **G1** | Codex 风格 `sandbox.preset` + 默认 `workspace-write`（network isolated） | `test_sandbox_presets.py` + 文档对照表 |
-| **G2** | `network.allowlist`（bwrap 下允许域名/IP） | 单测 + sandbox.md |
+| **G2** | `sandbox.networkAllowlist`（命令级域名检查 + bwrap share-net） | 单测 + sandbox.md |
 | **G3** | 平台矩阵文档 + doctor 提示 Codex 等价 preset | doctor 输出 preset 名 |
 | **G4** | 默认 `MERIS_NATIVE_LOOP=auto` 进模板；Route B 完成标准 | live benchmark 3 task |
 | **G5** | E0 发版（tag + PyPI + Release 页） | 用户明确「打 tag」 |
