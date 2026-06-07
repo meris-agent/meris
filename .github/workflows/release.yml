@@ -106,11 +106,14 @@ jobs:
             artifacts/**
 
       - name: Upload to PyPI
-        if: ${{ secrets.PYPI_API_TOKEN != '' }}
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
+          if [ -z "${TWINE_PASSWORD}" ]; then
+            echo "PYPI_API_TOKEN not configured — skip PyPI upload"
+            exit 0
+          fi
           pip install twine
           shopt -s globstar nullglob
           files=(artifacts/**/*.whl artifacts/**/*.tar.gz)
