@@ -16,7 +16,7 @@
 - [x] env 就绪（`MERIS_NATIVE_LOOP=auto` · native status 全 True · doctor 全绿）
 - [x] live benchmark Route B 3 task 标准（`read_hello` + `docs_smoke` + `list_tools`）
 - [ ] 日常真实任务 dogfood（1–2 周）
-- [ ] Ratchet digest 闭环
+- [x] Ratchet 30 分钟闭环（2026-06-07 · 见下方）
 
 ## Phase G — Codex CLI 对标（✅ 完成）
 
@@ -93,7 +93,28 @@ meris ratchet digest
 ## Ratchet 摘要
 
 - [L-bash-verify] pytest 用 `pytest tests/ -m "not integration" -q`；禁止 find/pwd/`/workspace` bash。
+- [L-path] 路径/命名不规范（meris/README、错误包目录前缀等）
 
+## Ratchet 闭环 @2026-06-07
+
+**基线**
+
+- pytest: 232 passed
+- benchmark: 7/8（`harness_paths_smoke` fail · rejected `meris/README.md`）
+- pending: 0 → benchmark 自动生成 `ratchet-20260607-120350-f0d0bc`
+
+**Applied**
+
+- `ratchet-20260607-120350-f0d0bc` → `.meris/rules/paths.md`（L-path · append `<!-- ratchet:L-path -->`）
+- 手动迭代：`L-path-answer` — 路径问答只答一行 `README.md`，禁止对比句（否则 benchmark reject 误杀）
+
+**After benchmark**
+
+- `harness_paths_smoke`: fail → **pass**
+- 全量 benchmark: **8/8 (100%)**
+- `meris ratchet status`: pending 0
+
+**第二次同类任务预期**：问根 README 路径时 agent 只输出 `README.md`，不再写「不是 meris/README.md」。
 
 ## Session note (2026-06-07 02:42 UTC)
 - **Task**: Reply with exactly: pong
