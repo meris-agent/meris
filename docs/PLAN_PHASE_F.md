@@ -59,7 +59,7 @@ meris-rs run ask|plan|run|review   ──► native agent（冷启动）
 
 ## F3-M2 范围（pip bundled binary）
 
-1. `meris/_bundled/meris-rs` — wheel 内嵌路径（hatch `force-include`）
+1. `meris/_bundled/meris-rs` — wheel 内嵌路径（随 `meris` package 打包，构建前 stage）
 2. `scripts/stage_bundled_binary.py` — 构建前拷贝二进制
 3. Release CI：`build-python` 依赖 Linux artifact 并验证 wheel 含 `_bundled`
 4. `meris native status` → `binarySource: bundled|dev|path`
