@@ -17,6 +17,14 @@ ApproveFn = Callable[[str, dict], Union[bool, Awaitable[bool]]]
 from meris.config import env_get, env_tri
 
 
+def _subprocess_run(*popenargs, **kwargs) -> subprocess.CompletedProcess:
+    """subprocess.run with UTF-8 text mode (avoids GBK decode errors on Windows)."""
+    if kwargs.get("text") or kwargs.get("capture_output"):
+        kwargs.setdefault("encoding", "utf-8")
+        kwargs.setdefault("errors", "replace")
+    return subprocess.run(*popenargs, **kwargs)
+
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
@@ -107,7 +115,7 @@ def native_status() -> dict[str, Any]:
     version = None
     if binary:
         try:
-            out = subprocess.run(
+            out = _subprocess_run(
                 [str(binary), "version"],
                 capture_output=True,
                 text=True,
@@ -138,7 +146,7 @@ def build_native(*, release: bool = True) -> tuple[int, str]:
     cmd = [cargo, "build"]
     if release:
         cmd.append("--release")
-    proc = subprocess.run(
+    proc = _subprocess_run(
         cmd,
         cwd=_repo_root() / "meris-rs",
         capture_output=True,
@@ -172,7 +180,7 @@ def native_compress_messages(
     if max_tokens is not None:
         cmd.extend(["--max-tokens", str(max_tokens)])
     try:
-        proc = subprocess.run(
+        proc = _subprocess_run(
             cmd,
             input=json.dumps(messages, ensure_ascii=False),
             capture_output=True,
@@ -230,10 +238,11 @@ def _run_native(
     if not binary:
         return None
     try:
-        return subprocess.run(
+        return _subprocess_run(
             [str(binary), *args],
             capture_output=True,
             text=True,
+            input=input_text,
             encoding="utf-8",
             errors="replace",
             timeout=timeout,
@@ -339,7 +348,7 @@ def _binary_supports_subcommand(sub: str) -> bool:
     if not binary:
         return False
     try:
-        proc = subprocess.run(
+        proc = _subprocess_run(
             [str(binary), sub, "--help"],
             capture_output=True,
             text=True,

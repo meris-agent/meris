@@ -13,6 +13,13 @@
    - `meris-rs-x86_64-apple-darwin` / `aarch64-apple-darwin`
 5. 将二进制加入 PATH，或放到 `meris-rs/target/release/meris-rs`（开发 tree）
 
+**Windows 一键（需 `gh auth login`）：**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install_meris_rs_from_ci.ps1
+powershell -ExecutionPolicy Bypass -File scripts\install_meris_rs_from_ci.ps1 -CleanDebug
+```
+
 验证：
 
 ```bash
