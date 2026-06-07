@@ -37,8 +37,14 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["meris"]
 
-# Bundled meris-rs lives under meris/_bundled/ (staged before release build).
-# Do not force-include that tree — it duplicates files already shipped via packages.
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "meris/_bundled/meris-rs",
+  "meris/_bundled/meris-rs.exe",
+]
+
+# Bundled meris-rs: stage with scripts/stage_bundled_binary.py before `python -m build --wheel`.
+# Use --wheel (from source), not default sdist→wheel, so the binary is included once.
 
 [tool.ruff]
 line-length = 100

@@ -27,8 +27,7 @@ def stage_binary(repo: Path, src: Path, *, clean: bool = False) -> Path:
     dest_dir.mkdir(parents=True, exist_ok=True)
     if clean:
         for p in dest_dir.glob("meris-rs*"):
-            if p.name != ".gitkeep":
-                p.unlink(missing_ok=True)
+            p.unlink(missing_ok=True)
     dest = dest_dir / bundled_name()
     shutil.copy2(src, dest)
     if os.name != "nt":

@@ -30,7 +30,6 @@ coverage.xml
 # --- Rust ---
 meris-rs/target/
 meris/_bundled/meris-rs*
-!meris/_bundled/.gitkeep
 !meris/_bundled/README.md
 
 # --- IDE / editor (local) ---
