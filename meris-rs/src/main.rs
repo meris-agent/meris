@@ -93,6 +93,8 @@ enum SandboxAction {
         command: String,
         #[arg(long)]
         mode: Option<String>,
+        #[arg(long, help = "Optional settings JSON override (same shape as .meris/settings.yaml root)")]
+        settings_json: Option<String>,
     },
     /// Run shell command with cwd locked to workspace
     Run {
@@ -100,6 +102,8 @@ enum SandboxAction {
         workspace: PathBuf,
         #[arg(long)]
         timeout: Option<u64>,
+        #[arg(long, help = "Optional settings JSON override (same shape as .meris/settings.yaml root)")]
+        settings_json: Option<String>,
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         cmd: Vec<String>,
     },
@@ -107,6 +111,8 @@ enum SandboxAction {
     Probe {
         #[arg(long)]
         workspace: PathBuf,
+        #[arg(long, help = "Optional settings JSON override (same shape as .meris/settings.yaml root)")]
+        settings_json: Option<String>,
     },
     /// Emit Meris Seatbelt SBPL plan (JSON)
     Policy {
@@ -275,8 +281,9 @@ fn main() {
                 workspace,
                 command,
                 mode,
+                settings_json,
             } => {
-                let settings = load_settings(&workspace);
+                let settings = settings_from_workspace(&workspace, settings_json.as_deref());
                 let mode_s = mode
                     .map(|m| m.trim().to_lowercase())
                     .filter(|m| matches!(m.as_str(), "off" | "warn" | "strict"))
@@ -295,13 +302,14 @@ fn main() {
             SandboxAction::Run {
                 workspace,
                 timeout,
+                settings_json,
                 cmd,
             } => {
                 if cmd.is_empty() {
                     eprintln!("Error: missing command after --");
                     1
                 } else {
-                    let settings = load_settings(&workspace);
+                    let settings = settings_from_workspace(&workspace, settings_json.as_deref());
                     let shell_cmd = if cmd.len() == 1 {
                         cmd[0].clone()
                     } else {
@@ -336,8 +344,8 @@ fn main() {
                     }
                 }
             }
-            SandboxAction::Probe { workspace } => {
-                let settings = load_settings(&workspace);
+            SandboxAction::Probe { workspace, settings_json } => {
+                let settings = settings_from_workspace(&workspace, settings_json.as_deref());
                 println!(
                     "{}",
                     serde_json::to_string_pretty(&os_sandbox_probe_workspace(

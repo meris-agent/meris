@@ -155,7 +155,7 @@ jobs:
           meris harness dod-failed --cwd .. --session ci --task t --detail fail --json | grep -q ratchet
 
   macos-seatbelt:
-    name: macOS Seatbelt (G6.2)
+    name: macOS Seatbelt (G6.2/G6.3)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -169,22 +169,60 @@ jobs:
       - name: Install Python
         run: pip install -e ".[dev]"
 
+      - name: Build meris-rs
+        working-directory: meris-rs
+        run: cargo build --release
+
       - name: Seatbelt policy tests (Python)
         run: pytest tests/test_seatbelt_macos.py -q
 
       - name: Seatbelt policy tests (Rust)
         working-directory: meris-rs
-        run: cargo test no_global read_only allowlist_hybrid --quiet
+        run: cargo test seatbelt --quiet
 
       - name: Meris profile in policy JSON
         run: |
           ./meris-rs/target/release/meris-rs sandbox policy --workspace . | grep -q meris-workspace-write
 
-      - name: Build meris-rs
-        working-directory: meris-rs
-        run: cargo build --release
-
       - name: Seatbelt probe and bash smoke
         run: |
           ./meris-rs/target/release/meris-rs sandbox probe --workspace . | grep -q wouldUseSeatbelt
           ./meris-rs/target/release/meris-rs sandbox run --workspace . --timeout 30 -- echo seatbelt_ci_ok | grep -q seatbelt_ci_ok
+
+      - name: Seatbelt blocks writes outside workspace (read-only)
+        run: |
+          set -e
+          root="$(pwd)"
+          marker="/tmp/meris-seatbelt-ci-$$"
+          ./meris-rs/target/release/meris-rs sandbox run --workspace "$root" --timeout 30 \
+            --settings-json '{"sandbox":{"preset":"read-only","osSandbox":"auto"}}' \
+            -- sh -c "echo pwned > $marker" || true
+          test ! -e "$marker"
+
+      - name: Seatbelt masks .env from bash
+        run: |
+          set -e
+          root="$(pwd)"
+          echo 'SECRET=ci-leak' > "$root/.env"
+          trap 'rm -f "$root/.env"' EXIT
+          out=$(./meris-rs/target/release/meris-rs sandbox run --workspace "$root" --timeout 30 \
+            --settings-json '{"sandbox":{"preset":"workspace-write","maskSecrets":true,"osSandbox":"auto"}}' \
+            -- sh -c 'cat .env 2>/dev/null || true')
+          test -z "$out" || ! echo "$out" | grep -q SECRET=ci-leak
+
+      - name: Allowlist blocks unknown host (strict check)
+        run: |
+          set -e
+          ./meris-rs/target/release/meris-rs sandbox check --workspace . --mode strict \
+            --settings-json '{"sandbox":{"networkAllowlist":["github.com"],"preset":"workspace-write"}}' \
+            --command "curl https://evil.example.com/x" | grep -q '"blocked":true'
+
+      - name: Allowlist hybrid policy and probe
+        run: |
+          set -e
+          ./meris-rs/target/release/meris-rs sandbox policy --workspace . \
+            --settings-json '{"sandbox":{"networkAllowlist":["github.com"],"preset":"workspace-write"}}' \
+            | grep -q allowlist-hybrid
+          ./meris-rs/target/release/meris-rs sandbox probe --workspace . \
+            --settings-json '{"sandbox":{"networkAllowlist":["github.com"],"preset":"workspace-write","osSandbox":"auto"}}' \
+            | grep -q '"networkEnforcement": "allowlist-hybrid'

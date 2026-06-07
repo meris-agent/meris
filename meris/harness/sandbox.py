@@ -544,6 +544,10 @@ def run_bash_sync(workspace: Path, command: str, settings: dict) -> str:
     timeout = get_bash_timeout(settings)
     os_mode = get_os_sandbox_mode(settings)
 
+    verdict = check_bash_sandbox(workspace, command, settings)
+    if verdict and verdict.blocked:
+        return f"exit=1\n{verdict.message}"
+
     if native_enabled():
         native_out = native_run_bash(workspace, command, timeout=timeout)
         if native_out is not None:

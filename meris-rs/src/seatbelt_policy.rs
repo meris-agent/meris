@@ -219,4 +219,32 @@ mod tests {
         assert!(!plan.policy.contains("(deny network*)"));
         assert!(plan.network_enforcement.starts_with("allowlist-hybrid"));
     }
+
+    #[test]
+    fn mask_secrets_denies_env_read() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(".env"), "SECRET=1\n").unwrap();
+        let mut settings = HashMap::new();
+        settings.insert(
+            "sandbox".into(),
+            json!({"preset": "workspace-write", "maskSecrets": true}),
+        );
+        let plan = plan_meris_seatbelt(dir.path(), &settings).unwrap();
+        assert!(plan.policy.contains("MASK_0"));
+        assert!(plan.params.iter().any(|p| p.contains("MASK_0=")));
+        assert!(plan.params.iter().any(|p| p.contains(".env")));
+    }
+
+    #[test]
+    fn mask_secrets_skipped_when_disabled() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(".env"), "SECRET=1\n").unwrap();
+        let mut settings = HashMap::new();
+        settings.insert(
+            "sandbox".into(),
+            json!({"preset": "workspace-write", "maskSecrets": false}),
+        );
+        let plan = plan_meris_seatbelt(dir.path(), &settings).unwrap();
+        assert!(!plan.policy.contains("MASK_0"));
+    }
 }

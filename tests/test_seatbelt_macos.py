@@ -1,4 +1,4 @@
-"""Phase G6.2 — macOS Seatbelt sandbox (Meris-native policy, not Codex copy)."""
+"""Phase G6.2/G6.3 — macOS Seatbelt sandbox (Meris-native policy, G2 parity)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,9 @@ import pytest
 
 from meris.harness.sandbox import (
     build_seatbelt_policy,
+    check_bash_sandbox,
     get_sandbox_preset,
+    run_bash_sync,
 )
 
 
@@ -52,6 +54,88 @@ def test_seatbelt_masks_env(workspace, require_meris_rs) -> None:
     policy, params = build_seatbelt_policy(workspace, settings)
     assert "MASK_0" in policy
     assert any(p.startswith("-DMASK_0=") for p in params)
+
+
+def test_seatbelt_allowlist_hybrid_policy(workspace, require_meris_rs) -> None:
+    settings = {
+        "sandbox": {
+            "preset": "workspace-write",
+            "networkAllowlist": ["github.com", "*.pythonhosted.org"],
+        }
+    }
+    policy, _ = build_seatbelt_policy(workspace, settings)
+    assert "(allow network-outbound)" in policy
+    assert "(deny network*)" not in policy
+
+
+def test_seatbelt_mask_paths_extra(workspace, require_meris_rs) -> None:
+    (workspace / "secrets.local").write_text("key=1\n", encoding="utf-8")
+    settings = {
+        "sandbox": {
+            "preset": "workspace-write",
+            "maskSecrets": True,
+            "maskPaths": ["secrets.local"],
+        }
+    }
+    policy, params = build_seatbelt_policy(workspace, settings)
+    assert "MASK_0" in policy or "MASK_1" in policy
+    joined = " ".join(params)
+    assert "secrets.local" in joined
+
+
+def test_run_bash_sync_strict_blocks_allowlist_violation(workspace) -> None:
+    settings = {
+        "sandbox": {
+            "mode": "strict",
+            "networkAllowlist": ["github.com"],
+            "preset": "workspace-write",
+            "osSandbox": "off",
+        }
+    }
+    out = run_bash_sync(workspace, "curl https://evil.example.com/x", settings)
+    assert out.startswith("exit=1")
+    assert "evil.example.com" in out or "networkAllowlist" in out
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS seatbelt integration")
+def test_seatbelt_masks_env_at_runtime(workspace) -> None:
+    from meris.harness.sandbox import find_sandbox_exec, should_use_seatbelt, _run_seatbelt_sync
+
+    if not find_sandbox_exec():
+        pytest.skip("sandbox-exec not available")
+    (workspace / ".env").write_text("SECRET=ci-mask\n", encoding="utf-8")
+    settings = {"sandbox": {"preset": "workspace-write", "maskSecrets": True, "osSandbox": "auto"}}
+    if not should_use_seatbelt(settings):
+        pytest.skip("seatbelt not enabled")
+    _code, out = _run_seatbelt_sync(
+        workspace,
+        "cat .env 2>/dev/null || true",
+        30,
+        settings,
+    )
+    assert "SECRET=ci-mask" not in out
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS seatbelt integration")
+def test_seatbelt_allowlist_blocked_before_run(workspace) -> None:
+    from meris.harness.sandbox import find_sandbox_exec, should_use_seatbelt
+
+    if not find_sandbox_exec():
+        pytest.skip("sandbox-exec not available")
+    settings = {
+        "sandbox": {
+            "mode": "strict",
+            "networkAllowlist": ["github.com"],
+            "preset": "workspace-write",
+            "osSandbox": "auto",
+        }
+    }
+    if not should_use_seatbelt(settings):
+        pytest.skip("seatbelt not enabled")
+    verdict = check_bash_sandbox(workspace, "curl https://evil.example.com", settings)
+    assert verdict is not None and verdict.blocked
+    out = run_bash_sync(workspace, "curl https://evil.example.com", settings)
+    assert out.startswith("exit=1")
 
 
 @pytest.mark.skipif(sys.platform != "darwin", reason="macOS seatbelt integration")

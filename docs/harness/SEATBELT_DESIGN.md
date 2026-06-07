@@ -50,8 +50,19 @@ Python `build_seatbelt_policy()` 只调用 meris-rs，不维护第二份 SBPL。
 meris-rs sandbox policy --workspace . | jq .profile
 # "meris-workspace-write"
 
-meris doctor    # platform sandbox: ok · seatbelt active
+meris doctor    # platform sandbox: ok · seatbelt active, mask N secret file(s)
 ```
+
+## G6.3 验收（allowlist + mask 对齐）
+
+| 检查 | 命令 / 行为 |
+|------|-------------|
+| mask `.env` | `sandbox run` + `cat .env` 无泄漏 |
+| allowlist hybrid | `policy` → `networkEnforcement: allowlist-hybrid(N)` |
+| strict 拦截 | `sandbox check --mode strict` + 未授权 `curl` → `blocked: true` |
+| Python 执行路径 | `run_bash_sync` strict 下同样拦截（与 meris-rs 一致） |
+
+CI：`macos-seatbelt` job 与 Linux bwrap job 对等（mask / write-outside / allowlist）。
 
 ## 相关
 

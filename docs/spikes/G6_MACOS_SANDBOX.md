@@ -84,8 +84,8 @@ Python `probe_os_sandbox` / doctor：增加 `seatbelt: true|false` 与 Codex 差
 |------|------|--------|
 | **G6.1**（本 spike） | 文档 + doctor 探测 stub | ✅ |
 | **G6.2** | `read-only` + `workspace-write` Seatbelt MVP（bash） | ✅ meris-rs + Python |
-| G6.3 | 与 G2 allowlist / maskSecrets 对齐 | ~2d |
-| G6.4 | CI macOS job + parity tests | ~1d |
+| **G6.3** | 与 G2 allowlist / maskSecrets 对齐 + macOS CI parity | ✅ |
+| G6.4 | CI macOS job + parity tests | ✅（并入 G6.3 macos-seatbelt job） |
 
 **推荐优先级**：低于 G5 发版与 dogfood；Linux/WSL 已覆盖主要 CI 与用户路径。
 

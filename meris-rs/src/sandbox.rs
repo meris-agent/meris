@@ -356,6 +356,18 @@ pub fn os_sandbox_probe_workspace(workspace: &Path, settings: &HashMap<String, V
             .map(|p| p.to_string_lossy().to_string())
             .collect();
         obj.insert("maskedPaths".into(), json!(masked));
+        if obj
+            .get("wouldUseSeatbelt")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+        {
+            if let Ok(plan) = crate::seatbelt_policy::plan_meris_seatbelt(workspace, settings) {
+                obj.insert(
+                    "networkEnforcement".into(),
+                    json!(plan.network_enforcement),
+                );
+            }
+        }
     }
     probe
 }

@@ -25,7 +25,7 @@
 | **G3** | 平台矩阵文档 + doctor 提示 Codex 等价 preset | ✅ `PLATFORM_MATRIX.md` + doctor |
 | **G4** | 默认 `MERIS_NATIVE_LOOP=auto` 进模板；Route B 完成标准 | ✅ `ROUTE_B_COMPLETION.md` + live 3 task |
 | **G5** | E0 发版（tag + PyPI + Release 页） | ✅ `v0.0.2`（`v0.0.1` 为早期 tag） |
-| **G6** | macOS sandbox 调研 | ✅ [spikes/G6_MACOS_SANDBOX.md](spikes/G6_MACOS_SANDBOX.md) |
+| **G6** | macOS sandbox 调研 + Seatbelt MVP + G2 对齐 | ✅ [spikes/G6_MACOS_SANDBOX.md](spikes/G6_MACOS_SANDBOX.md) |
 
 ## G1 preset 映射（Codex → Meris）
 

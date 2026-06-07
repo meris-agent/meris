@@ -103,7 +103,26 @@ Linux 以外，macOS 通过 `/usr/bin/sandbox-exec` 执行 bash（`osSandbox: au
 | `workspace-write` | workspace + `/private/tmp` 可写 |
 | `danger-full-access` | `osSandbox: off`，不启用 |
 
-`network: isolated` 时在 SBPL 中加入 `(deny network*)`。详见 [G6_MACOS_SANDBOX.md](../spikes/G6_MACOS_SANDBOX.md)。
+`network: isolated` 时在 SBPL 中加入 `(deny network*)`。详见 [G6_MACOS_SANDBOX.md](../spikes/G6_MACOS_SANDBOX.md) 与 [SEATBELT_DESIGN.md](SEATBELT_DESIGN.md)。
+
+## Phase G6.3 — allowlist / maskSecrets 对齐
+
+与 Linux bubblewrap 同等能力：
+
+| 能力 | Linux bwrap | macOS Seatbelt |
+|------|-------------|----------------|
+| `maskSecrets` | `--ro-bind /dev/null` | SBPL `(deny file-read* file-write* MASK_N)` |
+| `networkAllowlist` | share-net + G2 命令检查 | outbound 放行 + G2 命令检查（hybrid） |
+| strict 执行前拦截 | `sandbox check` / `sandbox run` | 同上 |
+
+`meris-rs sandbox check|run|probe|policy` 均支持 `--settings-json` 便于 CI 与测试。
+
+验收（macOS CI `macos-seatbelt` job）：
+
+- read-only 无法写 `/tmp/meris-*`
+- `cat .env` 读不到 masked 内容
+- allowlist 下 `curl evil.com` 被 strict check 拦截
+- probe 输出 `networkEnforcement: allowlist-hybrid(N)`
 
 ## 相关
 
