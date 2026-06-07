@@ -11,6 +11,7 @@ pub mod plan;
 pub mod prompt;
 pub mod provider;
 pub mod review;
+pub mod seatbelt_policy;
 pub mod sandbox;
 pub mod sensors;
 pub mod run_entry;
@@ -39,8 +40,8 @@ pub use provider::{
 pub use sandbox::{
     check_bash_sandbox, collect_mask_paths, find_bubblewrap, find_sandbox_exec, get_bash_timeout,
     get_mask_secrets, get_network_mode, get_os_sandbox_mode, get_sandbox_mode, os_sandbox_probe,
-    os_sandbox_probe_workspace, run_bash_in_workspace, scan_bash_command, should_use_bubblewrap,
-    should_use_seatbelt, verdict_to_json, SandboxVerdict,
+    os_sandbox_probe_workspace, run_bash_in_workspace, scan_bash_command, seatbelt_plan_json,
+    should_use_bubblewrap, should_use_seatbelt, verdict_to_json, SandboxVerdict,
 };
 pub use sensors::{
     on_complete_enabled, post_edit_commands, run_on_complete_sensors, run_post_edit_sensors,

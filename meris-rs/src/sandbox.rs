@@ -3,7 +3,10 @@
 #[path = "sandbox_macos.rs"]
 mod sandbox_macos;
 
-pub use sandbox_macos::{build_seatbelt_policy, find_sandbox_exec, run_bash_seatbelt, should_use_seatbelt};
+pub use sandbox_macos::{
+    build_seatbelt_plan, find_sandbox_exec, run_bash_seatbelt, seatbelt_plan_json,
+    should_use_seatbelt,
+};
 
 use regex::Regex;
 use serde_json::{json, Value};
@@ -34,7 +37,7 @@ fn preset_field(preset: &str, field: &str) -> Option<&'static str> {
     }
 }
 
-fn get_sandbox_preset(settings: &HashMap<String, Value>) -> String {
+pub(crate) fn get_sandbox_preset(settings: &HashMap<String, Value>) -> String {
     settings
         .get("sandbox")
         .and_then(|s| s.get("preset"))
@@ -314,6 +317,12 @@ pub fn os_sandbox_probe(settings: &HashMap<String, Value>) -> Value {
     let version = bwrap.as_ref().and_then(|p| bubblewrap_version(p));
     let would_bwrap = should_use_bubblewrap(settings).unwrap_or(false);
     let would_seatbelt = should_use_seatbelt(settings).unwrap_or(false);
+    let seatbelt_profile = if would_seatbelt {
+        crate::seatbelt_policy::MerisSeatbeltProfile::from_preset(&get_sandbox_preset(settings))
+            .map(|p| p.id().to_string())
+    } else {
+        None
+    };
     let network = get_effective_network_mode(settings);
     let allowlist = get_network_allowlist(settings);
     let mask_secrets = get_mask_secrets(settings);
@@ -330,6 +339,12 @@ pub fn os_sandbox_probe(settings: &HashMap<String, Value>) -> Value {
         "wouldUseBubblewrap": would_bwrap,
         "sandboxExec": sandbox_exec.map(|p| p.to_string_lossy().to_string()),
         "wouldUseSeatbelt": would_seatbelt,
+        "seatbeltProfile": seatbelt_profile,
+        "policySource": if would_seatbelt {
+            Some("meris-generated")
+        } else {
+            None
+        },
     })
 }
 

@@ -1,15 +1,11 @@
-//! macOS Seatbelt sandbox via `sandbox-exec` (Phase G6.2).
+//! macOS Seatbelt execution via `sandbox-exec` (Meris G6.2+).
 
-use super::{
-    collect_mask_paths, get_effective_network_mode, get_os_sandbox_mode, get_sandbox_preset,
-    run_command_with_timeout,
-};
+use super::{get_os_sandbox_mode, get_sandbox_preset, run_command_with_timeout};
+use crate::seatbelt_policy::{plan_meris_seatbelt, plan_to_json, MerisSeatbeltProfile, MerisSeatbeltPlan};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-
-const BASE_POLICY: &str = include_str!("../seatbelt/base_policy.sbpl");
 
 #[cfg(target_os = "macos")]
 pub fn find_sandbox_exec() -> Option<PathBuf> {
@@ -32,8 +28,15 @@ pub fn find_sandbox_exec() -> Option<PathBuf> {
     None
 }
 
+pub fn seatbelt_supported_preset(settings: &HashMap<String, Value>) -> bool {
+    MerisSeatbeltProfile::from_preset(&get_sandbox_preset(settings)).is_some()
+}
+
 pub fn should_use_seatbelt(settings: &HashMap<String, Value>) -> Result<bool, String> {
     if !cfg!(target_os = "macos") {
+        return Ok(false);
+    }
+    if !seatbelt_supported_preset(settings) {
         return Ok(false);
     }
     match get_os_sandbox_mode(settings).as_str() {
@@ -49,40 +52,23 @@ pub fn should_use_seatbelt(settings: &HashMap<String, Value>) -> Result<bool, St
     }
 }
 
-/// Build SBPL policy and `-D` template args for sandbox-exec.
 pub fn build_seatbelt_policy(
     workspace: &Path,
     settings: &HashMap<String, Value>,
 ) -> Result<(String, Vec<String>), String> {
-    let ws = workspace
-        .canonicalize()
-        .map_err(|e| format!("workspace: {e}"))?;
-    let mut policy = BASE_POLICY.to_string();
-    let mut params: Vec<String> = Vec::new();
+    let plan = plan_meris_seatbelt(workspace, settings)?;
+    Ok((plan.policy, plan.params))
+}
 
-    if get_effective_network_mode(settings) == "isolated" {
-        policy.push_str("\n(deny network*)\n");
-    }
+pub fn build_seatbelt_plan(
+    workspace: &Path,
+    settings: &HashMap<String, Value>,
+) -> Result<MerisSeatbeltPlan, String> {
+    plan_meris_seatbelt(workspace, settings)
+}
 
-    for (i, mask) in collect_mask_paths(&ws, settings).iter().enumerate() {
-        let canonical = mask
-            .canonicalize()
-            .unwrap_or_else(|_| mask.to_path_buf());
-        policy.push_str(&format!(
-            "\n(deny file-read* file-write* (subpath (param \"MASK_{i}\")))\n"
-        ));
-        params.push(format!("-DMASK_{i}={}", canonical.display()));
-    }
-
-    let preset = get_sandbox_preset(settings);
-    if preset == "workspace-write" {
-        policy.push_str("\n(allow file-write* (subpath (param \"WRITABLE_ROOT_0\")))\n");
-        params.push(format!("-DWRITABLE_ROOT_0={}", ws.display()));
-        policy.push_str("\n(allow file-write* (subpath \"/private/tmp\"))\n");
-        policy.push_str("\n(allow file-write* (subpath \"/var/folders\"))\n");
-    }
-
-    Ok((policy, params))
+pub fn seatbelt_plan_json(workspace: &Path, settings: &HashMap<String, Value>) -> Result<Value, String> {
+    Ok(plan_to_json(&plan_meris_seatbelt(workspace, settings)?))
 }
 
 pub fn build_seatbelt_command(
@@ -94,10 +80,10 @@ pub fn build_seatbelt_command(
     let ws = workspace
         .canonicalize()
         .map_err(|e| format!("workspace: {e}"))?;
-    let (policy, params) = build_seatbelt_policy(workspace, settings)?;
+    let plan = plan_meris_seatbelt(workspace, settings)?;
     let mut cmd = Command::new(sandbox_exec);
-    cmd.arg("-p").arg(policy);
-    for param in params {
+    cmd.arg("-p").arg(plan.policy);
+    for param in plan.params {
         cmd.arg(param);
     }
     cmd.arg("--").arg("sh").arg("-c").arg(command);
@@ -123,34 +109,15 @@ mod tests {
     use std::collections::HashMap;
 
     #[test]
-    fn policy_includes_network_deny_when_isolated() {
-        let dir = tempfile::tempdir().unwrap();
-        let mut settings = HashMap::new();
-        settings.insert("sandbox".into(), json!({"network": "isolated"}));
-        let (policy, _) = build_seatbelt_policy(dir.path(), &settings).unwrap();
-        assert!(policy.contains("(deny network*)"));
-    }
-
-    #[test]
-    fn workspace_write_adds_writable_root() {
+    fn workspace_write_plan_profile() {
         let dir = tempfile::tempdir().unwrap();
         let mut settings = HashMap::new();
         settings.insert(
             "sandbox".into(),
-            json!({"preset": "workspace-write", "network": "shared"}),
+            json!({"preset": "workspace-write", "network": "isolated"}),
         );
-        let (policy, params) = build_seatbelt_policy(dir.path(), &settings).unwrap();
-        assert!(policy.contains("WRITABLE_ROOT_0"));
-        assert!(params.iter().any(|p| p.starts_with("-DWRITABLE_ROOT_0=")));
-    }
-
-    #[test]
-    fn read_only_has_no_writable_root_param() {
-        let dir = tempfile::tempdir().unwrap();
-        let mut settings = HashMap::new();
-        settings.insert("sandbox".into(), json!({"preset": "read-only"}));
-        let (policy, params) = build_seatbelt_policy(dir.path(), &settings).unwrap();
-        assert!(!policy.contains("WRITABLE_ROOT_0"));
-        assert!(params.iter().all(|p| !p.starts_with("-DWRITABLE_ROOT_0=")));
+        let plan = build_seatbelt_plan(dir.path(), &settings).unwrap();
+        assert_eq!(plan.profile.id(), "meris-workspace-write");
+        assert!(plan.policy.contains("(deny network*)"));
     }
 }

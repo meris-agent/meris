@@ -12,6 +12,17 @@
 
 macOS 是 Meris 与 Codex 在 OS 层差距最大的平台（G3 已文档化）。
 
+## Meris 设计（非 Codex 抄写）
+
+见 **[SEATBELT_DESIGN.md](../harness/SEATBELT_DESIGN.md)** — 要点：
+
+1. **程序化 profile**（`meris-read-only` / `meris-workspace-write`），与 G1 preset 一一对应  
+2. **分层读 allowlist**（系统根 + workspace），拒绝 `(allow file-read*)` 全局放行  
+3. **网络混合模型**：isolated 用 Seatbelt 拒绝；allowlist 用 OS 放行 + G2 命令级拦截  
+4. **单一数据源**：`meris-rs sandbox policy` 生成 SBPL，Python 不维护第二份文件  
+
+Codex 参考仅用于理解 `sandbox-exec` 机制，不复制其 SBPL 文件。
+
 ## Codex 做法（参考）
 
 OpenAI Codex Rust 核心（`codex-rs/sandboxing/`）：

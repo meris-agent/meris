@@ -49,7 +49,7 @@ sandbox:
 
 ## Phase G2 — network allowlist
 
-Codex CLI 可在沙箱内按域名放行网络。Meris 采用 **命令级检查 + bwrap share-net**（非内核 MITM 代理）：
+Codex CLI 可在沙箱内按域名放行网络。Meris 采用 **命令级检查 + bwrap share-net**（Linux）或 **allowlist 混合模型**（macOS Seatbelt 放行 + G2 命令检查，见 [SEATBELT_DESIGN.md](SEATBELT_DESIGN.md)）：
 
 ```yaml
 sandbox:

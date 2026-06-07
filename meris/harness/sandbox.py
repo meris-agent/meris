@@ -285,40 +285,45 @@ def should_use_seatbelt(settings: dict) -> bool:
     return find_sandbox_exec() is not None
 
 
-def _seatbelt_base_policy() -> str:
-    policy_path = Path(__file__).resolve().parents[2] / "meris-rs" / "seatbelt" / "base_policy.sbpl"
-    if policy_path.is_file():
-        return policy_path.read_text(encoding="utf-8")
-    bundled = Path(__file__).resolve().parent / "seatbelt" / "base_policy.sbpl"
-    if bundled.is_file():
-        return bundled.read_text(encoding="utf-8")
-    raise RuntimeError("seatbelt base policy file not found")
+def _fetch_seatbelt_plan(workspace: Path, settings: dict) -> tuple[str, list[str]]:
+    """Load Meris-generated SBPL from meris-rs (single source of truth)."""
+    import json
+    import subprocess
+
+    from meris.native import find_native_binary
+
+    binary = find_native_binary()
+    if not binary:
+        raise RuntimeError("seatbelt requires meris-rs binary for policy generation")
+
+    cmd = [
+        str(binary),
+        "sandbox",
+        "policy",
+        "--workspace",
+        str(workspace.resolve()),
+        "--settings-json",
+        json.dumps(settings),
+    ]
+    proc = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=15,
+        check=False,
+    )
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "").strip()
+        raise RuntimeError(err or "meris-rs sandbox policy failed")
+    data = json.loads(proc.stdout)
+    return str(data["policy"]), list(data.get("params") or [])
 
 
 def build_seatbelt_policy(workspace: Path, settings: dict) -> tuple[str, list[str]]:
-    """Build SBPL policy and -D args for sandbox-exec (mirrors meris-rs)."""
-    ws = workspace.resolve()
-    policy = _seatbelt_base_policy()
-    params: list[str] = []
-
-    if get_effective_network_mode(settings) == "isolated":
-        policy += "\n(deny network*)\n"
-
-    for i, mask in enumerate(collect_mask_paths(ws, settings)):
-        try:
-            canonical = mask.resolve()
-        except OSError:
-            canonical = mask
-        policy += f'\n(deny file-read* file-write* (subpath (param "MASK_{i}")))\n'
-        params.append(f"-DMASK_{i}={canonical}")
-
-    if get_sandbox_preset(settings) == "workspace-write":
-        policy += '\n(allow file-write* (subpath (param "WRITABLE_ROOT_0")))\n'
-        params.append(f"-DWRITABLE_ROOT_0={ws}")
-        policy += "\n(allow file-write* (subpath \"/private/tmp\"))\n"
-        policy += "\n(allow file-write* (subpath \"/var/folders\"))\n"
-
-    return policy, params
+    """Build SBPL via meris-rs MerisSeatbeltPlan (not a static Codex file copy)."""
+    return _fetch_seatbelt_plan(workspace, settings)
 
 
 def _run_seatbelt_sync(

@@ -4,11 +4,12 @@ use clap::{Parser, Subcommand};
 use meris_rs::{
     chat_completions, check_bash_sandbox, check_tool_allowed, compress_messages, estimate_tokens,
     get_bash_timeout, get_sandbox_mode, load_settings, list_sessions, load_session, os_sandbox_probe_workspace,
-    probe_provider, resolve_config, run_agent, run_bash_in_workspace, run_builtin_tool,
+    probe_provider, resolve_config, run_agent, run_bash_in_workspace, run_builtin_tool, seatbelt_plan_json,
     native_loop_enabled_for_run_entry, parse_direct_run_args, should_inject_native_loop_auto,
     tool_schemas_json, verdict_to_json, AgentConfig, BUILTIN_TOOL_NAMES,
 };
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -106,6 +107,13 @@ enum SandboxAction {
     Probe {
         #[arg(long)]
         workspace: PathBuf,
+    },
+    /// Emit Meris Seatbelt SBPL plan (JSON)
+    Policy {
+        #[arg(long)]
+        workspace: PathBuf,
+        #[arg(long, help = "Optional settings JSON override (same shape as .meris/settings.yaml root)")]
+        settings_json: Option<String>,
     },
 }
 
@@ -339,6 +347,22 @@ fn main() {
                 );
                 0
             }
+            SandboxAction::Policy {
+                workspace,
+                settings_json,
+            } => {
+                let settings = settings_from_workspace(&workspace, settings_json.as_deref());
+                match seatbelt_plan_json(&workspace, &settings) {
+                    Ok(v) => {
+                        println!("{}", serde_json::to_string_pretty(&v).unwrap());
+                        0
+                    }
+                    Err(e) => {
+                        eprintln!("{e}");
+                        1
+                    }
+                }
+            }
         },
         Commands::Provider { action } => match action {
             ProviderAction::Probe { base_url, model } => {
@@ -567,6 +591,21 @@ fn try_direct_native_run(args: &[String]) -> Option<i32> {
             Some(1)
         }
     }
+}
+
+fn settings_from_workspace(
+    workspace: &PathBuf,
+    override_json: Option<&str>,
+) -> HashMap<String, Value> {
+    let mut settings = load_settings(workspace);
+    if let Some(raw) = override_json {
+        if let Ok(extra) = serde_json::from_str::<HashMap<String, Value>>(raw) {
+            for (k, v) in extra {
+                settings.insert(k, v);
+            }
+        }
+    }
+    settings
 }
 
 fn which_meris() -> Option<String> {

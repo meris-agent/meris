@@ -174,7 +174,11 @@ jobs:
 
       - name: Seatbelt policy tests (Rust)
         working-directory: meris-rs
-        run: cargo test policy_includes workspace_write read_only --quiet
+        run: cargo test no_global read_only allowlist_hybrid --quiet
+
+      - name: Meris profile in policy JSON
+        run: |
+          ./meris-rs/target/release/meris-rs sandbox policy --workspace . | grep -q meris-workspace-write
 
       - name: Build meris-rs
         working-directory: meris-rs
