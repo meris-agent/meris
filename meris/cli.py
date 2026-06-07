@@ -549,8 +549,14 @@ def init_harness(
         shutil.copytree(tpl_docs, docs_harness)
         console.print(f"[green]Created[/green] {docs_harness}/")
 
+    env_file = ws / ".env"
+    env_tpl = tpl / "env.example"
+    if not env_file.exists() and env_tpl.is_file():
+        shutil.copy(env_tpl, env_file)
+        console.print(f"[green]Created[/green] {env_file} (MERIS_NATIVE_LOOP=auto — edit API key)")
+
     console.print("[bold]Harness initialized.[/bold] Edit AGENTS.md for your stack.")
-    console.print("[dim]Next: meris ratchet learn --init[/dim]")
+    console.print("[dim]Next: meris ratchet learn --init · Route B: docs/ROUTE_B_COMPLETION.md[/dim]")
 
 
 @spec_app.command("init")

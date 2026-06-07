@@ -2,7 +2,8 @@
 """Live benchmark — real LLM agent tasks (requires API key).
 
 Usage:
-  python scripts/run_benchmark_live.py
+  python scripts/run_benchmark_live.py              # Route B default: 3 agent tasks
+  python scripts/run_benchmark_live.py --route-b  # same as default
   python scripts/run_benchmark_live.py --filter read_hello
   python scripts/run_benchmark_live.py --all-agent
 """
@@ -14,6 +15,31 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# Phase G4 — Route B live acceptance (read-only ask tasks, native loop friendly)
+ROUTE_B_LIVE_TASKS: tuple[str, ...] = ("read_hello", "docs_smoke", "list_tools")
+
+
+def select_live_agent_tasks(
+    all_tasks,
+    *,
+    filter_prefixes: list[str] | None = None,
+    all_agent: bool = False,
+    task_ids: tuple[str, ...] | None = None,
+):
+    """Pick agent (non-local) benchmark tasks for live runs."""
+    agent_tasks = [t for t in all_tasks if not t.local]
+    if all_agent:
+        return agent_tasks
+    if filter_prefixes:
+        return [
+            t
+            for t in agent_tasks
+            if any(t.id == p or t.id.startswith(p) for p in filter_prefixes)
+        ]
+    ids = task_ids or ROUTE_B_LIVE_TASKS
+    by_id = {t.id: t for t in agent_tasks}
+    return [by_id[i] for i in ids if i in by_id]
 
 
 def _has_api_key() -> bool:
@@ -35,7 +61,12 @@ async def main() -> int:
         "-k",
         action="append",
         default=[],
-        help="Task id prefix (repeatable). Default: read_hello, docs_smoke",
+        help="Task id prefix (repeatable). Default: Route B 3 tasks",
+    )
+    parser.add_argument(
+        "--route-b",
+        action="store_true",
+        help=f"Run Route B live tasks: {', '.join(ROUTE_B_LIVE_TASKS)}",
     )
     parser.add_argument(
         "--all-agent",
@@ -75,20 +106,13 @@ async def main() -> int:
 
     tasks_path = ROOT / "scripts" / "benchmark" / "tasks.json"
     all_tasks = load_benchmark_tasks(tasks_path)
-    agent_tasks = [t for t in all_tasks if not t.local]
 
-    if args.all_agent:
-        selected = agent_tasks
-    elif args.filter:
-        prefixes = args.filter
-        selected = [
-            t
-            for t in agent_tasks
-            if any(t.id == p or t.id.startswith(p) for p in prefixes)
-        ]
-    else:
-        defaults = ("read_hello", "docs_smoke")
-        selected = [t for t in agent_tasks if t.id in defaults]
+    selected = select_live_agent_tasks(
+        all_tasks,
+        filter_prefixes=args.filter or None,
+        all_agent=args.all_agent,
+        task_ids=ROUTE_B_LIVE_TASKS if not args.filter and not args.all_agent else None,
+    )
 
     if not selected:
         print("No agent tasks matched filter.", file=sys.stderr)

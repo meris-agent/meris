@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       filter:
-        description: "Task id prefix (empty = default read_hello + docs_smoke)"
+        description: "Task id prefix (empty = Route B 3 tasks: read_hello, docs_smoke, list_tools)"
         required: false
         default: ""
       all_agent:
@@ -31,6 +31,7 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MERIS_PROVIDER: deepseek
+          MERIS_NATIVE_LOOP: auto
         run: |
           if [ -z "$DEEPSEEK_API_KEY" ] && [ -z "$OPENAI_API_KEY" ]; then
             echo "Skip: set DEEPSEEK_API_KEY or OPENAI_API_KEY in repo secrets"

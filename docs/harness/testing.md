@@ -23,7 +23,7 @@ meris harness check
 meris benchmark list
 meris benchmark run --local-only          # 无 API：harness_check + review_smoke
 python scripts/run_benchmark_mock.py      # 离线 mock，CI 同款
-python scripts/run_benchmark_live.py      # 真实 LLM（需 API key）
+python scripts/run_benchmark_live.py      # Route B: 3 agent tasks（需 API key）
 meris benchmark run --filter plan_smoke   # 单任务 agent
 ```
 

@@ -1,6 +1,6 @@
 # 线路 B — Dogfood（暂不发版）
 
-> Phase F 完成后 · 正式发版见 [E0_RELEASE_CHECKLIST.md](E0_RELEASE_CHECKLIST.md)
+> Phase F 完成后 · **G4 完成标准** → [ROUTE_B_COMPLETION.md](ROUTE_B_COMPLETION.md) · 正式发版见 [E0_RELEASE_CHECKLIST.md](E0_RELEASE_CHECKLIST.md)
 
 ## 一次性准备
 
@@ -29,9 +29,10 @@ meris harness check
 meris doctor
 ```
 
-有 API 时加：
+有 API 时（**G4 验收：默认 3 task**）：
 
 ```bash
+python scripts/run_benchmark_live.py          # read_hello + docs_smoke + list_tools
 python scripts/run_benchmark_live.py --filter read_hello
 meris run "你的真实任务" --max-turns 10
 ```

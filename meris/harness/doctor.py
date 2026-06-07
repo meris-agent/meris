@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from meris.config import env_tri
+from meris.config import env_get, env_tri
 from meris.harness.paths import harness_root
 from meris.harness.settings import load_settings, shared_settings_relpath
 from meris.harness.sandbox import (
@@ -22,7 +22,7 @@ from meris.harness.sandbox import (
     describe_platform_sandbox,
     probe_os_sandbox,
 )
-from meris.native import find_native_binary, native_enabled
+from meris.native import find_native_binary, native_enabled, native_loop_enabled
 from meris.provider import ProviderError, get_provider
 from meris.provider.resolve import resolve_provider_config
 
@@ -175,6 +175,49 @@ def check_harness(workspace: Path) -> list[CheckResult]:
             str(plat["detail"]) + " — docs/harness/PLATFORM_MATRIX.md",
         )
     )
+
+    binary = find_native_binary()
+    loop_val = env_get("NATIVE_LOOP", "").strip().lower()
+    if native_loop_enabled():
+        results.append(
+            CheckResult(
+                "native loop",
+                "ok",
+                "MERIS_NATIVE_LOOP=auto — Rust agent loop active (Route B / G4)",
+            )
+        )
+    elif binary and loop_val in ("0", "false", "no"):
+        results.append(
+            CheckResult(
+                "native loop",
+                "warn",
+                "meris-rs present but MERIS_NATIVE_LOOP=0 — set auto in .env for Route B",
+            )
+        )
+    elif binary and not loop_val:
+        results.append(
+            CheckResult(
+                "native loop",
+                "warn",
+                "meris-rs present — add MERIS_NATIVE_LOOP=auto to .env (see ROUTE_B_COMPLETION.md)",
+            )
+        )
+    elif binary and not native_enabled():
+        results.append(
+            CheckResult(
+                "native loop",
+                "warn",
+                "meris-rs found but MERIS_NATIVE=0 — unset or set MERIS_NATIVE=1",
+            )
+        )
+    else:
+        results.append(
+            CheckResult(
+                "native loop",
+                "warn",
+                "no meris-rs — meris native build or install_meris_rs_from_ci.ps1",
+            )
+        )
 
     if sys.platform == "win32":
         from meris.harness.wsl import probe_wsl_bwrap

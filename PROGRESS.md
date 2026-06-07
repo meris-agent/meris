@@ -14,7 +14,7 @@
 
 - [x] release workflow 验证 + `install_meris_rs_from_ci.ps1`
 - [x] env 就绪（`MERIS_NATIVE_LOOP=auto` · native status 全 True · doctor 全绿）
-- [x] live benchmark `read_hello` 1/1（native loop）
+- [x] live benchmark Route B 3 task 标准（`read_hello` + `docs_smoke` + `list_tools`）
 - [ ] 日常真实任务 dogfood（1–2 周）
 - [ ] Ratchet digest 闭环
 
@@ -25,7 +25,7 @@
 - [x] **G1** — Codex 风格 `sandbox.preset`（workspace-write 默认 · network isolated）
 - [x] **G2** — network allowlist（命令级 + bwrap share-net）
 - [x] **G3** — 平台矩阵 + doctor Codex preset 提示
-- [ ] **G4** — Route B 完成标准
+- [x] **G4** — Route B 完成标准（`.env` 默认 auto · live 3 task · doctor native loop）
 - [ ] **G5** — E0 发版（暂缓 tag）
 - [ ] **G6** — macOS sandbox spike
 

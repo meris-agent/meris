@@ -153,7 +153,7 @@ try {
     }
 
     Write-Host "`nDone. Installed meris-rs from CI run $runId -> $installPath" -ForegroundColor Green
-    Write-Host "Optional: `$env:MERIS_NATIVE_LOOP='auto'" -ForegroundColor DarkGray
+    Write-Host "Recommended: add MERIS_NATIVE_LOOP=auto to .env (Route B / G4)" -ForegroundColor Cyan
 } finally {
     Pop-Location
 }
