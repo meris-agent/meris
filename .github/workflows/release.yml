@@ -90,7 +90,10 @@ jobs:
               sys.exit('no wheel in dist/')
           w = wheels[0]
           names = zipfile.ZipFile(w).namelist()
-          ok = any(n.endswith('meris/_bundled/meris-rs') or '/meris/_bundled/meris-rs' in n for n in names)
+          ok = any(
+              n == 'meris/_bundled/meris-rs' or n.endswith('/meris/_bundled/meris-rs')
+              for n in names
+          )
           assert ok, names
           print('bundled binary ok in', w)
           "

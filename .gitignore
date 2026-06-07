@@ -29,8 +29,8 @@ coverage.xml
 
 # --- Rust ---
 meris-rs/target/
-meris/_bundled/meris-rs*
-!meris/_bundled/README.md
+# meris/_bundled/meris-rs* — do NOT gitignore: hatchling excludes ignored paths from wheels.
+# Stage before release build; never commit the binary (large). README.md stays tracked.
 
 # --- IDE / editor (local) ---
 .idea/
