@@ -13,8 +13,9 @@
 见 [docs/ROUTE_B_DOGFOOD.md](docs/ROUTE_B_DOGFOOD.md) · `.env.example` 推荐 `MERIS_NATIVE_LOOP=auto`
 
 - [x] release workflow 验证 + `install_meris_rs_from_ci.ps1`
+- [x] env 就绪（`MERIS_NATIVE_LOOP=auto` · native status 全 True · doctor 全绿）
+- [x] live benchmark `read_hello` 1/1（native loop）
 - [ ] 日常真实任务 dogfood（1–2 周）
-- [ ] live benchmark 定期跑
 - [ ] Ratchet digest 闭环
 
 ## 进行中

@@ -25,6 +25,10 @@ def _has_api_key() -> bool:
 
 
 async def main() -> int:
+    from meris.env import load_env
+
+    load_env()
+
     parser = argparse.ArgumentParser(description="Run live Meris benchmark tasks")
     parser.add_argument(
         "--filter",
@@ -59,11 +63,15 @@ async def main() -> int:
     from meris.provider.resolve import resolve_provider_config
 
     cfg = resolve_provider_config()
-    provider = get_provider(
-        api_key=cfg.api_key,
-        base_url=cfg.base_url,
-        model=cfg.model,
-    )
+    provider = None
+    from meris.native import native_loop_enabled
+
+    if not native_loop_enabled():
+        provider = get_provider(
+            api_key=cfg.api_key,
+            base_url=cfg.base_url,
+            model=cfg.model,
+        )
 
     tasks_path = ROOT / "scripts" / "benchmark" / "tasks.json"
     all_tasks = load_benchmark_tasks(tasks_path)
@@ -87,6 +95,8 @@ async def main() -> int:
         return 1
 
     print(f"Live benchmark: {len(selected)} task(s) via {cfg.preset_id}/{cfg.model}")
+    if native_loop_enabled():
+        print("  (native loop via MERIS_NATIVE_LOOP=auto)")
     ws = args.cwd.resolve()
     results = await run_benchmark(ws, selected, provider=provider)
     summary = summarize(results)
