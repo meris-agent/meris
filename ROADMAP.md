@@ -73,6 +73,7 @@ Historical batch labels used during development. Public version starts at **v0.0
 - [x] **Phase F — Native 稳定化** — 见 [docs/PLAN_PHASE_F.md](docs/PLAN_PHASE_F.md)（F1–F4 + F3-M2 ✅；F5 tag 暂缓）
 - [x] GitHub Release workflow + `meris-rs` artifacts（`workflow_dispatch` 可手动构建；正式 Release 页待 tag）
 - [ ] PyPI publish `meris-agent==0.0.1`（tag `v0.0.1` + `PYPI_API_TOKEN`，**暂缓**）
+- [ ] **Phase G — Codex CLI 对标** — 见 [docs/PLAN_PHASE_G.md](docs/PLAN_PHASE_G.md)（G1 preset ✅；G2–G6 进行中）
 - [x] `MERIS_NATIVE` auto when `meris-rs` available（`MERIS_NATIVE=0` opt out）
 - [x] Full agent loop in Rust (P5-4 M1–M5; Python 仍负责 TUI/MCP 配置/动态路由)
 

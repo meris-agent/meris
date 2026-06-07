@@ -11,7 +11,61 @@ use std::time::Duration;
 const DEFAULT_MODE: &str = "warn";
 const DEFAULT_TIMEOUT: u64 = 120;
 const DEFAULT_OS_SANDBOX: &str = "auto";
-const DEFAULT_NETWORK: &str = "shared";
+const DEFAULT_NETWORK: &str = "isolated";
+const DEFAULT_PRESET: &str = "workspace-write";
+
+fn preset_field(preset: &str, field: &str) -> Option<&'static str> {
+    match (preset, field) {
+        ("read-only", "mode") => Some("strict"),
+        ("read-only", "network") => Some("isolated"),
+        ("read-only", "osSandbox") => Some("auto"),
+        ("workspace-write", "mode") => Some("warn"),
+        ("workspace-write", "network") => Some("isolated"),
+        ("workspace-write", "osSandbox") => Some("auto"),
+        ("danger-full-access", "mode") => Some("off"),
+        ("danger-full-access", "network") => Some("shared"),
+        ("danger-full-access", "osSandbox") => Some("off"),
+        _ => None,
+    }
+}
+
+fn get_sandbox_preset(settings: &HashMap<String, Value>) -> String {
+    settings
+        .get("sandbox")
+        .and_then(|s| s.get("preset"))
+        .and_then(|v| v.as_str())
+        .map(|p| p.trim().to_lowercase())
+        .filter(|p| {
+            matches!(
+                p.as_str(),
+                "read-only" | "workspace-write" | "danger-full-access"
+            )
+        })
+        .unwrap_or_else(|| DEFAULT_PRESET.to_string())
+}
+
+fn resolve_sandbox_field(
+    settings: &HashMap<String, Value>,
+    field: &str,
+    valid: &[&str],
+    hard_default: &str,
+) -> String {
+    if let Some(raw) = settings
+        .get("sandbox")
+        .and_then(|s| s.get(field))
+        .and_then(|v| v.as_str())
+    {
+        let val = raw.trim().to_lowercase();
+        if valid.contains(&val.as_str()) {
+            return val;
+        }
+    }
+    let preset = get_sandbox_preset(settings);
+    if let Some(from_preset) = preset_field(&preset, field) {
+        return from_preset.to_string();
+    }
+    hard_default.to_string()
+}
 
 const DEFAULT_MASK_REL: &[&str] = &[
     ".env",
@@ -47,33 +101,25 @@ fn bash_rules() -> Vec<(Regex, &'static str)> {
 }
 
 pub fn get_sandbox_mode(settings: &HashMap<String, Value>) -> String {
-    settings
-        .get("sandbox")
-        .and_then(|s| s.get("mode"))
-        .and_then(|m| m.as_str())
-        .map(|m| m.trim().to_lowercase())
-        .filter(|m| matches!(m.as_str(), "off" | "warn" | "strict"))
-        .unwrap_or_else(|| DEFAULT_MODE.to_string())
+    resolve_sandbox_field(settings, "mode", &["off", "warn", "strict"], DEFAULT_MODE)
 }
 
 pub fn get_os_sandbox_mode(settings: &HashMap<String, Value>) -> String {
-    settings
-        .get("sandbox")
-        .and_then(|s| s.get("osSandbox"))
-        .and_then(|m| m.as_str())
-        .map(|m| m.trim().to_lowercase())
-        .filter(|m| matches!(m.as_str(), "off" | "auto" | "require"))
-        .unwrap_or_else(|| DEFAULT_OS_SANDBOX.to_string())
+    resolve_sandbox_field(
+        settings,
+        "osSandbox",
+        &["off", "auto", "require"],
+        DEFAULT_OS_SANDBOX,
+    )
 }
 
 pub fn get_network_mode(settings: &HashMap<String, Value>) -> String {
-    settings
-        .get("sandbox")
-        .and_then(|s| s.get("network"))
-        .and_then(|m| m.as_str())
-        .map(|m| m.trim().to_lowercase())
-        .filter(|m| matches!(m.as_str(), "shared" | "isolated"))
-        .unwrap_or_else(|| DEFAULT_NETWORK.to_string())
+    resolve_sandbox_field(
+        settings,
+        "network",
+        &["shared", "isolated"],
+        DEFAULT_NETWORK,
+    )
 }
 
 pub fn get_mask_secrets(settings: &HashMap<String, Value>) -> bool {
@@ -180,6 +226,7 @@ pub fn os_sandbox_probe(settings: &HashMap<String, Value>) -> Value {
     let mask_secrets = get_mask_secrets(settings);
     json!({
         "platform": std::env::consts::OS,
+        "preset": get_sandbox_preset(settings),
         "osSandbox": os_mode,
         "network": network,
         "maskSecrets": mask_secrets,
@@ -410,6 +457,25 @@ mod tests {
         let mut settings = HashMap::new();
         settings.insert("sandbox".into(), json!({"network": "isolated"}));
         assert_eq!(get_network_mode(&settings), "isolated");
+    }
+
+    #[test]
+    fn preset_workspace_write_default_network() {
+        let settings = HashMap::new();
+        assert_eq!(get_sandbox_preset(&settings), "workspace-write");
+        assert_eq!(get_network_mode(&settings), "isolated");
+        assert_eq!(get_sandbox_mode(&settings), "warn");
+    }
+
+    #[test]
+    fn preset_danger_full_access() {
+        let mut settings = HashMap::new();
+        settings.insert(
+            "sandbox".into(),
+            json!({"preset": "danger-full-access"}),
+        );
+        assert_eq!(get_network_mode(&settings), "shared");
+        assert_eq!(get_sandbox_mode(&settings), "off");
     }
 
     #[test]

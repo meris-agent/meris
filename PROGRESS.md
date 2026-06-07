@@ -18,6 +18,17 @@
 - [ ] 日常真实任务 dogfood（1–2 周）
 - [ ] Ratchet digest 闭环
 
+## Phase G — Codex CLI 对标（进行中）
+
+见 [docs/PLAN_PHASE_G.md](docs/PLAN_PHASE_G.md)
+
+- [x] **G1** — Codex 风格 `sandbox.preset`（workspace-write 默认 · network isolated）
+- [ ] **G2** — network allowlist
+- [ ] **G3** — 平台矩阵 + doctor 完善
+- [ ] **G4** — Route B 完成标准
+- [ ] **G5** — E0 发版（暂缓 tag）
+- [ ] **G6** — macOS sandbox spike
+
 ## 进行中
 - [x] Linux bubblewrap OS 沙箱（`sandbox.osSandbox: auto|require`）
 - [x] 网络隔离（`network: isolated`）+ `.env` 遮罩（`maskSecrets`）

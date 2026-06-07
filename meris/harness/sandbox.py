@@ -13,9 +13,18 @@ from pathlib import Path
 SANDBOX_MODES = frozenset({"off", "warn", "strict"})
 OS_SANDBOX_MODES = frozenset({"off", "auto", "require"})
 NETWORK_MODES = frozenset({"shared", "isolated"})
+SANDBOX_PRESETS = frozenset({"read-only", "workspace-write", "danger-full-access"})
 DEFAULT_MODE = "warn"
 DEFAULT_OS_SANDBOX = "auto"
-DEFAULT_NETWORK = "shared"
+DEFAULT_NETWORK = "isolated"
+DEFAULT_PRESET = "workspace-write"
+
+_PRESET_VALUES: dict[str, dict[str, str]] = {
+    "read-only": {"mode": "strict", "network": "isolated", "osSandbox": "auto"},
+    "workspace-write": {"mode": "warn", "network": "isolated", "osSandbox": "auto"},
+    "danger-full-access": {"mode": "off", "network": "shared", "osSandbox": "off"},
+}
+
 DEFAULT_BASH_TIMEOUT = 120
 
 DEFAULT_MASK_REL: tuple[str, ...] = (
@@ -43,10 +52,41 @@ class SandboxVerdict:
     mode: str
 
 
+def _sandbox_block(settings: dict) -> dict:
+    block = settings.get("sandbox")
+    return block if isinstance(block, dict) else {}
+
+
+def get_sandbox_preset(settings: dict) -> str:
+    """Resolved Codex-style preset name (default workspace-write)."""
+    raw = _sandbox_block(settings).get("preset", DEFAULT_PRESET)
+    preset = str(raw).strip().lower()
+    return preset if preset in SANDBOX_PRESETS else DEFAULT_PRESET
+
+
+def _resolve_sandbox_field(
+    settings: dict,
+    field: str,
+    *,
+    valid: frozenset[str],
+    hard_default: str,
+) -> str:
+    block = _sandbox_block(settings)
+    if field in block:
+        val = str(block[field]).strip().lower()
+        if val in valid:
+            return val
+    preset = get_sandbox_preset(settings)
+    from_preset = _PRESET_VALUES.get(preset, {}).get(field)
+    if from_preset and from_preset in valid:
+        return from_preset
+    return hard_default
+
+
 def get_sandbox_mode(settings: dict) -> str:
-    raw = (settings.get("sandbox") or {}).get("mode", DEFAULT_MODE)
-    mode = str(raw).strip().lower()
-    return mode if mode in SANDBOX_MODES else DEFAULT_MODE
+    return _resolve_sandbox_field(
+        settings, "mode", valid=SANDBOX_MODES, hard_default=DEFAULT_MODE
+    )
 
 
 def get_bash_timeout(settings: dict) -> int:
@@ -59,15 +99,15 @@ def get_bash_timeout(settings: dict) -> int:
 
 
 def get_os_sandbox_mode(settings: dict) -> str:
-    raw = (settings.get("sandbox") or {}).get("osSandbox", DEFAULT_OS_SANDBOX)
-    mode = str(raw).strip().lower()
-    return mode if mode in OS_SANDBOX_MODES else DEFAULT_OS_SANDBOX
+    return _resolve_sandbox_field(
+        settings, "osSandbox", valid=OS_SANDBOX_MODES, hard_default=DEFAULT_OS_SANDBOX
+    )
 
 
 def get_network_mode(settings: dict) -> str:
-    raw = (settings.get("sandbox") or {}).get("network", DEFAULT_NETWORK)
-    mode = str(raw).strip().lower()
-    return mode if mode in NETWORK_MODES else DEFAULT_NETWORK
+    return _resolve_sandbox_field(
+        settings, "network", valid=NETWORK_MODES, hard_default=DEFAULT_NETWORK
+    )
 
 
 def get_mask_secrets(settings: dict) -> bool:

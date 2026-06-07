@@ -15,6 +15,7 @@ from meris.harness.sandbox import (
     get_network_mode,
     get_os_sandbox_mode,
     get_sandbox_mode,
+    get_sandbox_preset,
     probe_os_sandbox,
 )
 from meris.native import find_native_binary, native_enabled
@@ -107,6 +108,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
     timeout = get_bash_timeout(settings)
     os_mode = get_os_sandbox_mode(settings)
     net_mode = get_network_mode(settings)
+    preset = get_sandbox_preset(settings)
     mask_on = get_mask_secrets(settings)
     probe = probe_os_sandbox(ws, settings)
     masked_n = len(probe.get("maskedPaths") or [])
@@ -129,12 +131,13 @@ def check_harness(workspace: Path) -> list[CheckResult]:
         native_note = ", meris-rs built — auto when MERIS_NATIVE unset"
     else:
         native_note = ", build: meris native build"
+    preset_note = f", preset={preset}"
     if mode == "off":
         results.append(
             CheckResult(
                 "sandbox",
                 "warn",
-                f"mode=off, bashTimeout={timeout}s — consider warn/strict (Phase E3){native_note}{os_note}",
+                f"mode=off, bashTimeout={timeout}s{preset_note} — consider workspace-write (Phase G1){native_note}{os_note}",
             )
         )
     elif mode == "strict":
@@ -142,7 +145,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
             CheckResult(
                 "sandbox",
                 "ok",
-                f"mode=strict, bashTimeout={timeout}s — cd/find/pwd blocked{native_note}{os_note}",
+                f"mode=strict, bashTimeout={timeout}s{preset_note} — cd/find/pwd blocked{native_note}{os_note}",
             )
         )
     else:
@@ -150,7 +153,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
             CheckResult(
                 "sandbox",
                 "ok",
-                f"mode={mode}, bashTimeout={timeout}s — risky bash warns only{native_note}{os_note}",
+                f"mode={mode}, bashTimeout={timeout}s{preset_note}, net={net_mode}{native_note}{os_note}",
             )
         )
 

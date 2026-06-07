@@ -43,13 +43,11 @@ blockedPaths:
 
 # --- Bash 沙箱（Phase E3）：off | warn | strict ---
 sandbox:
-  mode: warn
+  preset: workspace-write   # read-only | workspace-write | danger-full-access (Codex CLI 对照)
+  mode: warn                # 可被 preset 覆盖；显式设置优先
   bashTimeoutSec: 120
-  # Linux bubblewrap: off | auto | require
   osSandbox: auto
-  # bubblewrap only: shared | isolated
-  network: shared
-  # overlay /dev/null on .env files in bash sandbox
+  network: isolated         # shared | isolated — workspace-write 默认 isolated（对标 Codex 关网络）
   maskSecrets: true
   maskPaths: []
 

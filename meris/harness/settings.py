@@ -42,10 +42,11 @@ DEFAULT_SETTINGS: dict = {
     },
     "blockedPaths": ["**/generated/**", "**/node_modules/**"],
     "sandbox": {
+        "preset": "workspace-write",
         "mode": "warn",
         "bashTimeoutSec": 120,
         "osSandbox": "auto",
-        "network": "shared",
+        "network": "isolated",
         "maskSecrets": True,
     },
     "hooks": {

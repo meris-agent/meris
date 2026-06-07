@@ -35,6 +35,7 @@ blockedPaths:
   - "**/node_modules/**"
 
 sandbox:
+  preset: workspace-write
   mode: warn
   bashTimeoutSec: 120
 
