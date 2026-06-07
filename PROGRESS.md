@@ -72,3 +72,13 @@ meris ratchet digest
 ## Ratchet 摘要
 
 - [L-bash-verify] pytest 用 `pytest tests/ -m "not integration" -q`；禁止 find/pwd/`/workspace` bash。
+
+
+## Session note (2026-06-07 02:42 UTC)
+- **Task**: Reply with exactly: pong
+- **Status**: dod_failed
+
+
+## Session note (2026-06-07 02:48 UTC)
+- **Task**: List top-level files in meris/ as bullet points
+- **Status**: dod_failed
