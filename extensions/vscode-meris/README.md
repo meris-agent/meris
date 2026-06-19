@@ -29,7 +29,7 @@ powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1 -SkipRust
 
 或点击 Activity Bar **Meris** 图标 → 侧边栏 **Agent** 视图（常驻）
 
-- **Ratchet 右栏**：Apply / Reject + **Scan**（⊕）
+- **设置**：右上角 **⚙** → 主题预设（深色/午夜/柔和/浅色）+ 自定义背景色
 - **草稿持久化**：任务输入 / mode / approve 勾选自动恢复
 - **错误横幅**：进程失败时顶部显示 stderr
 - **左栏 Sessions**：读取 `.meris/sessions/`，点击可恢复（`running` / `cancelled` / `error`）

@@ -137,14 +137,16 @@ async def agent_loop(
     plan_output: str | Path | None = "__default__",
     event_stream: EventStream | None = None,
     event_stream_path: str | Path | None = None,
+    native_loop: bool | None = None,
 ) -> AsyncIterator[str]:
     """Yield human-readable progress lines."""
     ws = workspace.resolve()
 
     from meris.native import native_loop_enabled, stream_native_agent_loop
 
+    use_native = native_loop_enabled() if native_loop is None else native_loop
     if (
-        native_loop_enabled()
+        use_native
         and mode in ("ask", "plan", "review", "run")
         and provider is None
     ):
@@ -508,6 +510,19 @@ async def agent_loop(
             out = None if plan_output == "__default__" else plan_output
             path = save_plan(ws, text, out)
             yield f"[meris] plan saved: {path}"
+            if event_stream:
+                from meris.harness.plan import parse_plan_checkboxes
+
+                try:
+                    rel_path = str(path.relative_to(ws))
+                except ValueError:
+                    rel_path = str(path)
+                event_stream.emit(
+                    "plan",
+                    message=text[:800],
+                    path=rel_path,
+                    items=parse_plan_checkboxes(text),
+                )
 
     if status == "dod_failed":
         from meris.harness.ratchet import list_proposals

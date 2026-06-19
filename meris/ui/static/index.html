@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,19 +9,76 @@
 <body>
   <div id="header">
     <span class="brand">Meris Agent</span>
-    <span id="status" class="status idle">Ready</span>
+    <div class="header-actions">
+      <button id="settings-btn" type="button" title="设置">⚙</button>
+      <span id="status" class="status idle">Ready</span>
+    </div>
+  </div>
+  <div id="model-bar" class="hidden">
+    <span id="model-label"></span>
+    <span id="route-label"></span>
+  </div>
+  <div id="settings-panel" class="hidden">
+    <div class="settings-title">设置</div>
+    <div class="settings-row">
+      <span class="settings-label">主题</span>
+      <div id="theme-presets" class="theme-presets">
+        <button type="button" class="theme-chip active" data-theme="vibe">默认</button>
+        <button type="button" class="theme-chip" data-theme="dark">石墨</button>
+        <button type="button" class="theme-chip" data-theme="midnight">午夜</button>
+        <button type="button" class="theme-chip" data-theme="light">浅色</button>
+      </div>
+    </div>
+    <div class="settings-row">
+      <span class="settings-label">背景</span>
+      <input type="color" id="bg-color-picker" value="#0b0d11" title="自定义背景色">
+      <span id="bg-color-text">#0b0d11</span>
+      <button type="button" id="settings-reset">恢复默认</button>
+    </div>
   </div>
   <div id="error-banner" class="hidden"></div>
   <div id="layout">
     <aside id="sessions-panel">
       <div class="panel-header">
         <span>Sessions</span>
-        <button id="refresh-sessions" title="Refresh">↻</button>
+        <button id="refresh-sessions" type="button" title="Refresh">↻</button>
       </div>
+      <input id="session-search" type="search" placeholder="搜索 session…" autocomplete="off">
       <ul id="session-list"></ul>
     </aside>
     <div id="main">
-      <div id="timeline"></div>
+      <div id="view-tabs">
+        <button type="button" class="view-tab active" data-view="chat">Chat</button>
+        <button type="button" class="view-tab" data-view="plan">Plan</button>
+        <button type="button" class="view-tab" data-view="parallel">Parallel</button>
+        <button type="button" class="view-tab" data-view="preview">Preview</button>
+      </div>
+      <div id="chat-view" class="view-panel active">
+        <div id="timeline"></div>
+      </div>
+      <div id="plan-view" class="view-panel hidden">
+        <div id="plan-panel">
+          <div class="plan-empty">运行 plan 模式后，任务清单会显示在这里。</div>
+          <ul id="plan-list"></ul>
+          <button type="button" id="plan-run-btn" class="hidden">Run plan →</button>
+        </div>
+      </div>
+      <div id="parallel-view" class="view-panel hidden">
+        <textarea id="parallel-input" placeholder="每行一个任务…" rows="4"></textarea>
+        <button type="button" id="parallel-run-btn">Run parallel</button>
+        <div id="parallel-lanes" class="parallel-lanes hidden"></div>
+      </div>
+      <div id="preview-view" class="view-panel hidden">
+        <div class="preview-toolbar">
+          <span id="preview-path">—</span>
+          <button type="button" id="preview-refresh">刷新</button>
+        </div>
+        <iframe id="preview-frame" title="Live preview" sandbox="allow-scripts allow-same-origin"></iframe>
+      </div>
+      <details id="terminal-panel" class="terminal-panel">
+        <summary>Terminal</summary>
+        <pre id="terminal-output"></pre>
+      </details>
       <div id="composer">
         <div id="approval-bar" class="hidden">
           <div class="approval-title">Approve tool call?</div>
@@ -32,7 +89,16 @@
             <button id="approve-no" type="button">Deny</button>
           </div>
         </div>
-        <textarea id="task-input" placeholder="Describe your task…" rows="2"></textarea>
+        <div id="context-chips"></div>
+        <div class="composer-input-row">
+          <button id="at-btn" type="button" title="添加上下文 @">@</button>
+          <div id="at-dropdown" class="hidden">
+            <input id="at-search" type="search" placeholder="搜索文件…" autocomplete="off">
+            <button type="button" id="at-selection" class="at-action">+ 当前选区</button>
+            <ul id="at-file-list"></ul>
+          </div>
+          <textarea id="task-input" placeholder="描述你的任务…" rows="2"></textarea>
+        </div>
         <div id="composer-actions">
           <select id="mode-select">
             <option value="run" selected>run</option>
@@ -40,8 +106,8 @@
             <option value="plan">plan</option>
           </select>
           <label><input type="checkbox" id="approve-check"> approve</label>
-          <button id="submit-btn">Run</button>
-          <button id="stop-btn" disabled>Stop</button>
+          <button id="submit-btn" type="button">Run</button>
+          <button id="stop-btn" type="button" disabled>Stop</button>
         </div>
       </div>
     </div>
@@ -49,13 +115,14 @@
       <div class="panel-header">
         <span>Ratchet</span>
         <div class="panel-actions">
-          <button id="ratchet-scan" title="Scan">⊕</button>
-          <button id="refresh-ratchet" title="Refresh">↻</button>
+          <button id="ratchet-scan" type="button" title="Scan">⊕</button>
+          <button id="refresh-ratchet" type="button" title="Refresh">↻</button>
         </div>
       </div>
       <ul id="ratchet-list"></ul>
     </aside>
   </div>
   <script src="/media/agent.js"></script>
+  <script src="/media/phase-i.js"></script>
 </body>
 </html>

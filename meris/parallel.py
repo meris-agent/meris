@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from meris.harness.protocol import EventStream, TaggedEventStream
 from meris.harness.sessions import new_session_id
 from meris.loop import agent_loop
 from meris.tools.worktree import WorktreeInfo, create_worktree, remove_worktree
@@ -30,9 +31,18 @@ async def run_parallel(
     isolate: bool = False,
     max_turns: int = 30,
     on_line: Callable[[int, str], None] | None = None,
+    event_stream_path: str | Path | None = None,
 ) -> list[ParallelResult]:
     """Run multiple agent sessions concurrently."""
     sem = asyncio.Semaphore(max(1, max_concurrency))
+    shared_stream: EventStream | None = None
+    if event_stream_path:
+        shared_stream = EventStream.open(event_stream_path)
+        if shared_stream:
+            shared_stream.emit(
+                "parallel_start",
+                tasks=[{"index": i, "task": t[:200]} for i, t in enumerate(tasks)],
+            )
 
     async def _one(index: int, task: str) -> ParallelResult:
         session_id = new_session_id()
@@ -41,6 +51,14 @@ async def run_parallel(
         wt: WorktreeInfo | None = None
         ws = workspace.resolve()
         prefix = f"[parallel-{index}]"
+        tagged_stream: TaggedEventStream | None = None
+        if shared_stream:
+            tagged_stream = TaggedEventStream(
+                shared_stream,
+                parallel_index=index,
+                parallel_task=task[:200],
+                parallel_session=session_id,
+            )
 
         async with sem:
             try:
@@ -55,6 +73,8 @@ async def run_parallel(
                     max_turns=max_turns,
                     session_id=session_id,
                     run_sensors_at_end=mode == "run" and not isolate,
+                    event_stream=tagged_stream,
+                    native_loop=False,
                 ):
                     tagged = f"{prefix} {line}"
                     lines.append(tagged)
@@ -72,12 +92,25 @@ async def run_parallel(
                         await remove_worktree(workspace.resolve(), wt)
                     except Exception as exc:
                         lines.append(f"{prefix} worktree cleanup: {exc}")
+                if shared_stream:
+                    shared_stream.emit(
+                        "parallel_task_done",
+                        parallel_index=index,
+                        parallel_session=session_id,
+                        status=status,
+                        task=task[:200],
+                    )
 
         return ParallelResult(
             index=index, task=task, session_id=session_id, status=status, lines=lines
         )
 
-    return list(await asyncio.gather(*[_one(i, t) for i, t in enumerate(tasks)]))
+    try:
+        return list(await asyncio.gather(*[_one(i, t) for i, t in enumerate(tasks)]))
+    finally:
+        if shared_stream:
+            shared_stream.emit("parallel_done", count=len(tasks))
+            shared_stream.close()
 
 
 async def stream_parallel(

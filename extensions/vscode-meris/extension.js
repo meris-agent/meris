@@ -127,10 +127,11 @@ function getNonce() {
 /** @param {vscode.Webview} webview @param {vscode.Uri} extensionUri */
 function getAgentWebviewContent(webview, extensionUri) {
   const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media", "agent.js"));
+  const phaseIUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media", "phase-i.js"));
   const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media", "agent.css"));
   const nonce = getNonce();
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
@@ -141,54 +142,90 @@ function getAgentWebviewContent(webview, extensionUri) {
 <body>
   <div id="header">
     <span class="brand">Meris Agent</span>
-    <span id="status" class="status idle">Ready</span>
+    <div class="header-actions">
+      <button id="settings-btn" type="button" title="设置">⚙</button>
+      <span id="status" class="status idle">Ready</span>
+    </div>
+  </div>
+  <div id="model-bar" class="hidden"><span id="model-label"></span><span id="route-label"></span></div>
+  <div id="settings-panel" class="hidden">
+    <div class="settings-title">设置</div>
+    <div class="settings-row">
+      <span class="settings-label">主题</span>
+      <div id="theme-presets" class="theme-presets">
+        <button type="button" class="theme-chip active" data-theme="vibe">默认</button>
+        <button type="button" class="theme-chip" data-theme="dark">石墨</button>
+        <button type="button" class="theme-chip" data-theme="midnight">午夜</button>
+        <button type="button" class="theme-chip" data-theme="light">浅色</button>
+      </div>
+    </div>
+    <div class="settings-row">
+      <span class="settings-label">背景</span>
+      <input type="color" id="bg-color-picker" value="#0b0d11" title="自定义背景色">
+      <span id="bg-color-text">#0b0d11</span>
+      <button type="button" id="settings-reset">恢复默认</button>
+    </div>
   </div>
   <div id="error-banner" class="hidden"></div>
   <div id="layout">
     <aside id="sessions-panel">
-      <div class="panel-header">
-        <span>Sessions</span>
-        <button id="refresh-sessions" title="Refresh">↻</button>
-      </div>
+      <div class="panel-header"><span>Sessions</span><button id="refresh-sessions" type="button" title="Refresh">↻</button></div>
+      <input id="session-search" type="search" placeholder="搜索 session…" autocomplete="off">
       <ul id="session-list"></ul>
     </aside>
     <div id="main">
-      <div id="timeline"></div>
+      <div id="view-tabs">
+        <button type="button" class="view-tab active" data-view="chat">Chat</button>
+        <button type="button" class="view-tab" data-view="plan">Plan</button>
+        <button type="button" class="view-tab" data-view="parallel">Parallel</button>
+        <button type="button" class="view-tab" data-view="preview">Preview</button>
+      </div>
+      <div id="chat-view" class="view-panel active"><div id="timeline"></div></div>
+      <div id="plan-view" class="view-panel hidden">
+        <div id="plan-panel"><div class="plan-empty">运行 plan 模式后显示任务清单</div><ul id="plan-list"></ul><button type="button" id="plan-run-btn" class="hidden">Run plan →</button></div>
+      </div>
+      <div id="parallel-view" class="view-panel hidden">
+        <textarea id="parallel-input" placeholder="每行一个任务…" rows="4"></textarea>
+        <button type="button" id="parallel-run-btn">Run parallel</button>
+        <div id="parallel-lanes" class="parallel-lanes hidden"></div>
+      </div>
+      <div id="preview-view" class="view-panel hidden">
+        <div class="preview-toolbar"><span id="preview-path">—</span><button type="button" id="preview-refresh">刷新</button></div>
+        <iframe id="preview-frame" title="Live preview" sandbox="allow-scripts allow-same-origin"></iframe>
+      </div>
+      <details id="terminal-panel" class="terminal-panel"><summary>Terminal</summary><pre id="terminal-output"></pre></details>
       <div id="composer">
         <div id="approval-bar" class="hidden">
           <div class="approval-title">Approve tool call?</div>
           <div id="approval-tool" class="approval-tool"></div>
           <pre id="approval-args" class="approval-args"></pre>
-          <div class="approval-actions">
-            <button id="approve-yes" type="button">Approve</button>
-            <button id="approve-no" type="button">Deny</button>
-          </div>
+          <div class="approval-actions"><button id="approve-yes" type="button">Approve</button><button id="approve-no" type="button">Deny</button></div>
         </div>
-        <textarea id="task-input" placeholder="Describe your task…" rows="2"></textarea>
+        <div id="context-chips"></div>
+        <div class="composer-input-row">
+          <button id="at-btn" type="button" title="添加上下文 @">@</button>
+          <div id="at-dropdown" class="hidden">
+            <input id="at-search" type="search" placeholder="搜索文件…" autocomplete="off">
+            <button type="button" id="at-selection" class="at-action">+ 当前选区</button>
+            <ul id="at-file-list"></ul>
+          </div>
+          <textarea id="task-input" placeholder="描述你的任务…" rows="2"></textarea>
+        </div>
         <div id="composer-actions">
-          <select id="mode-select">
-            <option value="run" selected>run</option>
-            <option value="ask">ask</option>
-            <option value="plan">plan</option>
-          </select>
+          <select id="mode-select"><option value="run" selected>run</option><option value="ask">ask</option><option value="plan">plan</option></select>
           <label><input type="checkbox" id="approve-check"> approve</label>
-          <button id="submit-btn">Run</button>
-          <button id="stop-btn" disabled>Stop</button>
+          <button id="submit-btn" type="button">Run</button>
+          <button id="stop-btn" type="button" disabled>Stop</button>
         </div>
       </div>
     </div>
     <aside id="ratchet-panel">
-      <div class="panel-header">
-        <span>Ratchet</span>
-        <div class="panel-actions">
-          <button id="ratchet-scan" title="Scan">⊕</button>
-          <button id="refresh-ratchet" title="Refresh">↻</button>
-        </div>
-      </div>
+      <div class="panel-header"><span>Ratchet</span><div class="panel-actions"><button id="ratchet-scan" type="button" title="Scan">⊕</button><button id="refresh-ratchet" type="button" title="Refresh">↻</button></div></div>
       <ul id="ratchet-list"></ul>
     </aside>
   </div>
   <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${phaseIUri}"></script>
 </body>
 </html>`;
 }
@@ -468,8 +505,17 @@ function spawnMerisRun(cwd, opts) {
   });
 
   let stderr = "";
+  let stdout = "";
+  const emitTerm = (stream, chunk) => {
+    postToAgentWebviews({ type: "terminal", stream, chunk: chunk.toString() });
+  };
+  activeProcess.stdout?.on("data", (chunk) => {
+    stdout += chunk.toString();
+    emitTerm("stdout", chunk);
+  });
   activeProcess.stderr?.on("data", (chunk) => {
     stderr += chunk.toString();
+    emitTerm("stderr", chunk);
   });
 
   activeProcess.on("close", (code) => {
@@ -488,6 +534,106 @@ function spawnMerisRun(cwd, opts) {
   });
 }
 
+function getEditorSelection(cwd) {
+  const ed = vscode.window.activeTextEditor;
+  if (!ed || !cwd) return null;
+  const sel = ed.selection;
+  if (sel.isEmpty) return null;
+  const rel = path.relative(cwd, ed.document.uri.fsPath).replace(/\\/g, "/");
+  return {
+    path: rel,
+    content: ed.document.getText(sel),
+    startLine: sel.start.line + 1,
+    endLine: sel.end.line + 1,
+  };
+}
+
+/** @param {string} cwd @param {string} query */
+async function listContextFiles(cwd, query) {
+  const pattern = query ? `**/*${query}*` : "**/*";
+  const uris = await vscode.workspace.findFiles(
+    new vscode.RelativePattern(cwd, pattern),
+    new vscode.RelativePattern(cwd, "**/{node_modules,.git,.meris}/**"),
+    80
+  );
+  return uris.map((u) => path.relative(cwd, u.fsPath).replace(/\\/g, "/"));
+}
+
+/** @param {string} cwd @param {string} rel */
+async function readContextFile(cwd, rel) {
+  const full = path.join(cwd, rel);
+  const doc = await vscode.workspace.openTextDocument(full);
+  return { path: rel.replace(/\\/g, "/"), content: doc.getText().slice(0, 12000) };
+}
+
+/** @param {string} cwd @param {string} relPath @param {string} patchText */
+function applyHunkPatch(cwd, relPath, patchText) {
+  const tmpDir = path.join(cwd, ".meris", "tmp");
+  if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+  const tmp = path.join(tmpDir, "hunk.patch");
+  const body = patchText.includes("---") ? patchText : `--- a/${relPath}\n+++ b/${relPath}\n${patchText}`;
+  fs.writeFileSync(tmp, body, "utf8");
+  execFileSync("git", ["apply", "--unsafe-paths", tmp], { cwd, stdio: "pipe" });
+}
+
+/** @param {string} cwd @param {string} planPath @param {object[]} items */
+function savePlanFile(cwd, planPath, items) {
+  const tmpDir = path.join(cwd, ".meris", "tmp");
+  if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+  const tmp = path.join(tmpDir, "plan-sync.json");
+  fs.writeFileSync(tmp, JSON.stringify({ items }), "utf8");
+  try {
+    execFileSync("meris", ["plan-sync", planPath, "--items-file", tmp], { cwd, stdio: "pipe" });
+    postToAgentWebviews({ type: "planSaved", path: planPath, items });
+  } catch (e) {
+    vscode.window.showErrorMessage("Meris: plan save failed — " + String(e.message || e));
+  }
+}
+
+/** @param {string} cwd @param {string[]} tasks @param {string} mode */
+function spawnMerisParallel(cwd, tasks, mode) {
+  killActiveProcess();
+  const eventsPath = path.join(cwd, ".meris", "events", "agent-window.jsonl");
+  const eventsArg = eventsPath.replace(/\\/g, "/");
+  const postEvent = (ev) => {
+    postToAgentWebviews({ type: "event", event: enrichEvent(cwd, ev) });
+  };
+
+  const eventDir = path.dirname(eventsPath);
+  if (!fs.existsSync(eventDir)) fs.mkdirSync(eventDir, { recursive: true });
+  fs.writeFileSync(eventsPath, "", "utf8");
+  startJsonlTail(eventsPath, postEvent);
+
+  postToAgentWebviews({ type: "parallelStart", tasks, mode });
+  postToAgentWebviews({ type: "status", status: "running" });
+
+  const args = [
+    "parallel",
+    ...tasks.map((t) => `"${t.replace(/"/g, '\\"')}"`),
+    "--mode",
+    mode,
+    "--event-stream",
+    eventsArg,
+  ];
+  activeProcess = spawn("meris", args, { cwd, shell: true, env: { ...process.env } });
+  let stderr = "";
+  const emitTerm = (stream, chunk) =>
+    postToAgentWebviews({ type: "terminal", stream, chunk: chunk.toString() });
+  activeProcess.stdout?.on("data", (c) => emitTerm("stdout", c));
+  activeProcess.stderr?.on("data", (c) => {
+    stderr += c.toString();
+    emitTerm("stderr", c);
+  });
+  activeProcess.on("close", (code) => {
+    activeProcess = null;
+    for (const ev of readNewJsonlEvents(eventsPath)) {
+      postEvent(ev);
+    }
+    postToAgentWebviews({ type: "status", status: code === 0 ? "done" : "error", stderr: stderr.slice(-500) });
+    refreshAgentSidebarData(cwd);
+  });
+}
+
 /** @param {object} msg */
 async function handleAgentMessage(msg) {
   const cwd = getWorkspaceCwd();
@@ -500,7 +646,11 @@ async function handleAgentMessage(msg) {
 
   switch (msg.type) {
     case "submit":
-      postToAgentWebviews({ type: "runStart", task: msg.task, mode: msg.mode });
+      postToAgentWebviews({
+        type: "runStart",
+        task: msg.displayTask || msg.task,
+        mode: msg.mode,
+      });
       postToAgentWebviews({ type: "status", status: "running" });
       spawnMerisRun(cwd, {
         task: msg.task,
@@ -581,6 +731,57 @@ async function handleAgentMessage(msg) {
       postToAgentWebviews({ type: "status", status: "cancelled" });
       refreshAgentSidebarData(cwd);
       break;
+    case "listContextFiles": {
+      const files = await listContextFiles(cwd, String(msg.query || ""));
+      postToAgentWebviews({ type: "contextFiles", files });
+      break;
+    }
+    case "readContextFile": {
+      if (!msg.path) break;
+      try {
+        const item = await readContextFile(cwd, msg.path);
+        postToAgentWebviews({ type: "contextItem", item });
+      } catch {
+        vscode.window.showErrorMessage("Meris: cannot read " + msg.path);
+      }
+      break;
+    }
+    case "addContextSelection": {
+      const item = getEditorSelection(cwd);
+      if (item) postToAgentWebviews({ type: "contextItem", item });
+      else vscode.window.showWarningMessage("Meris: no editor selection");
+      break;
+    }
+    case "applyHunk": {
+      if (!msg.path || !msg.patch) break;
+      try {
+        applyHunkPatch(cwd, msg.path, msg.patch);
+        vscode.window.showInformationMessage("Meris: hunk applied");
+      } catch (e) {
+        vscode.window.showErrorMessage("Meris: apply failed — " + String(e.message || e));
+      }
+      break;
+    }
+    case "loadPreview": {
+      if (!msg.path) break;
+      const full = path.isAbsolute(msg.path) ? msg.path : path.join(cwd, msg.path);
+      try {
+        const html = fs.readFileSync(full, "utf8");
+        postToAgentWebviews({ type: "preview", path: msg.path, html });
+      } catch {
+        vscode.window.showErrorMessage("Meris: preview failed for " + msg.path);
+      }
+      break;
+    }
+    case "savePlan":
+      if (msg.path && msg.items) savePlanFile(cwd, msg.path, msg.items);
+      break;
+    case "parallelRun": {
+      const tasks = Array.isArray(msg.tasks) ? msg.tasks : [];
+      if (!tasks.length) break;
+      spawnMerisParallel(cwd, tasks, msg.mode || "ask");
+      break;
+    }
     default:
       break;
   }

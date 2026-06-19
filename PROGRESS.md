@@ -29,9 +29,13 @@
 - [x] **G5** — E0 发版 `v0.0.2`（Phase G 完整 · Route B 就绪）
 - [x] **G6** — macOS Seatbelt spike + **G6.2 MVP**（`sandbox-exec` · read-only / workspace-write）
 
-## Phase H — Agent Window（✅ H1–H12 完成）
+## Phase I — Vibe Coding 对标（✅ I1–I8 + I+）
 
-见 [docs/PLAN_AGENT_WINDOW.md](docs/PLAN_AGENT_WINDOW.md) · vault `Articles/Meris-Agent-Window-规划.md` · 扩展 `v0.2.0` · `meris ui`
+见 [docs/PLAN_PHASE_I.md](docs/PLAN_PHASE_I.md) · 扩展 `v0.3.0`
+
+- [x] Plan 勾选智能回写（`meris plan-sync` · 保留标题/正文）
+- [x] Parallel 多任务 JSONL 事件流 + UI 分栏
+- [x] 功能优先级三问 → `.meris/rules/feature-prioritization.md`
 
 ## 进行中
 - [x] Linux bubblewrap OS 沙箱（`sandbox.osSandbox: auto|require`）

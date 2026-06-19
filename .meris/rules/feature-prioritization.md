@@ -1,0 +1,26 @@
+# 功能优先级判断（Meris 进化准则）
+
+新功能、UI 打磨、Harness 改动前，**逐条过下面三问**。三问都弱 → 延后；至少一问强 → 可做。
+
+## 三问
+
+1. **第二次做同类任务会更快吗？**（`VISION.md` 检验）  
+   用户在**同一项目**里重复同类工作时，是否明显省时、少错、少点步骤？
+
+2. **Dogfood 里真的痛过吗？**  
+   日常真实任务（非 demo）里是否反复卡住？没痛过的「锦上添花」默认排后。
+
+3. **能写进 Harness 自动继承吗？**  
+   能否沉淀为 `rules` / `skills` / `hook` / `sensor` / benchmark，让下一 session 自动受益？  
+   **能 → 通常比纯 UI 更值得优先。**
+
+## 反模式
+
+- 为对标而堆 tab/面板，但 dogfood 无人用  
+- 只改一次 prompt，不改 Harness  
+- 大改架构却无「第二次更省事」证据  
+
+## 参考
+
+- 产品宗旨：[VISION.md](../../VISION.md)  
+- Dogfood：[docs/ROUTE_B_DOGFOOD.md](../../docs/ROUTE_B_DOGFOOD.md)

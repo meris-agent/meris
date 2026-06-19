@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
 import subprocess
 import sys
 import threading
@@ -132,21 +133,31 @@ class UiRuntime:
         self.proc = subprocess.Popen(
             cmd,
             cwd=self.cwd,
-            stdout=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            shell=False,
+            bufsize=1,
         )
 
+        def _stream(pipe, stream_name: str) -> None:
+            if not pipe:
+                return
+            for line in iter(pipe.readline, ""):
+                if line:
+                    self.broadcast({"type": "terminal", "stream": stream_name, "chunk": line})
+            pipe.close()
+
+        if self.proc.stdout:
+            threading.Thread(target=_stream, args=(self.proc.stdout, "stdout"), daemon=True).start()
+        if self.proc.stderr:
+            threading.Thread(target=_stream, args=(self.proc.stderr, "stderr"), daemon=True).start()
+
         def _wait() -> None:
-            stderr = ""
-            if self.proc and self.proc.stderr:
-                stderr = self.proc.stderr.read() or ""
             code = self.proc.wait() if self.proc else 1
             for ev in self._read_new_events():
                 self.broadcast({"type": "event", "event": _enrich_event(self.cwd, ev)})
             with self.lock:
-                self.stderr = stderr[-500:]
+                self.stderr = ""
                 self.proc = None
             status = "done" if code == 0 else "error"
             self.broadcast(
@@ -159,6 +170,50 @@ class UiRuntime:
             )
             self.broadcast({"type": "sessions", "sessions": load_sessions(self.cwd)})
             self.broadcast({"type": "ratchet", **load_ratchet(self.cwd)})
+
+        threading.Thread(target=_wait, daemon=True).start()
+
+    def spawn_parallel(self, *, tasks: list[str], mode: str) -> None:
+        self.kill()
+        self.stderr = ""
+        self._prepare_events_file()
+        events_arg = self.events_path.as_posix()
+        cmd = ["meris", "parallel", *tasks, "--mode", mode, "--event-stream", events_arg]
+
+        self.broadcast({"type": "parallelStart", "tasks": tasks, "mode": mode})
+        self.broadcast({"type": "status", "status": "running"})
+
+        self.proc = subprocess.Popen(
+            cmd,
+            cwd=self.cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+        )
+
+        def _stream(pipe, stream_name: str) -> None:
+            if not pipe:
+                return
+            for line in iter(pipe.readline, ""):
+                if line:
+                    self.broadcast({"type": "terminal", "stream": stream_name, "chunk": line})
+            pipe.close()
+
+        if self.proc.stdout:
+            threading.Thread(target=_stream, args=(self.proc.stdout, "stdout"), daemon=True).start()
+        if self.proc.stderr:
+            threading.Thread(target=_stream, args=(self.proc.stderr, "stderr"), daemon=True).start()
+
+        def _wait() -> None:
+            code = self.proc.wait() if self.proc else 1
+            for ev in self._read_new_events():
+                self.broadcast({"type": "event", "event": _enrich_event(self.cwd, ev)})
+            with self.lock:
+                self.proc = None
+            status = "done" if code == 0 else "error"
+            self.broadcast({"type": "status", "status": status, "code": code})
+            self.broadcast({"type": "sessions", "sessions": load_sessions(self.cwd)})
 
         threading.Thread(target=_wait, daemon=True).start()
 
@@ -277,6 +332,37 @@ def _run_ratchet(cwd: Path, subcmd: str, proposal_id: str = "") -> dict[str, Any
         return {"ok": proc.returncode == 0, "stderr": (proc.stderr or "")[-300:]}
     except (subprocess.SubprocessError, OSError) as e:
         return {"ok": False, "stderr": str(e)}
+
+
+def _list_workspace_files(cwd: Path, query: str = "") -> list[str]:
+    skip = {".git", "node_modules", ".meris", "__pycache__", ".venv"}
+    out: list[str] = []
+    q = query.lower()
+    for root, dirs, files in os.walk(cwd):
+        dirs[:] = [d for d in dirs if d not in skip]
+        for name in files:
+            rel = Path(root, name).relative_to(cwd).as_posix()
+            if q and q not in rel.lower():
+                continue
+            out.append(rel)
+            if len(out) >= 80:
+                return out
+    return sorted(out)
+
+
+def _read_workspace_file(cwd: Path, rel: str) -> dict[str, Any]:
+    p = (cwd / rel).resolve()
+    if not str(p).startswith(str(cwd.resolve())):
+        raise ValueError("path escapes workspace")
+    return {"path": rel, "content": p.read_text(encoding="utf-8", errors="replace")[:12000]}
+
+
+def _apply_hunk(cwd: Path, rel: str, patch: str) -> None:
+    tmp = cwd / ".meris" / "tmp" / "hunk.patch"
+    tmp.parent.mkdir(parents=True, exist_ok=True)
+    body = patch if "---" in patch else f"--- a/{rel}\n+++ b/{rel}\n{patch}"
+    tmp.write_text(body, encoding="utf-8")
+    subprocess.run(["git", "apply", "--unsafe-paths", str(tmp)], cwd=cwd, check=True, capture_output=True)
 
 
 def _serve_file(handler: BaseHTTPRequestHandler, path: Path) -> None:
@@ -444,6 +530,46 @@ class MerisUiHandler(BaseHTTPRequestHandler):
             rt.broadcast({"type": "ratchet", **load_ratchet(cwd)})
         elif mtype == "approvalResponse":
             _write_approval(cwd, str(msg.get("requestId") or ""), bool(msg.get("approved")))
+        elif mtype == "listContextFiles":
+            rt.broadcast({"type": "contextFiles", "files": _list_workspace_files(cwd, str(msg.get("query") or ""))})
+        elif mtype == "readContextFile":
+            try:
+                item = _read_workspace_file(cwd, str(msg.get("path") or ""))
+                rt.broadcast({"type": "contextItem", "item": item})
+            except (OSError, ValueError):
+                pass
+        elif mtype == "applyHunk":
+            try:
+                _apply_hunk(cwd, str(msg.get("path") or ""), str(msg.get("patch") or ""))
+            except (subprocess.CalledProcessError, OSError):
+                pass
+        elif mtype == "loadPreview":
+            rel = str(msg.get("path") or "")
+            try:
+                html = (cwd / rel).read_text(encoding="utf-8", errors="replace")
+                rt.broadcast({"type": "preview", "path": rel, "html": html})
+            except OSError:
+                pass
+        elif mtype == "savePlan":
+            if msg.get("path") and msg.get("items"):
+                from meris.harness.plan import parse_plan_checkboxes, sync_plan_items
+
+                saved = sync_plan_items(cwd, str(msg["path"]), msg["items"])
+                try:
+                    rel = str(saved.relative_to(cwd))
+                except ValueError:
+                    rel = str(saved)
+                rt.broadcast(
+                    {
+                        "type": "planSaved",
+                        "path": rel,
+                        "items": parse_plan_checkboxes(saved.read_text(encoding="utf-8")),
+                    }
+                )
+        elif mtype == "parallelRun":
+            tasks = [str(t) for t in (msg.get("tasks") or []) if t]
+            if tasks:
+                rt.spawn_parallel(tasks=tasks, mode=str(msg.get("mode") or "ask"))
 
         self._send_json({"ok": True})
 

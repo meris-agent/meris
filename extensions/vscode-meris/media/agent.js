@@ -53,6 +53,63 @@
   const approvalArgs = document.getElementById("approval-args");
   const approveYes = document.getElementById("approve-yes");
   const approveNo = document.getElementById("approve-no");
+  const settingsBtn = document.getElementById("settings-btn");
+  const settingsPanel = document.getElementById("settings-panel");
+  const bgColorPicker = document.getElementById("bg-color-picker");
+  const bgColorText = document.getElementById("bg-color-text");
+  const settingsResetBtn = document.getElementById("settings-reset");
+  const themePresetsEl = document.getElementById("theme-presets");
+
+  const THEMES = {
+    vibe: {
+      bg: "#0b0d11",
+      surface: "#12141a",
+      border: "#262a33",
+      text: "#e8eaee",
+      muted: "#8a8f9a",
+      accent: "#6c8cff",
+      userBg: "#1a1d26",
+      assistantBg: "transparent",
+      toolBg: "#161920",
+    },
+    dark: {
+      bg: "#18181b",
+      surface: "#1f1f23",
+      border: "#2e2e33",
+      text: "#fafafa",
+      muted: "#a1a1aa",
+      accent: "#7c6cff",
+      userBg: "#27272a",
+      assistantBg: "transparent",
+      toolBg: "#1c1c1f",
+    },
+    midnight: {
+      bg: "#0d1117",
+      surface: "#161b22",
+      border: "#30363d",
+      text: "#c9d1d9",
+      muted: "#8b949e",
+      accent: "#58a6ff",
+      userBg: "#21262d",
+      assistantBg: "transparent",
+      toolBg: "#1c2128",
+    },
+    light: {
+      bg: "#fafafa",
+      surface: "#ffffff",
+      border: "#e4e4e7",
+      text: "#18181b",
+      muted: "#71717a",
+      accent: "#5b5bd6",
+      userBg: "#f4f4f5",
+      assistantBg: "transparent",
+      toolBg: "#f4f4f5",
+    },
+  };
+
+  let settingsOpen = false;
+  let themePreset = "vibe";
+  let customBg = "";
 
   let running = false;
   let currentAssistantEl = null;
@@ -75,14 +132,171 @@
   if (saved.mode && modeSelect.querySelector('option[value="' + saved.mode + '"]')) {
     modeSelect.value = saved.mode;
   }
+  if (saved.themePreset && THEMES[saved.themePreset]) {
+    themePreset = saved.themePreset;
+  }
+  if (saved.customBg) {
+    customBg = saved.customBg;
+  }
+
+  function normalizeHex(color) {
+    if (!color || typeof color !== "string") return "#0b0d11";
+    const c = color.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(c)) return c.toLowerCase();
+    if (/^#[0-9a-fA-F]{3}$/.test(c)) {
+      return (
+        "#" +
+        c[1] + c[1] +
+        c[2] + c[2] +
+        c[3] + c[3]
+      ).toLowerCase();
+    }
+    return "#0b0d11";
+  }
+
+  function hexToRgb(hex) {
+    const h = normalizeHex(hex).slice(1);
+    return {
+      r: parseInt(h.slice(0, 2), 16),
+      g: parseInt(h.slice(2, 4), 16),
+      b: parseInt(h.slice(4, 6), 16),
+    };
+  }
+
+  function rgbToHex(r, g, b) {
+    const clamp = (n) => Math.max(0, Math.min(255, Math.round(n)));
+    return (
+      "#" +
+      [clamp(r), clamp(g), clamp(b)]
+        .map((n) => n.toString(16).padStart(2, "0"))
+        .join("")
+    );
+  }
+
+  function mixHex(c1, c2, weight) {
+    const a = hexToRgb(c1);
+    const b = hexToRgb(c2);
+    const w = Math.max(0, Math.min(1, weight));
+    return rgbToHex(
+      a.r * (1 - w) + b.r * w,
+      a.g * (1 - w) + b.g * w,
+      a.b * (1 - w) + b.b * w
+    );
+  }
+
+  function bgLuminance(hex) {
+    const { r, g, b } = hexToRgb(hex);
+    const lin = [r, g, b].map((c) => {
+      const s = c / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+  }
+
+  function isDarkBg(hex) {
+    return bgLuminance(hex) < 0.45;
+  }
+
+  function accentSoft(accent) {
+    const { r, g, b } = hexToRgb(accent);
+    return `rgba(${r}, ${g}, ${b}, 0.14)`;
+  }
+
+  function paletteFromBg(bg, accentHint) {
+    const dark = isDarkBg(bg);
+    const lift = dark ? "#ffffff" : "#000000";
+    const accent = accentHint || (dark ? "#6c8cff" : "#5b5bd6");
+    return {
+      bg,
+      surface: mixHex(bg, lift, dark ? 0.07 : 0.04),
+      surface2: mixHex(bg, lift, dark ? 0.12 : 0.08),
+      border: mixHex(bg, lift, dark ? 0.16 : 0.14),
+      borderSubtle: mixHex(bg, lift, dark ? 0.09 : 0.07),
+      text: dark ? "#e8eaee" : "#18181b",
+      textSecondary: dark ? "#d1d5db" : "#374151",
+      muted: dark ? "#9ca3af" : "#6b7280",
+      userBg: mixHex(bg, lift, dark ? 0.1 : 0.06),
+      toolBg: mixHex(bg, lift, dark ? 0.06 : 0.04),
+      codeBg: mixHex(bg, lift, dark ? 0.03 : 0.05),
+      assistantBg: "transparent",
+      accent,
+      onAccent: "#ffffff",
+      errorText: dark ? "#fecaca" : "#b91c1c",
+      successText: dark ? "#86efac" : "#15803d",
+      inlineCode: dark ? "#c4b5fd" : "#6d28d9",
+    };
+  }
+
+  function applyPalette(palette) {
+    const root = document.documentElement;
+    root.style.setProperty("--bg", palette.bg);
+    root.style.setProperty("--surface", palette.surface);
+    root.style.setProperty("--surface-2", palette.surface2);
+    root.style.setProperty("--border", palette.border);
+    root.style.setProperty("--border-subtle", palette.borderSubtle);
+    root.style.setProperty("--text", palette.text);
+    root.style.setProperty("--text-secondary", palette.textSecondary);
+    root.style.setProperty("--muted", palette.muted);
+    root.style.setProperty("--user-bg", palette.userBg);
+    root.style.setProperty("--assistant-bg", palette.assistantBg);
+    root.style.setProperty("--tool-bg", palette.toolBg);
+    root.style.setProperty("--code-bg", palette.codeBg);
+    root.style.setProperty("--accent", palette.accent);
+    root.style.setProperty("--accent-soft", accentSoft(palette.accent));
+    root.style.setProperty("--on-accent", palette.onAccent);
+    root.style.setProperty("--error-text", palette.errorText);
+    root.style.setProperty("--success-text", palette.successText);
+    root.style.setProperty("--inline-code", palette.inlineCode);
+    document.body.classList.toggle("theme-dark", isDarkBg(palette.bg));
+    document.body.classList.toggle("theme-light", !isDarkBg(palette.bg));
+  }
+
+  function applyTheme() {
+    const theme = THEMES[themePreset] || THEMES.vibe;
+    const bg = normalizeHex(customBg || theme.bg);
+    const palette = customBg
+      ? paletteFromBg(bg, theme.accent)
+      : paletteFromBg(bg, theme.accent);
+    if (!customBg) {
+      palette.surface = theme.surface;
+      palette.border = theme.border;
+      palette.text = theme.text;
+      palette.muted = theme.muted;
+      palette.userBg = theme.userBg;
+      palette.toolBg = theme.toolBg;
+      palette.textSecondary = isDarkBg(bg) ? "#d1d5db" : "#374151";
+      palette.surface2 = mixHex(bg, isDarkBg(bg) ? "#ffffff" : "#000000", isDarkBg(bg) ? 0.12 : 0.08);
+      palette.borderSubtle = mixHex(bg, isDarkBg(bg) ? "#ffffff" : "#000000", isDarkBg(bg) ? 0.09 : 0.07);
+      palette.codeBg = mixHex(bg, "#000000", isDarkBg(bg) ? 0.25 : 0.06);
+    }
+    applyPalette(palette);
+    if (bgColorPicker) bgColorPicker.value = bg;
+    if (bgColorText) bgColorText.textContent = bg;
+    if (themePresetsEl) {
+      themePresetsEl.querySelectorAll(".theme-chip").forEach((chip) => {
+        chip.classList.toggle("active", chip.dataset.theme === themePreset && !customBg);
+      });
+    }
+  }
+
+  function setSettingsOpen(open) {
+    settingsOpen = open;
+    if (settingsPanel) settingsPanel.classList.toggle("hidden", !open);
+    if (settingsBtn) settingsBtn.classList.toggle("active", open);
+    document.body.classList.toggle("settings-open", open);
+  }
 
   function persistState() {
     vscode.setState({
       taskDraft: taskInput.value,
       approve: approveCheck.checked,
       mode: modeSelect.value,
+      themePreset: themePreset,
+      customBg: customBg,
     });
   }
+
+  applyTheme();
 
   function showErrorBanner(text) {
     if (!text) {
@@ -103,8 +317,10 @@
 
   function setRunning(isRunning) {
     running = isRunning;
-    submitBtn.disabled = isRunning;
-    stopBtn.disabled = !isRunning;
+    const submit = document.getElementById("submit-btn");
+    const stop = document.getElementById("stop-btn");
+    if (submit) submit.disabled = isRunning;
+    if (stop) stop.disabled = !isRunning;
     modeSelect.disabled = isRunning;
     approveCheck.disabled = isRunning;
     updateSessionItemsDisabled(isRunning);
@@ -161,15 +377,129 @@
   }
 
   function renderMarkdownLite(text) {
-    const escaped = escapeHtml(text);
-    let html = escaped.replace(
-      /```([\s\S]*?)```/g,
-      (_, code) => '<pre class="md-code">' + code + "</pre>"
-    );
-    html = html.replace(/`([^`\n]+)`/g, '<code class="md-inline">$1</code>');
-    html = html.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
-    html = html.replace(/\n/g, "<br>");
-    return html;
+    function inlineFmt(s) {
+      let h = escapeHtml(s);
+      h = h.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      h = h.replace(/`([^`]+)`/g, '<code class="md-inline">$1</code>');
+      return h;
+    }
+
+    const parts = [];
+    const lines = text.split("\n");
+    let i = 0;
+    let inCode = false;
+    let codeBuf = [];
+    let tableRows = [];
+
+    function flushTable() {
+      if (tableRows.length < 2) {
+        parts.push('<p class="md-p">' + inlineFmt(tableRows.join(" ")) + "</p>");
+        tableRows = [];
+        return;
+      }
+      let html = '<table class="md-table"><thead><tr>';
+      tableRows[0]
+        .split("|")
+        .map((c) => c.trim())
+        .filter(Boolean)
+        .forEach((c) => {
+          html += "<th>" + inlineFmt(c) + "</th>";
+        });
+      html += "</tr></thead><tbody>";
+      for (let r = 2; r < tableRows.length; r++) {
+        const cells = tableRows[r]
+          .split("|")
+          .map((c) => c.trim())
+          .filter(Boolean);
+        if (!cells.length) continue;
+        html += "<tr>";
+        cells.forEach((c) => {
+          html += "<td>" + inlineFmt(c) + "</td>";
+        });
+        html += "</tr>";
+      }
+      html += "</tbody></table>";
+      parts.push(html);
+      tableRows = [];
+    }
+
+    while (i < lines.length) {
+      const line = lines[i];
+      if (line.trim().startsWith("```")) {
+        if (inCode) {
+          parts.push('<pre class="md-code">' + escapeHtml(codeBuf.join("\n")) + "</pre>");
+          codeBuf = [];
+          inCode = false;
+        } else {
+          inCode = true;
+        }
+        i++;
+        continue;
+      }
+      if (inCode) {
+        codeBuf.push(line);
+        i++;
+        continue;
+      }
+      if (line.includes("|") && line.trim().startsWith("|")) {
+        tableRows.push(line);
+        i++;
+        if (i >= lines.length || !lines[i].includes("|")) flushTable();
+        continue;
+      }
+      if (tableRows.length) flushTable();
+
+      const h3 = line.match(/^### (.+)$/);
+      const h2 = line.match(/^## (.+)$/);
+      const h1 = line.match(/^# (.+)$/);
+      if (h3) {
+        parts.push('<h3 class="md-h3">' + inlineFmt(h3[1]) + "</h3>");
+        i++;
+        continue;
+      }
+      if (h2) {
+        parts.push('<h2 class="md-h2">' + inlineFmt(h2[1]) + "</h2>");
+        i++;
+        continue;
+      }
+      if (h1) {
+        parts.push('<h1 class="md-h1">' + inlineFmt(h1[1]) + "</h1>");
+        i++;
+        continue;
+      }
+      if (/^[-*] /.test(line)) {
+        let ul = '<ul class="md-ul">';
+        while (i < lines.length && /^[-*] /.test(lines[i])) {
+          ul += "<li>" + inlineFmt(lines[i].replace(/^[-*] /, "")) + "</li>";
+          i++;
+        }
+        ul += "</ul>";
+        parts.push(ul);
+        continue;
+      }
+      if (/^\d+\. /.test(line)) {
+        let ol = '<ol class="md-ol">';
+        while (i < lines.length && /^\d+\. /.test(lines[i])) {
+          ol += "<li>" + inlineFmt(lines[i].replace(/^\d+\. /, "")) + "</li>";
+          i++;
+        }
+        ol += "</ol>";
+        parts.push(ol);
+        continue;
+      }
+      if (line.trim() === "") {
+        parts.push('<div class="md-spacer"></div>');
+        i++;
+        continue;
+      }
+      parts.push('<p class="md-p">' + inlineFmt(line) + "</p>");
+      i++;
+    }
+    if (inCode && codeBuf.length) {
+      parts.push('<pre class="md-code">' + escapeHtml(codeBuf.join("\n")) + "</pre>");
+    }
+    if (tableRows.length) flushTable();
+    return parts.join("");
   }
 
   function renderDiffHtml(text) {
@@ -206,10 +536,9 @@
   function appendAssistantEntry(initial) {
     const el = document.createElement("div");
     el.className = "entry entry-assistant";
-    el.innerHTML =
-      '<div class="entry-meta">assistant</div><div class="entry-body md-body"></div>';
+    el.innerHTML = '<div class="entry-body md-body"></div>';
     const body = el.querySelector(".entry-body");
-    body.textContent = initial;
+    if (initial) body.textContent = initial;
     timeline.appendChild(el);
     timeline.scrollTop = timeline.scrollHeight;
     return el;
@@ -443,6 +772,14 @@
     const kind = ev.kind || "status";
     const msg = ev.message || "";
 
+    if (
+      window.__merisPhaseI &&
+      (kind.startsWith("parallel_") || ev.parallel_index !== undefined)
+    ) {
+      window.__merisPhaseI.handleParallelEvent(ev);
+      return;
+    }
+
     switch (kind) {
       case "submission":
         clearEmptyHint();
@@ -452,6 +789,13 @@
 
       case "session_start":
         if (ev.session) activeSessionId = ev.session;
+        if (ev.model) {
+          window.dispatchEvent(
+            new MessageEvent("message", {
+              data: { type: "modelBar", model: "model: " + ev.model, route: "" },
+            })
+          );
+        }
         appendEntry(
           "meta",
           "session " + (ev.session ? ev.session.slice(0, 8) : ""),
@@ -490,6 +834,13 @@
       }
 
       case "thinking": {
+        if ((msg || "").includes("model route")) {
+          window.dispatchEvent(
+            new MessageEvent("message", {
+              data: { type: "modelBar", route: msg.slice(0, 100) },
+            })
+          );
+        }
         const details = document.createElement("details");
         details.className = "entry entry-thinking";
         details.innerHTML =
@@ -519,7 +870,12 @@
         break;
 
       case "file_change":
-        appendFileChange(ev);
+        if (window.__merisAppendFileChange) {
+          window.__merisAppendFileChange(timeline, ev, renderDiffHtml);
+        } else {
+          appendFileChange(ev);
+        }
+        if (window.__merisPhaseI) window.__merisPhaseI.handlePlanEvent(ev);
         break;
 
       case "sensor":
@@ -539,6 +895,14 @@
         currentAssistantEl = null;
         pendingTools.clear();
         appendEntry("done", "done", "status: " + (ev.status || msg || "completed"));
+        break;
+
+      case "plan":
+        window.dispatchEvent(
+          new MessageEvent("message", {
+            data: { type: "plan", items: ev.items || [], path: ev.path || "" },
+          })
+        );
         break;
 
       default:
@@ -578,6 +942,40 @@
   taskInput.addEventListener("input", persistState);
   approveCheck.addEventListener("change", persistState);
   modeSelect.addEventListener("change", persistState);
+
+  if (settingsBtn) {
+    settingsBtn.addEventListener("click", () => {
+      setSettingsOpen(!settingsOpen);
+    });
+  }
+
+  if (themePresetsEl) {
+    themePresetsEl.addEventListener("click", (e) => {
+      const chip = e.target.closest(".theme-chip");
+      if (!chip || !chip.dataset.theme || !THEMES[chip.dataset.theme]) return;
+      themePreset = chip.dataset.theme;
+      customBg = "";
+      applyTheme();
+      persistState();
+    });
+  }
+
+  if (bgColorPicker) {
+    bgColorPicker.addEventListener("input", () => {
+      customBg = normalizeHex(bgColorPicker.value);
+      applyTheme();
+      persistState();
+    });
+  }
+
+  if (settingsResetBtn) {
+    settingsResetBtn.addEventListener("click", () => {
+      themePreset = "vibe";
+      customBg = "";
+      applyTheme();
+      persistState();
+    });
+  }
 
   approveYes.addEventListener("click", () => {
     if (!pendingApprovalId) return;
@@ -679,7 +1077,8 @@
   });
 
   timeline.innerHTML =
-    '<div class="empty-hint">Describe a task below and press Run.<br>Ctrl+Enter to submit · click session to resume.</div>';
+    '<div class="empty-hint"><strong>开始一个任务</strong>在下方描述你想做的事，按 <kbd>Ctrl</kbd>+<kbd>Enter</kbd> 或点 Run。<br>左侧可恢复历史 Session。</div>';
   vscode.postMessage({ type: "refreshSessions" });
   vscode.postMessage({ type: "refreshRatchet" });
+  window.__merisVscode = vscode;
 })();

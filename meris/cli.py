@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import shutil
 import signal
 from collections.abc import Callable
@@ -697,6 +698,35 @@ def ask_cmd(
     )
 
 
+@app.command("plan-sync")
+def plan_sync_cmd(
+    path: str = typer.Argument(..., help="Plan file path (relative to cwd or absolute)"),
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    items_file: Path = typer.Option(..., "--items-file", help="JSON file: {items: [...]}"),
+) -> None:
+    """Sync Plan UI checkbox states back to tasks.md (preserves headers/prose)."""
+    ws = cwd.resolve()
+    try:
+        data = json.loads(items_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        console.print(f"[red]Invalid items file:[/red] {e}")
+        raise typer.Exit(1) from e
+    items = data.get("items") if isinstance(data, dict) else data
+    if not isinstance(items, list):
+        console.print("[red]items must be a list[/red]")
+        raise typer.Exit(1)
+    from meris.harness.plan import parse_plan_checkboxes, sync_plan_items
+
+    out = sync_plan_items(ws, path, items)
+    rel = str(out.relative_to(ws)) if out.is_relative_to(ws) else str(out)
+    console.print(f"[green]plan synced:[/green] {rel}")
+    if items_file.parent.name == "tmp" and items_file.name == "plan-sync.json":
+        try:
+            items_file.unlink()
+        except OSError:
+            pass
+
+
 @app.command("plan")
 def plan_cmd(
     task: str = typer.Argument(...),
@@ -845,6 +875,7 @@ def parallel_cmd(
     isolate: bool = typer.Option(False, "--isolate", help="Git worktree per run session"),
     max_turns: int = typer.Option(20, "--max-turns"),
     file: Path | None = typer.Option(None, "--file", "-f", help="Task list file (one per line)"),
+    event_stream: Path | None = typer.Option(None, "--event-stream", help="JSONL event log path"),
 ) -> None:
     """Run multiple agent sessions in parallel."""
     ws = cwd.resolve()
@@ -868,6 +899,7 @@ def parallel_cmd(
             isolate=isolate,
             max_turns=max_turns,
             on_line=lambda i, line: console.print(line),
+            event_stream_path=event_stream,
         )
         console.print(f"\n[bold]Done: {len(results)} sessions[/bold]")
         for r in results:

@@ -52,6 +52,20 @@ class EventStream:
             self._sink.close()
 
 
+class TaggedEventStream:
+    """Proxy that adds fixed tags to every emitted event (parallel lanes, etc.)."""
+
+    def __init__(self, base: EventStream, **tags: Any) -> None:
+        self._base = base
+        self._tags = tags
+
+    def emit(self, kind: str, *, message: str = "", **fields: Any) -> None:
+        self._base.emit(kind, message=message, **{**self._tags, **fields})
+
+    def close(self) -> None:
+        return
+
+
 def emit_submission(stream: EventStream | None, *, action: str, task: str = "", session: str = "") -> None:
     if not stream:
         return
