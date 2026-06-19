@@ -34,7 +34,8 @@ pub use mcp::{has_mcp_servers, is_mcp_tool, McpBridge};
 pub use context::{compress_messages, estimate_messages_tokens, estimate_tokens};
 pub use permissions::check_tool_allowed;
 pub use provider::{
-    chat_completions, probe_provider, resolve_config, build_chat_body, parse_assistant_message,
+    chat_completions, chat_completions_stream, probe_provider, resolve_config, build_chat_body,
+    parse_assistant_message, process_sse_chat_chunk,
     ProviderConfig, ProviderProbe,
 };
 pub use sandbox::{

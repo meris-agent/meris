@@ -29,6 +29,10 @@
 - [x] **G5** — E0 发版 `v0.0.2`（Phase G 完整 · Route B 就绪）
 - [x] **G6** — macOS Seatbelt spike + **G6.2 MVP**（`sandbox-exec` · read-only / workspace-write）
 
+## Phase H — Agent Window（✅ H1–H12 完成）
+
+见 [docs/PLAN_AGENT_WINDOW.md](docs/PLAN_AGENT_WINDOW.md) · vault `Articles/Meris-Agent-Window-规划.md` · 扩展 `v0.2.0` · `meris ui`
+
 ## 进行中
 - [x] Linux bubblewrap OS 沙箱（`sandbox.osSandbox: auto|require`）
 - [x] 网络隔离（`network: isolated`）+ `.env` 遮罩（`maskSecrets`）
@@ -100,7 +104,7 @@ meris ratchet digest
 **基线**
 
 - pytest: 232 passed
-- benchmark: 7/8（`harness_paths_smoke` fail · rejected `meris/README.md`）
+- benchmark: 7/8（`harness_paths_smoke` fail · 曾误写嵌套 README 路径，已 reject）
 - pending: 0 → benchmark 自动生成 `ratchet-20260607-120350-f0d0bc`
 
 **Applied**

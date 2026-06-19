@@ -32,6 +32,69 @@ ApproveFn = Callable[[str, dict], Union[bool, Awaitable[bool]]]
 EmitFn = Callable[[str], None]
 
 
+async def _provider_chat_with_events(
+    provider,
+    messages: list[dict],
+    tools: list[dict] | None,
+    *,
+    event_stream: EventStream | None,
+    session: str,
+    turn: int,
+) -> dict:
+    """Call provider; emit live token stream when supported."""
+    if event_stream and hasattr(provider, "chat_stream"):
+        msg: dict = {"content": ""}
+        chunk_idx = 0
+        reasoning_idx = 0
+        async for item in provider.chat_stream(messages, tools=tools):
+            if item.get("type") == "token":
+                event_stream.emit(
+                    "token",
+                    message=item["delta"],
+                    session=session,
+                    turn=turn,
+                    chunk=chunk_idx,
+                )
+                chunk_idx += 1
+            elif item.get("type") == "reasoning":
+                event_stream.emit(
+                    "reasoning",
+                    message=item["delta"],
+                    session=session,
+                    turn=turn,
+                    chunk=item.get("chunk", reasoning_idx),
+                )
+                reasoning_idx += 1
+            elif item.get("type") == "done":
+                return item["message"]
+        return msg
+
+    msg = await provider.chat(messages, tools=tools)
+    content = msg.get("content") or ""
+    if event_stream and content:
+        chunk_size = 320
+        for i in range(0, len(content), chunk_size):
+            event_stream.emit(
+                "token",
+                message=content[i : i + chunk_size],
+                session=session,
+                turn=turn,
+                chunk=i // chunk_size,
+            )
+    return msg
+
+
+def _emit_thinking(
+    event_stream: EventStream | None,
+    message: str,
+    *,
+    session: str,
+    turn: int,
+) -> None:
+    if event_stream and message:
+        event_stream.emit("thinking", message=message[:500], session=session, turn=turn)
+
+
 async def _maybe_approve(approve_fn: ApproveFn | None, name: str, args: dict) -> bool:
     if not approve_fn:
         return False
@@ -210,9 +273,13 @@ async def agent_loop(
             before_t = estimate_messages_tokens(state.messages)
             after_t = estimate_messages_tokens(compressed)
             if len(compressed) < len(state.messages):
-                yield f"[meris] context compressed {len(state.messages)} → {len(compressed)} messages"
+                note = f"context compressed {len(state.messages)} → {len(compressed)} messages"
+                _emit_thinking(event_stream, note, session=record.id, turn=state.turn)
+                yield f"[meris] {note}"
             elif before_t > after_t:
-                yield f"[meris] token budget: {before_t} → {after_t} tokens (limit {max_tokens})"
+                note = f"token budget: {before_t} → {after_t} tokens (limit {max_tokens})"
+                _emit_thinking(event_stream, note, session=record.id, turn=state.turn)
+                yield f"[meris] {note}"
 
             if not explicit_provider and isinstance(models_cfg.get("dynamic"), dict) and models_cfg["dynamic"].get("enabled"):
                 overrides, turn_note, reason = await pick_model_for_turn(
@@ -231,22 +298,25 @@ async def agent_loop(
                         turn_overrides = dict(overrides)
                         if prev_model != getattr(provider, "model", None) or turn_note.startswith("dynamic:"):
                             extra = f" ({reason})" if reason and reason != "cached" else ""
-                            yield (
-                                f"[meris] model route={turn_note} "
+                            route_line = (
+                                f"model route={turn_note} "
                                 f"provider={overrides.get('provider')} model={overrides.get('model')}{extra}"
                             )
+                            _emit_thinking(event_stream, route_line, session=record.id, turn=state.turn)
+                            yield f"[meris] {route_line}"
 
-            msg = await provider.chat(compressed, tools=tools.schemas())
+            msg = await _provider_chat_with_events(
+                provider,
+                compressed,
+                tools.schemas(),
+                event_stream=event_stream,
+                session=record.id,
+                turn=state.turn,
+            )
 
             if msg.get("content"):
-                if event_stream:
-                    event_stream.emit(
-                        "token",
-                        message=msg["content"][:800],
-                        session=record.id,
-                        turn=state.turn,
-                    )
-                yield f"\n[assistant]\n{msg['content']}"
+                content = msg["content"]
+                yield f"\n[assistant]\n{content}"
 
             tool_calls = msg.get("tool_calls")
             if not tool_calls:
@@ -329,6 +399,7 @@ async def agent_loop(
                                 event_stream.emit(
                                     "tool_start",
                                     tool=name,
+                                    args=args,
                                     session=record.id,
                                     turn=state.turn,
                                 )
@@ -343,6 +414,7 @@ async def agent_loop(
                             event_stream.emit(
                                 "tool_start",
                                 tool=name,
+                                args=args,
                                 session=record.id,
                                 turn=state.turn,
                             )
@@ -358,8 +430,21 @@ async def agent_loop(
                         "tool_end",
                         tool=name,
                         session=record.id,
-                        preview=(result or "")[:240],
+                        preview=(result or "")[:2000],
                     )
+                if event_stream and name in ("write_file", "edit_file"):
+                    rel = str(args.get("path", ""))
+                    if rel:
+                        from meris.harness.diff_preview import build_file_change_preview
+
+                        event_stream.emit(
+                            "file_change",
+                            tool=name,
+                            path=rel,
+                            session=record.id,
+                            turn=state.turn,
+                            diff_preview=build_file_change_preview(name, args),
+                        )
 
                 state.append(
                     {

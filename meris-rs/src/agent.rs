@@ -8,7 +8,7 @@ use crate::mcp::{has_mcp_servers, is_mcp_tool, McpBridge};
 use crate::permissions::check_tool_allowed;
 use crate::plan::{extract_last_assistant_text, save_plan};
 use crate::prompt::load_system_prompt;
-use crate::provider::{chat_completions, resolve_config, ProviderConfig};
+use crate::provider::{chat_completions, chat_completions_stream, resolve_config, ProviderConfig};
 use crate::sensors::{on_complete_enabled, run_on_complete_sensors, run_post_edit_sensors};
 use crate::session::{load_session, new_session_id, now_iso, save_session, SessionRecord};
 use crate::settings::load_settings;
@@ -58,6 +58,39 @@ fn parse_tool_args(raw: &str) -> Value {
     serde_json::from_str(raw).unwrap_or_else(|_| json!({}))
 }
 
+fn file_change_preview(tool: &str, args: &Value) -> String {
+    let path = args.get("path").and_then(|p| p.as_str()).unwrap_or("");
+    if path.is_empty() {
+        return String::new();
+    }
+    const MAX_LINES: usize = 20;
+    if tool == "write_file" {
+        let content = args.get("content").and_then(|c| c.as_str()).unwrap_or("");
+        let mut body = format!("--- /dev/null\n+++ {path}\n@@ new file @@\n");
+        for line in content.lines().take(MAX_LINES) {
+            body.push_str(&format!("+{line}\n"));
+        }
+        let extra = content.lines().count().saturating_sub(MAX_LINES);
+        if extra > 0 {
+            body.push_str(&format!("… ({extra} more lines)\n"));
+        }
+        return body;
+    }
+    if tool == "edit_file" {
+        let old = args.get("old_string").and_then(|c| c.as_str()).unwrap_or("");
+        let new = args.get("new_string").and_then(|c| c.as_str()).unwrap_or("");
+        let mut body = format!("--- {path}\n+++ {path}\n@@ edit @@\n");
+        for line in old.lines().take(MAX_LINES) {
+            body.push_str(&format!("-{line}\n"));
+        }
+        for line in new.lines().take(MAX_LINES) {
+            body.push_str(&format!("+{line}\n"));
+        }
+        return body;
+    }
+    String::new()
+}
+
 fn ask_approval(tool: &str, args: &Value) -> bool {
     let req = json!({"tool": tool, "args": args});
     let Ok(payload) = serde_json::to_string(&req) else {
@@ -100,6 +133,31 @@ fn emit_event(
             fields.insert((*k).into(), v.clone());
         }
         es.emit(kind, message, &fields);
+    }
+}
+
+fn emit_token_chunks(
+    events: &mut Option<EventStream>,
+    content: &str,
+    session: &str,
+    turn: u32,
+) {
+    if content.is_empty() {
+        return;
+    }
+    const CHUNK: usize = 320;
+    let chars: Vec<char> = content.chars().collect();
+    for (i, start) in (0..chars.len()).step_by(CHUNK).enumerate() {
+        let end = (start + CHUNK).min(chars.len());
+        let piece: String = chars[start..end].iter().collect();
+        emit_event(
+            events,
+            "token",
+            &piece,
+            session,
+            turn,
+            &[("chunk", json!(i))],
+        );
     }
 }
 
@@ -350,25 +408,52 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
         session.status = "running".into();
         save_session(&ws, &mut session)?;
 
+        let before_len = session.messages.len();
         let compressed = compress_messages(
             &session.messages,
             DEFAULT_MAX_MESSAGES,
             None,
             DEFAULT_MAX_TOOL_TOKENS,
         );
-        let assistant = chat_completions(&provider_cfg, &compressed, Some(&tool_defs), 120)?;
+        if compressed.len() < before_len {
+            let note = format!(
+                "context compressed {before_len} → {} messages",
+                compressed.len()
+            );
+            push_line(&mut lines, format!("[meris] {note}"));
+            emit_event(
+                &mut events,
+                "thinking",
+                &note,
+                &session.id,
+                session.turn,
+                &[],
+            );
+        }
+        let assistant = if events.is_some() {
+            chat_completions_stream(
+                &provider_cfg,
+                &compressed,
+                Some(&tool_defs),
+                120,
+                &mut events,
+                &session.id,
+                session.turn,
+            )?
+        } else {
+            chat_completions(&provider_cfg, &compressed, Some(&tool_defs), 120)?
+        };
 
-        if let Some(content) = assistant.get("content").and_then(|c| c.as_str()) {
+        if events.is_none() {
+            if let Some(content) = assistant.get("content").and_then(|c| c.as_str()) {
+                if !content.is_empty() {
+                    push_line(&mut lines, format!("\n[assistant]\n{content}"));
+                    emit_token_chunks(&mut events, content, &session.id, session.turn);
+                }
+            }
+        } else if let Some(content) = assistant.get("content").and_then(|c| c.as_str()) {
             if !content.is_empty() {
                 push_line(&mut lines, format!("\n[assistant]\n{content}"));
-                emit_event(
-                    &mut events,
-                    "token",
-                    &content.chars().take(800).collect::<String>(),
-                    &session.id,
-                    session.turn,
-                    &[],
-                );
             }
         }
 
@@ -408,7 +493,7 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
                 name,
                 &session.id,
                 session.turn,
-                &[("tool", json!(name))],
+                &[("tool", json!(name)), ("args", args.clone())],
             );
 
             let mcp_ref = mcp_bridge.as_ref();
@@ -488,10 +573,28 @@ pub fn run_agent(config: AgentConfig) -> Result<AgentResult, String> {
                 result = blocked;
             }
 
+            if (name == "write_file" || name == "edit_file") {
+                if let Some(path) = args.get("path").and_then(|p| p.as_str()) {
+                let preview = file_change_preview(name, &args);
+                emit_event(
+                    &mut events,
+                    "file_change",
+                    path,
+                    &session.id,
+                    session.turn,
+                    &[
+                        ("tool", json!(name)),
+                        ("path", json!(path)),
+                        ("diff_preview", json!(preview)),
+                    ],
+                );
+                }
+            }
+
             emit_event(
                 &mut events,
                 "tool_end",
-                &result.chars().take(240).collect::<String>(),
+                &result.chars().take(2000).collect::<String>(),
                 &session.id,
                 session.turn,
                 &[("tool", json!(name))],

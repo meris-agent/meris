@@ -138,3 +138,56 @@ class AnthropicProvider(Provider):
         if tool_calls:
             msg["tool_calls"] = tool_calls
         return msg
+
+    async def chat_stream(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
+    ):
+        """Yield token deltas from Anthropic streaming API, then final message."""
+        system, convo = self._split_messages(messages)
+        if not convo:
+            convo = [{"role": "user", "content": "(empty)"}]
+
+        kwargs: dict[str, Any] = {
+            "model": self.model,
+            "max_tokens": 8192,
+            "messages": convo,
+        }
+        if system:
+            kwargs["system"] = system
+        anthropic_tools = self._to_anthropic_tools(tools)
+        if anthropic_tools:
+            kwargs["tools"] = anthropic_tools
+
+        try:
+            async with self.client.messages.stream(**kwargs) as stream:
+                async for text in stream.text_stream:
+                    if text:
+                        yield {"type": "token", "delta": text}
+                final = await stream.get_final_message()
+        except Exception as e:
+            raise ProviderError(str(e)) from e
+
+        text_parts: list[str] = []
+        tool_calls: list[dict[str, Any]] = []
+        for block in final.content:
+            btype = getattr(block, "type", None)
+            if btype == "text":
+                text_parts.append(block.text)
+            elif btype == "tool_use":
+                tool_calls.append(
+                    {
+                        "id": block.id,
+                        "type": "function",
+                        "function": {
+                            "name": block.name,
+                            "arguments": json.dumps(block.input, ensure_ascii=False),
+                        },
+                    }
+                )
+
+        msg: dict[str, Any] = {"role": "assistant", "content": "".join(text_parts)}
+        if tool_calls:
+            msg["tool_calls"] = tool_calls
+        yield {"type": "done", "message": msg}

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="/media/agent.css" rel="stylesheet">
+  <title>Meris Agent UI</title>
+</head>
+<body>
+  <div id="header">
+    <span class="brand">Meris Agent</span>
+    <span id="status" class="status idle">Ready</span>
+  </div>
+  <div id="error-banner" class="hidden"></div>
+  <div id="layout">
+    <aside id="sessions-panel">
+      <div class="panel-header">
+        <span>Sessions</span>
+        <button id="refresh-sessions" title="Refresh">↻</button>
+      </div>
+      <ul id="session-list"></ul>
+    </aside>
+    <div id="main">
+      <div id="timeline"></div>
+      <div id="composer">
+        <div id="approval-bar" class="hidden">
+          <div class="approval-title">Approve tool call?</div>
+          <div id="approval-tool" class="approval-tool"></div>
+          <pre id="approval-args" class="approval-args"></pre>
+          <div class="approval-actions">
+            <button id="approve-yes" type="button">Approve</button>
+            <button id="approve-no" type="button">Deny</button>
+          </div>
+        </div>
+        <textarea id="task-input" placeholder="Describe your task…" rows="2"></textarea>
+        <div id="composer-actions">
+          <select id="mode-select">
+            <option value="run" selected>run</option>
+            <option value="ask">ask</option>
+            <option value="plan">plan</option>
+          </select>
+          <label><input type="checkbox" id="approve-check"> approve</label>
+          <button id="submit-btn">Run</button>
+          <button id="stop-btn" disabled>Stop</button>
+        </div>
+      </div>
+    </div>
+    <aside id="ratchet-panel">
+      <div class="panel-header">
+        <span>Ratchet</span>
+        <div class="panel-actions">
+          <button id="ratchet-scan" title="Scan">⊕</button>
+          <button id="refresh-ratchet" title="Refresh">↻</button>
+        </div>
+      </div>
+      <ul id="ratchet-list"></ul>
+    </aside>
+  </div>
+  <script src="/media/agent.js"></script>
+</body>
+</html>

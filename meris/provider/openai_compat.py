@@ -51,3 +51,64 @@ class OpenAICompatProvider(Provider):
                 for tc in choice.tool_calls
             ]
         return msg
+
+    async def chat_stream(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
+    ):
+        """Yield token deltas, then a final done message (OpenAI streaming API)."""
+        try:
+            kwargs: dict[str, Any] = {"model": self.model, "messages": messages, "stream": True}
+            if tools:
+                kwargs["tools"] = tools
+                kwargs["tool_choice"] = "auto"
+            stream = await self.client.chat.completions.create(**kwargs)
+        except Exception as e:
+            raise ProviderError(str(e)) from e
+
+        content_parts: list[str] = []
+        reasoning_parts: list[str] = []
+        tool_calls_by_index: dict[int, dict[str, Any]] = {}
+        reasoning_chunk = 0
+
+        async for chunk in stream:
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta
+            reasoning_delta = getattr(delta, "reasoning_content", None) or getattr(
+                delta, "reasoning", None
+            )
+            if reasoning_delta:
+                reasoning_parts.append(reasoning_delta)
+                yield {"type": "reasoning", "delta": reasoning_delta, "chunk": reasoning_chunk}
+                reasoning_chunk += 1
+            if delta.content:
+                content_parts.append(delta.content)
+                yield {"type": "token", "delta": delta.content}
+            if delta.tool_calls:
+                for tc in delta.tool_calls:
+                    idx = tc.index
+                    if idx not in tool_calls_by_index:
+                        tool_calls_by_index[idx] = {
+                            "id": "",
+                            "type": "function",
+                            "function": {"name": "", "arguments": ""},
+                        }
+                    acc = tool_calls_by_index[idx]
+                    if tc.id:
+                        acc["id"] = tc.id
+                    if tc.function:
+                        if tc.function.name:
+                            acc["function"]["name"] += tc.function.name
+                        if tc.function.arguments:
+                            acc["function"]["arguments"] += tc.function.arguments
+
+        content = "".join(content_parts)
+        msg: dict[str, Any] = {"role": "assistant", "content": content}
+        if reasoning_parts:
+            msg["reasoning_content"] = "".join(reasoning_parts)
+        if tool_calls_by_index:
+            ordered = [tool_calls_by_index[i] for i in sorted(tool_calls_by_index)]
+            msg["tool_calls"] = ordered
+        yield {"type": "done", "message": msg}

@@ -90,6 +90,7 @@ async def _stream(
     ratchet: bool = False,
     event_stream_path: str | Path | None = None,
     json_output: bool = False,
+    approval_channel: Path | None = None,
 ) -> dict | None:
     from meris.harness.protocol import EventStream, emit_submission
 
@@ -121,7 +122,21 @@ async def _stream(
         "event_stream_path": event_stream_path,
     }
     if require_approval:
-        kwargs["approve_fn"] = _make_approver()
+        if approval_channel:
+            from meris.harness.approval import wait_for_approval
+
+            async def _file_approve(tool: str, args: dict) -> bool:
+                return await wait_for_approval(
+                    channel=approval_channel,
+                    tool=tool,
+                    args=args,
+                    event_stream=stream,
+                    session=result.get("session") or "",
+                )
+
+            kwargs["approve_fn"] = _file_approve
+        else:
+            kwargs["approve_fn"] = _make_approver()
     emit_submission(stream, action="user", task=task[:200])
     try:
         async for line in agent_loop(workspace, task, mode=mode, **kwargs):
@@ -490,6 +505,18 @@ def version_cmd() -> None:
     console.print(f"meris-agent {version('meris-agent')}")
 
 
+@app.command("ui")
+def ui_cmd(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C", help="Workspace to run agent against"),
+    host: str = typer.Option("127.0.0.1", "--host", help="Bind address"),
+    port: int = typer.Option(8765, "--port", "-p", help="HTTP port"),
+) -> None:
+    """Standalone Agent Window web UI (Path B)."""
+    from meris.ui.server import serve_ui
+
+    serve_ui(cwd=cwd.resolve(), host=host, port=port)
+
+
 @app.command("init-harness")
 def init_harness(
     workspace: Path = typer.Argument(Path.cwd(), help="Target repository"),
@@ -771,6 +798,9 @@ def run_cmd(
         help="After run: refresh profile + scan for harness proposals",
     ),
     event_stream: Path | None = typer.Option(None, "--event-stream", help="JSONL event log path"),
+    approval_channel: Path | None = typer.Option(
+        None, "--approval-channel", help="Directory for IDE approve/deny file channel"
+    ),
 ) -> None:
     """Full agent loop with tools + sensors (default mode)."""
     ws = cwd.resolve()
@@ -801,6 +831,7 @@ def run_cmd(
             plan_output=None,
             ratchet=ratchet,
             event_stream_path=event_stream,
+            approval_channel=approval_channel,
         )
     )
 
@@ -879,6 +910,10 @@ def session_resume(
     session_id: str = typer.Argument(...),
     cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
     approve: bool = typer.Option(False, "--approve"),
+    event_stream: Path | None = typer.Option(None, "--event-stream", help="JSONL event log path"),
+    approval_channel: Path | None = typer.Option(
+        None, "--approval-channel", help="Directory for IDE approve/deny file channel"
+    ),
 ) -> None:
     """Resume a saved session."""
     rec = load_session(cwd.resolve(), session_id)
@@ -895,6 +930,8 @@ def session_resume(
             session_id=session_id,
             resume=True,
             plan_output=None,
+            event_stream_path=event_stream,
+            approval_channel=approval_channel,
         )
     )
 

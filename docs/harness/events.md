@@ -16,8 +16,12 @@ meris exec "task" --json                   # 内存收集 + JSON 摘要
 |------|------|
 | `submission` | 用户任务 / cancel（SQ） |
 | `session_start` | workspace、mode、session、model |
-| `token` | assistant 文本片段 |
-| `tool_start` / `tool_end` | 工具调用 |
+| `token` | assistant 文本片段（可分块，`chunk` 序号；OpenAI 兼容 provider 支持真流式） |
+| `reasoning` | 模型推理链（DeepSeek `reasoning_content` 等，可折叠，与 `thinking` 区分） |
+| `thinking` | harness 进度（压缩、路由等，可折叠） |
+| `tool_start` / `tool_end` | 工具调用（`tool_start` 含 `args`） |
+| `approval_request` | approve 模式待审批（含 `request_id` / `tool` / `args`） |
+| `file_change` | `write_file` / `edit_file` 后（含 `path`、`diff_preview`） |
 | `sensor` | DoD / postEdit 结果 |
 | `status` | 其它进度行 |
 | `done` | 终态 status |

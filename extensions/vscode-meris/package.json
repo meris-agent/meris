@@ -2,7 +2,7 @@
   "name": "meris-agent-vscode",
   "displayName": "Meris Agent",
   "description": "Run Meris harness-first coding agent from VS Code / Cursor",
-  "version": "0.0.2",
+  "version": "0.2.0",
   "publisher": "meris-local",
   "engines": {
     "vscode": "^1.85.0"
@@ -11,6 +11,24 @@
   "activationEvents": ["onStartupFinished"],
   "main": "./extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "meris-sidebar",
+          "title": "Meris",
+          "icon": "media/meris-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "meris-sidebar": [
+        {
+          "type": "webview",
+          "id": "meris.agentView",
+          "name": "Agent"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "meris.ask",
@@ -47,6 +65,14 @@
       {
         "command": "meris.tui",
         "title": "Meris: Open TUI"
+      },
+      {
+        "command": "meris.agentWindow",
+        "title": "Meris: Open Agent Window"
+      },
+      {
+        "command": "meris.agentView.focus",
+        "title": "Meris: Focus Sidebar Agent"
       }
     ],
     "menus": {
@@ -59,7 +85,9 @@
         { "command": "meris.review" },
         { "command": "meris.exec" },
         { "command": "meris.doctor" },
-        { "command": "meris.tui" }
+        { "command": "meris.tui" },
+        { "command": "meris.agentWindow" },
+        { "command": "meris.agentView.focus" }
       ]
     }
   }
