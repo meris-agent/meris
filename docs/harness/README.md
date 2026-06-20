@@ -13,5 +13,6 @@
 | [plan-format.md](plan-format.md) | `meris plan`、checkbox 任务清单 |
 | [sandbox.md](sandbox.md) | bash 沙箱 mode、超时、平台说明 |
 | [events.md](events.md) | Loop JSONL 事件、`meris exec --json` |
+| [saas-sandbox.md](saas-sandbox.md) | **公网 SaaS 可写沙箱**（Harness/UI 迁移；总览见 [PLAN_SAAS.md](../PLAN_SAAS.md)） |
 
 自动注入的短规则仍在 `.meris/rules/*.md`（`inject: always`）。其它 rules 见 system prompt 里的 **Rules index**。

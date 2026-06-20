@@ -14,6 +14,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from meris.cloud.cli import cloud_app
 from meris.env import load_env
 from meris.harness.paths import harness_root
 from meris.harness.sessions import delete_session, list_sessions, load_session, prune_sessions
@@ -34,6 +35,7 @@ models_app = typer.Typer(help="LLM provider presets (multi-vendor)")
 native_app = typer.Typer(help="Native Rust core (meris-rs)")
 harness_app = typer.Typer(help="Harness validation")
 release_app = typer.Typer(help="Release readiness (E0)")
+
 app.add_typer(tui_app, name="tui")
 app.add_typer(mcp_app, name="mcp")
 app.add_typer(session_app, name="session")
@@ -45,6 +47,7 @@ app.add_typer(models_app, name="models")
 app.add_typer(native_app, name="native")
 app.add_typer(harness_app, name="harness")
 app.add_typer(release_app, name="release")
+app.add_typer(cloud_app, name="cloud")
 
 console = Console()
 

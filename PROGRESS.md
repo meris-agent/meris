@@ -58,6 +58,68 @@
 - [x] **Git 改动面板 G1–G4** — `git_summary` API · Stage/Commit/提交全部 · scope 提交记录 · [git-workflow.md](docs/harness/git-workflow.md)
 - [x] **Parallel --isolate** — worktree 勾选 + server/extension 传参
 
+## Phase S — 公网 SaaS（S0–S5 ✅，S6 持续）
+
+见 [docs/PLAN_SAAS.md](docs/PLAN_SAAS.md) · **顺序路线** [docs/cloud/ROADMAP.md](docs/cloud/ROADMAP.md) · Harness [docs/harness/saas-sandbox.md](docs/harness/saas-sandbox.md)
+
+**已拍板**：首期即 **可写沙箱**（非只读 MVP）；不做单进程多用户妥协。
+
+| 阶段 | 状态 | 核心 |
+|------|------|------|
+| S0 设计冻结 | ✅ 完成 | OpenAPI、威胁模型、ADR、`meris-cloud/` 脚手架、CI |
+| S1 身份/租户 | ✅ 完成 | GitHub OAuth 路由、JWT、MySQL 会话、ui_state、audit |
+| S2 可写 Worker | ✅ 完成 | 容器 clone、run、文件/Preview UI、idle 回收、task scope |
+| S3 Git Ship & Harness | ✅ 完成 | git API、Plan/Run plan、DoD、Ratchet UI |
+| S4 生产化 | ✅ 核心完成 | K8s、计费/配额、Prometheus、runbook/DR |
+| S5 团队/生态 | ✅ 完成 | RBAC、workspace/分享、CLI/SDK、Enterprise Helm |
+| S6 合规 | 进行中 | 模板 ✅、Redis SSE、Stripe 验签、审计导出、合规文档 |
+
+**S6+ 近期落地（2026-06-20）**
+
+- [x] Postgres → MySQL 迁移脚本（`meris-cloud/scripts/migrate_pg_to_mysql.py`）
+- [x] Worker **每 session 独立目录**（`/workspace/sessions/{id}`）+ idle 时清理 FS
+- [x] `POST /v1/sessions/{id}/stop` + Worker 进程终止
+- [x] Worker `done` 事件 → session 状态回 `ready`（`wait_session` 可用）
+- [x] RBAC：viewer 可 `ask`/`plan`，不可 `run`
+- [x] CLI `meris cloud sessions stop`
+- [x] `GET/POST /v1/repos` — 绑定 Git 仓库 + 平台 token 私有 clone
+- [x] Web **Push** / **停止** 按钮；OpenAPI 同步至 0.6.0-s6
+
+**批次 A（合规与身份）** — 见 [docs/cloud/ROADMAP.md](docs/cloud/ROADMAP.md)
+
+- [x] A1 `GET /v1/me/export`（GDPR 元数据导出）
+- [x] A2 `DELETE /v1/org`（owner 级联注销）
+- [x] A3 API Key `meris_sk_`（签发/撤销/鉴权）
+- [x] A4 OAuth state → Redis（内存回退）
+- [x] B1–B4 Stripe Checkout/Plans/Portal、session 分钟计量、并发与时长配额
+
+**批次 C（Git 与沙箱隔离）** — 见 [docs/cloud/ROADMAP.md](docs/cloud/ROADMAP.md)
+
+- [x] C1 GitHub App 安装回调 + installation token（`GET /v1/auth/github/app/*`）
+- [x] C2 `credential_encrypted` + `MERIS_CLOUD_CREDENTIAL_KEY`；`connect` 支持 `git_token` / `use_github_app`
+- [x] C3 K8s Job/session（`k8s_session.py` + Helm `sessionJobs` + RBAC）
+- [x] C4 Worker ingest HMAC（`X-Meris-Ingest-Signature`）
+
+**批次 E（产品与生态）** — 见 [docs/cloud/ROADMAP.md](docs/cloud/ROADMAP.md)
+
+- [x] E1 模板 registry（`templates` 表 + `/v1/admin/templates` CRUD）
+- [x] E2 Web「本次涉及」task scope UI + `ui-state/task_scope`
+- [x] E3 Ratchet apply/reject API + Web 按钮
+- [x] E4 CLI/SDK：`usage`、`regions`、`members`、`shares`、`billing`
+- [x] E5 `GET /v1/regions` + org region 校验 + [regions.md](docs/cloud/regions.md) checklist
+
+**S6 合规路线 A→E 已全部落地**；后续为生产渗透测试与 GA 运维。
+
+**批次 D（生产运维与安全）** — 见 [docs/cloud/ROADMAP.md](docs/cloud/ROADMAP.md)
+
+- [x] D1 `load_test_sessions.py`（100 session 压测 + CI workflow_dispatch smoke）
+- [x] D2 ServiceMonitor 默认开启 + `meris_cloud_http_requests_total`
+- [x] D3 `X-Trace-Id` / W3C traceparent + 可选 OTLP；audit `meta.trace_id`
+- [x] D4 `security_checklist.py` + Helm `security.*`（non-root、只读根 FS、gVisor runtimeClass）
+- [x] D5 `audit_worm_etl.py` → 日 JSONL + 可选 S3（[dr.md](docs/cloud/dr.md)）
+
+**Cloud 待办（后续批次）**
+
 ## Phase K — 设计模式闭环（✅ P0/P1 + J5–J7）
 
 对照 `Articles/Meris-Agent设计模式对照.md`：
