@@ -39,6 +39,7 @@ const tailState = { path: null, position: 0, pollTimer: null, fsWatcher: null };
 let activeWorkspacePath = null;
 
 const EXTRA_ROOTS_KEY = "meris.extraWorkspaceRoots";
+const TASK_SCOPE_KEY = "meris.taskScope";
 
 function isLikelySkillRoot(p) {
   const norm = String(p || "")
@@ -67,6 +68,71 @@ function getExtraRoots() {
   return Array.isArray(raw) ? raw.map(String) : [];
 }
 
+function getTaskScopePaths() {
+  if (!extensionContext) return [];
+  const raw = extensionContext.globalState.get(TASK_SCOPE_KEY);
+  return Array.isArray(raw) ? raw.map(String) : [];
+}
+
+/** @param {string[]} paths */
+async function saveTaskScopePaths(paths) {
+  if (!extensionContext) return;
+  await extensionContext.globalState.update(TASK_SCOPE_KEY, paths);
+}
+
+/** @param {string} cwd */
+function getAvailableProjectPaths(cwd) {
+  const active = path.resolve(cwd);
+  const seeds = [];
+  const seen = new Set();
+  for (const candidate of [...getExtraRoots(), active]) {
+    if (!candidate || isLikelySkillRoot(candidate)) continue;
+    try {
+      const resolved = path.resolve(candidate);
+      const key = process.platform === "win32" ? resolved.toLowerCase() : resolved;
+      if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) continue;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      seeds.push(resolved);
+    } catch {
+      /* ignore */
+    }
+  }
+  return seeds;
+}
+
+/** @param {string[]} selected @param {string[]} available @param {string} cwd */
+function normalizeTaskScope(selected, available, cwd) {
+  const active = path.resolve(cwd);
+  const norm = (p) => {
+    const r = path.resolve(p);
+    return process.platform === "win32" ? r.toLowerCase() : r;
+  };
+  const avail = new Set(available.map(norm));
+  if (!selected.length) return [active];
+  const kept = selected.map((p) => path.resolve(p)).filter((p) => avail.has(norm(p)));
+  return kept.length ? kept : [active];
+}
+
+/** @param {string} cwd */
+function buildTaskScopePayload(cwd) {
+  const active = path.resolve(cwd);
+  const available = getAvailableProjectPaths(cwd);
+  const selected = normalizeTaskScope(getTaskScopePaths(), available, active);
+  const norm = (p) => (process.platform === "win32" ? path.resolve(p).toLowerCase() : path.resolve(p));
+  const selectedSet = new Set(selected.map(norm));
+  const items = available.map((p) => ({
+    name: path.basename(p),
+    path: p,
+    selected: selectedSet.has(norm(p)),
+    isCwd: norm(p) === norm(active),
+  }));
+  return {
+    taskScope: items,
+    taskScopeSelected: [...selectedSet].sort(),
+  };
+}
+
 /** @param {string} p */
 async function addExtraRoot(p) {
   if (!extensionContext) return false;
@@ -89,6 +155,15 @@ async function removeExtraRoot(p) {
   const key = path.resolve(p);
   const roots = getExtraRoots().filter((r) => path.resolve(r) !== key);
   await extensionContext.globalState.update(EXTRA_ROOTS_KEY, roots);
+  const cwd = getWorkspaceCwd();
+  if (cwd) {
+    const pruned = normalizeTaskScope(
+      getTaskScopePaths().filter((r) => path.resolve(r) !== key),
+      getAvailableProjectPaths(cwd),
+      cwd
+    );
+    await saveTaskScopePaths(pruned);
+  }
 }
 
 function pickPlanExecuteRoot(activeCwd) {
@@ -253,6 +328,7 @@ function setActiveWorkspace(p) {
 
 function postWorkspaceInfo(action = "update", extra = {}) {
   const cwd = getWorkspaceCwd();
+  const scope = cwd ? buildTaskScopePayload(cwd) : { taskScope: [], taskScopeSelected: [] };
   postToAgentWebviews({
     type: "workspaceInfo",
     cwd: cwd || "",
@@ -260,6 +336,7 @@ function postWorkspaceInfo(action = "update", extra = {}) {
     folders: getWorkspaceFolders(),
     persistedRoots: getExtraRoots().map((p) => ({ name: path.basename(p), path: p })),
     workspaceAction: action,
+    ...scope,
     ...extra,
   });
 }
@@ -988,8 +1065,8 @@ function getAgentWebviewContent(webview, extensionUri) {
 <div id="header">
     <span class="brand">Meris Agent</span>
     <div class="workspace-bar">
-      <select id="workspace-select" class="workspace-select" title="切换当前项目（cwd）"></select>
-      <button type="button" id="header-add-workspace-btn" class="workspace-icon-btn" title="添加项目到列表">+</button>
+      <label for="workspace-select" class="workspace-bar-label">主项目</label>
+      <select id="workspace-select" class="workspace-select" title="主项目 (cwd)：命令、测试、Harness 默认根"></select>
     </div>
     <div class="header-actions">
       <button id="settings-btn" type="button" title="设置" aria-label="设置">
@@ -1008,7 +1085,7 @@ function getAgentWebviewContent(webview, extensionUri) {
   <div id="workspace-manage-popover" class="workspace-manage-popover hidden" aria-hidden="true">
     <div class="workspace-manage-title">项目列表 <span id="workspace-root-count" class="workspace-root-count"></span></div>
     <ul id="workspace-roots-list" class="workspace-roots-list"></ul>
-    <p class="workspace-manage-hint">仅项目文件夹（非 Skill）。点击切换 cwd；× 移除。Skill 在设置 → 技能。</p>
+    <p class="workspace-manage-hint">已注册项目。★ 为主项目 (cwd)。× 移除。Skill 在设置 → 技能。</p>
   </div>
 
   <div id="folder-modal" class="folder-modal hidden" aria-hidden="true">
@@ -1228,12 +1305,20 @@ function getAgentWebviewContent(webview, extensionUri) {
 
   <div id="layout">
     <aside id="left-panel">
-      <div class="panel-header workspace-panel-header">
+      <div class="panel-header workspace-panel-header project-panel-header">
+        <span class="workspace-panel-title">项目</span>
+        <div class="workspace-panel-actions">
+          <button type="button" id="add-workspace-root-btn" class="workspace-panel-btn" title="添加项目">+</button>
+          <button type="button" id="manage-workspace-roots-btn" class="workspace-panel-btn" title="管理项目列表">⋯</button>
+          <button type="button" id="task-scope-current-btn" class="task-scope-btn" title="仅勾选主项目">仅当前</button>
+          <button type="button" id="task-scope-all-btn" class="task-scope-btn" title="勾选全部项目">全选</button>
+        </div>
+      </div>
+      <div id="project-list" class="project-list"></div>
+      <div class="panel-header workspace-panel-header file-panel-header">
         <span class="workspace-panel-title" id="file-panel-title">文件</span>
         <div class="workspace-panel-actions">
-          <button type="button" id="add-workspace-root-btn" class="workspace-panel-btn" title="添加项目到列表">+</button>
-          <button type="button" id="workspace-collapse-all-btn" class="workspace-panel-btn" title="折叠全部目录">⊟</button>
-          <button type="button" id="manage-workspace-roots-btn" class="workspace-panel-btn" title="管理项目列表">⋯</button>
+          <button type="button" id="workspace-collapse-all-btn" class="workspace-panel-btn" title="折叠全部">⊟</button>
         </div>
       </div>
       <div id="file-tree" class="file-tree workspace-tree"></div>
@@ -1250,9 +1335,13 @@ function getAgentWebviewContent(webview, extensionUri) {
       </div>
       <div id="plan-view" class="view-panel hidden">
         <div id="plan-panel">
-          <div class="plan-empty">运行 plan 模式后，任务清单会显示在这里。</div>
+          <div class="plan-empty">运行 <code>plan</code> 模式后，任务清单会显示在这里。</div>
+          <p id="plan-source" class="plan-source hidden"></p>
           <ul id="plan-list"></ul>
-          <button type="button" id="plan-run-btn" class="hidden">Run plan →</button>
+          <div class="plan-actions">
+            <button type="button" id="plan-run-btn" class="hidden">Run plan →</button>
+            <button type="button" id="plan-clear-btn" class="hidden" title="删除 .meris/plan/tasks.md">清除计划</button>
+          </div>
         </div>
       </div>
       <div id="parallel-view" class="view-panel hidden">
@@ -1282,6 +1371,7 @@ function getAgentWebviewContent(webview, extensionUri) {
             <button id="approve-no" type="button">Deny</button>
           </div>
         </div>
+        <div id="task-scope-chips" class="task-scope-chips"></div>
         <div id="context-chips"></div>
         <div id="composer-hint" class="composer-hint hidden" aria-live="polite"></div>
         <div class="composer-card">
@@ -1868,6 +1958,33 @@ async function handleAgentMessage(msg) {
   }
   if (msg.type === "setWorkspace" && msg.path) {
     setActiveWorkspace(String(msg.path));
+    return;
+  }
+  if (msg.type === "setTaskScope") {
+    const active = getWorkspaceCwd();
+    if (!active) return;
+    const paths = Array.isArray(msg.paths) ? msg.paths.map(String) : [];
+    const available = getAvailableProjectPaths(active);
+    const normalized = normalizeTaskScope(paths, available, active);
+    await saveTaskScopePaths(normalized);
+    postWorkspaceInfo("update");
+    return;
+  }
+  if (msg.type === "clearPlan") {
+    const cwd = getWorkspaceCwd();
+    if (!cwd) return;
+    const rel = String(msg.path || ".meris/plan/tasks.md");
+    const planFile = path.isAbsolute(rel) ? rel : path.join(cwd, rel);
+    const harnessPlan = path.join(cwd, ".meris", "plan", "tasks.md");
+    for (const fp of [planFile, harnessPlan]) {
+      try {
+        if (fs.existsSync(fp)) fs.unlinkSync(fp);
+      } catch {
+        /* ignore */
+      }
+    }
+    postToAgentWebviews({ type: "planCleared" });
+    postToAgentWebviews({ type: "plan", path: "", items: [] });
     return;
   }
   if (msg.type === "addWorkspaceRoot" && msg.path) {

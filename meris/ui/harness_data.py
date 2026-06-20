@@ -23,6 +23,12 @@ _HARNESS_DOC_CATALOG: list[dict[str, str]] = [
         "blurb": "cwd、Skill、MCP、Rule 边界（改 UI 前必读）",
     },
     {
+        "id": "multi-repo",
+        "file": "multi-repo.md",
+        "title": "多仓库任务范围",
+        "blurb": "task scope、ask/plan/run 跨项目流程",
+    },
+    {
         "id": "readme",
         "file": "README.md",
         "title": "Harness 索引",

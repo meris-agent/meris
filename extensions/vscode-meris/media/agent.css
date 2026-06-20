@@ -279,7 +279,16 @@ body.has-error #layout {
   flex: 1;
   max-width: 520px;
   margin: 0 8px;
-  gap: 4px;
+  gap: 6px;
+}
+
+.workspace-bar-label {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .composer-cwd-chip {
@@ -363,6 +372,162 @@ body.has-error #layout {
 }
 
 .workspace-panel-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.project-panel-header .workspace-panel-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+.project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px 8px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.project-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text);
+  padding: 2px 0;
+}
+
+.project-item.is-main .project-item-label {
+  color: var(--accent);
+}
+
+.project-scope-check {
+  flex-shrink: 0;
+}
+
+.project-main-btn {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.project-main-btn.is-active,
+.project-main-btn:hover {
+  color: var(--accent);
+}
+
+.project-item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-main-badge {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  line-height: 1.4;
+}
+
+.file-panel-header {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.task-scope-header .workspace-panel-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+.task-scope-btn {
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.task-scope-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.task-scope-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px 8px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.task-scope-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.task-scope-item input {
+  flex-shrink: 0;
+}
+
+.task-scope-item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-scope-item.is-cwd .task-scope-item-label {
+  color: var(--accent);
+}
+
+.task-scope-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 4px 4px;
+}
+
+.task-scope-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-elevated, rgba(255, 255, 255, 0.04));
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.task-scope-chip.is-cwd {
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -2235,6 +2400,35 @@ body.theme-light .diff-del {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.plan-source {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+
+.plan-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+#plan-clear-btn {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+#plan-clear-btn:hover {
+  border-color: #e57373;
+  color: #e57373;
 }
 
 .composer-hint {

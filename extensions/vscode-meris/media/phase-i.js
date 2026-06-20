@@ -26,6 +26,8 @@
   const terminalPanel = $("terminal-panel");
   const planList = $("plan-list");
   const planRunBtn = $("plan-run-btn");
+  const planClearBtn = $("plan-clear-btn");
+  const planSource = $("plan-source");
   const planPanel = $("plan-panel");
   const parallelInput = $("parallel-input");
   const parallelRunBtn = $("parallel-run-btn");
@@ -61,6 +63,7 @@
   function buildContextPrefix() {
     let p = "";
     if (window.__merisMcpPrefix) p += window.__merisMcpPrefix();
+    if (window.__merisTaskScopePrefix) p += window.__merisTaskScopePrefix();
     if (!contextItems.length) return p;
     p += "The user attached context:\n";
     for (const item of contextItems) {
@@ -226,12 +229,23 @@
     lane.body.scrollTop = lane.body.scrollHeight;
   }
 
-  function renderPlan(items, path) {
+  function renderPlan(items, path, opts) {
+    opts = opts || {};
     if (!planList) return;
     planPath = path || planPath;
     planItems = items || planItems;
     const empty = planPanel && planPanel.querySelector(".plan-empty");
     if (empty) empty.classList.toggle("hidden", planItems.length > 0);
+    if (planSource) {
+      if (planItems.length && planPath) {
+        planSource.textContent =
+          "来源：" + planPath + "（上次 plan 会话残留；不需要可点「清除计划」）";
+        planSource.classList.remove("hidden");
+      } else {
+        planSource.textContent = "";
+        planSource.classList.add("hidden");
+      }
+    }
     planList.innerHTML = "";
     planItems.forEach((item, idx) => {
       const li = document.createElement("li");
@@ -250,7 +264,8 @@
       planList.appendChild(li);
     });
     if (planRunBtn) planRunBtn.classList.toggle("hidden", planItems.length === 0);
-    switchView("plan");
+    if (planClearBtn) planClearBtn.classList.toggle("hidden", planItems.length === 0);
+    if (opts.switchToPlan) switchView("plan");
   }
 
   function parseDiffHunks(diff) {
@@ -507,6 +522,12 @@
     });
   }
 
+  if (planClearBtn) {
+    planClearBtn.addEventListener("click", () => {
+      vscode.postMessage({ type: "clearPlan", path: planPath || ".meris/plan/tasks.md" });
+    });
+  }
+
   if (parallelRunBtn && parallelInput) {
     parallelRunBtn.addEventListener("click", () => {
       const tasks = parallelInput.value
@@ -621,7 +642,10 @@
         updateModelBar(msg.model, msg.route);
         break;
       case "plan":
-        renderPlan(msg.items || [], msg.path || "");
+        renderPlan(msg.items || [], msg.path || "", { switchToPlan: false });
+        break;
+      case "planCleared":
+        renderPlan([], "", { switchToPlan: false });
         break;
       case "planSaved":
         if (msg.path) planPath = msg.path;
@@ -656,7 +680,7 @@
 
   window.__merisPhaseI = {
     handlePlanEvent(ev) {
-      if (ev.kind === "plan") renderPlan(ev.items || [], ev.path || "");
+      if (ev.kind === "plan") renderPlan(ev.items || [], ev.path || "", { switchToPlan: true });
       if (ev.kind === "session_start" && ev.model) {
         updateModelBar("model: " + ev.model, "");
         window.dispatchEvent(

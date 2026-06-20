@@ -330,7 +330,7 @@ def switch_runtime(new_path: Path) -> UiRuntime:
 
 
 def _workspace_info_payload(cwd: Path) -> dict[str, Any]:
-    from meris.harness.ui_config import collect_workspace_folders, load_workspace_roots
+    from meris.harness.ui_config import collect_workspace_folders, load_workspace_roots, task_scope_payload
     from meris.ui.harness_data import workspace_label
 
     folders = collect_workspace_folders(cwd)
@@ -343,6 +343,7 @@ def _workspace_info_payload(cwd: Path) -> dict[str, Any]:
         "cwdLabel": workspace_label(cwd),
         "folders": folders or [{"name": cwd.name, "path": str(cwd)}],
         "persistedRoots": persisted_roots,
+        **task_scope_payload(cwd),
     }
 
 
@@ -600,6 +601,8 @@ class MerisUiHandler(BaseHTTPRequestHandler):
             return self._send_json({"ok": True, "cwd": str(self.runtime.cwd)})
         if route == "/api/workspace":
             return self._send_json(_workspace_info_payload(self.runtime.cwd))
+        if route == "/api/sessions":
+            return self._send_json({"sessions": load_sessions(self.runtime.cwd)})
         if route == "/api/workspace-file":
             from urllib.parse import parse_qs
 
@@ -801,6 +804,30 @@ class MerisUiHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path == "/api/task-scope":
+            body = self._read_json()
+            raw_paths = body.get("paths") if isinstance(body, dict) else None
+            paths: list[Path] = []
+            if isinstance(raw_paths, list):
+                for item in raw_paths:
+                    try:
+                        p = Path(str(item)).expanduser().resolve()
+                    except OSError:
+                        continue
+                    if p.is_dir():
+                        paths.append(p)
+            from meris.harness.ui_config import set_task_scope
+
+            selected = set_task_scope(paths, cwd=self.runtime.cwd)
+            payload = _workspace_info_payload(self.runtime.cwd)
+            self.runtime.broadcast({"type": "workspaceInfo", **payload})
+            return self._send_json(
+                {
+                    "ok": True,
+                    "paths": [str(p) for p in selected],
+                    "workspace": payload,
+                }
+            )
         if parsed.path == "/api/skills/set-source":
             return self._handle_skill_set_source()
         if parsed.path == "/api/skills/import":
@@ -962,6 +989,30 @@ class MerisUiHandler(BaseHTTPRequestHandler):
 
             threading.Thread(target=_pick_async, daemon=True).start()
             return self._send_json({"ok": True, "picking": True, "intent": intent})
+        elif mtype == "setTaskScope":
+            raw_paths = msg.get("paths")
+            paths: list[Path] = []
+            if isinstance(raw_paths, list):
+                for item in raw_paths:
+                    try:
+                        p = Path(str(item)).expanduser().resolve()
+                    except OSError:
+                        continue
+                    if p.is_dir():
+                        paths.append(p)
+            from meris.harness.ui_config import set_task_scope
+
+            selected = set_task_scope(paths, cwd=rt.cwd)
+            payload = _workspace_info_payload(rt.cwd)
+            rt.broadcast({"type": "workspaceInfo", **payload})
+            return self._send_json(
+                {
+                    "ok": True,
+                    "paths": [str(p) for p in selected],
+                    "workspace": payload,
+                    "message": "已更新本次任务范围",
+                }
+            )
         elif mtype == "setWorkspace":
             new_path = Path(str(msg.get("path") or "")).resolve()
             if not new_path.is_dir():
@@ -1002,9 +1053,10 @@ class MerisUiHandler(BaseHTTPRequestHandler):
             )
         elif mtype == "removeWorkspaceRoot":
             rem = Path(str(msg.get("path") or "")).resolve()
-            from meris.harness.ui_config import load_workspace_roots, remove_workspace_root
+            from meris.harness.ui_config import load_workspace_roots, prune_task_scope_from_paths, remove_workspace_root
 
             remove_workspace_root(rem)
+            prune_task_scope_from_paths([rem], cwd=rt.cwd)
             if rt.cwd.resolve() == rem:
                 remaining = load_workspace_roots()
                 if remaining:
@@ -1496,6 +1548,21 @@ class MerisUiHandler(BaseHTTPRequestHandler):
                 rt.broadcast({"type": "preview", "path": rel, "html": html})
             except OSError:
                 pass
+        elif mtype == "clearPlan":
+            from meris.harness.paths import harness_root
+
+            rel = str(msg.get("path") or ".meris/plan/tasks.md")
+            plan_file = (cwd / rel).resolve()
+            harness_plan = (harness_root(cwd) / "plan" / "tasks.md").resolve()
+            for candidate in {plan_file, harness_plan}:
+                try:
+                    if candidate.is_file() and str(candidate).startswith(str(cwd.resolve())):
+                        candidate.unlink()
+                except OSError:
+                    pass
+            rt.broadcast({"type": "planCleared"})
+            rt.broadcast({"type": "plan", "path": "", "items": []})
+            return self._send_json({"ok": True})
         elif mtype == "savePlan":
             if msg.get("path") and msg.get("items"):
                 from meris.harness.plan import parse_plan_checkboxes, sync_plan_items

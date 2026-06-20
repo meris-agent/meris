@@ -98,6 +98,15 @@ Agent 犯错 → **改 Harness 文件**，不是只重试同一句 prompt。
 | 全局技能 | `source: "global"` | — |
 | 内置模板 | `source: "builtin"` | — |
 | 当前项目根 | `cwd` / `activeRoot` | 在 Skill 上下文里写 `workspace` |
+| 本次任务范围 | `taskScope` / `taskScopeSelected` | 与 cwd 混用（scope 可多选，cwd 唯一） |
+
+## 多仓库（task scope）
+
+- **已注册项目**：顶栏 / ⋯ 列表（`workspace-roots.json` 或扩展 globalState）。  
+- **task scope**：左栏「本次涉及」勾选，持久化 `~/.meris/ui/task-scope.json`。  
+- **cwd**：写盘与左栏文件树仍只有一个；run 只改 cwd，scope 用于跨项目只读探索提示。
+
+详见 [multi-repo.md](multi-repo.md)。
 
 ## UI / 代码待对齐（优化清单）
 
@@ -129,6 +138,8 @@ Agent 犯错 → **改 Harness 文件**，不是只重试同一句 prompt。
 - [x] 技能页「从 .cursor/skills」一键导入
 - [x] 移除前端 `source: workspace` 遗留兼容
 - [x] 左栏仅显示**当前项目**文件树；Skill / `.system` 路径不得进入项目列表
+- [x] 左栏「本次涉及」task scope 勾选 + Composer 范围 chips / prompt 前缀
+- [x] 文档 [multi-repo.md](multi-repo.md) + Skill `multi-repo-workflow`
 
 ### 故意不做
 
@@ -137,6 +148,7 @@ Agent 犯错 → **改 Harness 文件**，不是只重试同一句 prompt。
 
 ## 相关
 
+- [multi-repo.md](multi-repo.md) — task scope 与跨项目流程
 - [routing.md](routing.md) — cwd 与 model 路由
 - [architecture.md](architecture.md) — 包布局
 - `.meris/rules/workspace.md` — vault / meris 双 cwd

@@ -10,8 +10,8 @@
   <div id="header">
     <span class="brand">Meris Agent</span>
     <div class="workspace-bar">
-      <select id="workspace-select" class="workspace-select" title="切换当前项目（cwd）"></select>
-      <button type="button" id="header-add-workspace-btn" class="workspace-icon-btn" title="添加项目到列表">+</button>
+      <label for="workspace-select" class="workspace-bar-label">主项目</label>
+      <select id="workspace-select" class="workspace-select" title="主项目 (cwd)：命令、测试、Harness 默认根"></select>
     </div>
     <div class="header-actions">
       <button id="settings-btn" type="button" title="设置" aria-label="设置">
@@ -30,7 +30,7 @@
   <div id="workspace-manage-popover" class="workspace-manage-popover hidden" aria-hidden="true">
     <div class="workspace-manage-title">项目列表 <span id="workspace-root-count" class="workspace-root-count"></span></div>
     <ul id="workspace-roots-list" class="workspace-roots-list"></ul>
-    <p class="workspace-manage-hint">仅项目文件夹（非 Skill）。点击切换 cwd；× 移除。Skill 在设置 → 技能。</p>
+    <p class="workspace-manage-hint">已注册项目。★ 为主项目 (cwd)。× 移除。Skill 在设置 → 技能。</p>
   </div>
 
   <div id="folder-modal" class="folder-modal hidden" aria-hidden="true">
@@ -250,12 +250,20 @@
 
   <div id="layout">
     <aside id="left-panel">
-      <div class="panel-header workspace-panel-header">
+      <div class="panel-header workspace-panel-header project-panel-header">
+        <span class="workspace-panel-title">项目</span>
+        <div class="workspace-panel-actions">
+          <button type="button" id="add-workspace-root-btn" class="workspace-panel-btn" title="添加项目">+</button>
+          <button type="button" id="manage-workspace-roots-btn" class="workspace-panel-btn" title="管理项目列表">⋯</button>
+          <button type="button" id="task-scope-current-btn" class="task-scope-btn" title="仅勾选主项目">仅当前</button>
+          <button type="button" id="task-scope-all-btn" class="task-scope-btn" title="勾选全部项目">全选</button>
+        </div>
+      </div>
+      <div id="project-list" class="project-list"></div>
+      <div class="panel-header workspace-panel-header file-panel-header">
         <span class="workspace-panel-title" id="file-panel-title">文件</span>
         <div class="workspace-panel-actions">
-          <button type="button" id="add-workspace-root-btn" class="workspace-panel-btn" title="添加项目到列表">+</button>
-          <button type="button" id="workspace-collapse-all-btn" class="workspace-panel-btn" title="折叠全部目录">⊟</button>
-          <button type="button" id="manage-workspace-roots-btn" class="workspace-panel-btn" title="管理项目列表">⋯</button>
+          <button type="button" id="workspace-collapse-all-btn" class="workspace-panel-btn" title="折叠全部">⊟</button>
         </div>
       </div>
       <div id="file-tree" class="file-tree workspace-tree"></div>
@@ -272,9 +280,13 @@
       </div>
       <div id="plan-view" class="view-panel hidden">
         <div id="plan-panel">
-          <div class="plan-empty">运行 plan 模式后，任务清单会显示在这里。</div>
+          <div class="plan-empty">运行 <code>plan</code> 模式后，任务清单会显示在这里。</div>
+          <p id="plan-source" class="plan-source hidden"></p>
           <ul id="plan-list"></ul>
-          <button type="button" id="plan-run-btn" class="hidden">Run plan →</button>
+          <div class="plan-actions">
+            <button type="button" id="plan-run-btn" class="hidden">Run plan →</button>
+            <button type="button" id="plan-clear-btn" class="hidden" title="删除 .meris/plan/tasks.md">清除计划</button>
+          </div>
         </div>
       </div>
       <div id="parallel-view" class="view-panel hidden">
@@ -304,6 +316,7 @@
             <button id="approve-no" type="button">Deny</button>
           </div>
         </div>
+        <div id="task-scope-chips" class="task-scope-chips"></div>
         <div id="context-chips"></div>
         <div id="composer-hint" class="composer-hint hidden" aria-live="polite"></div>
         <div class="composer-card">

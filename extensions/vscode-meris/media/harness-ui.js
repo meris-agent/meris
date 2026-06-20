@@ -10,7 +10,6 @@
   const $ = (id) => document.getElementById(id);
 
   const workspaceSelect = $("workspace-select");
-  const headerAddWorkspaceBtn = $("header-add-workspace-btn");
   const addWorkspaceRootBtn = $("add-workspace-root-btn");
   const manageWorkspaceRootsBtn = $("manage-workspace-roots-btn");
   const workspaceCollapseAllBtn = $("workspace-collapse-all-btn");
@@ -18,6 +17,10 @@
   const workspaceRootsList = $("workspace-roots-list");
   const fileTree = $("file-tree");
   const filePanelTitle = $("file-panel-title");
+  const projectList = $("project-list");
+  const taskScopeCurrentBtn = $("task-scope-current-btn");
+  const taskScopeAllBtn = $("task-scope-all-btn");
+  const taskScopeChips = $("task-scope-chips");
   const historyPanel = $("history-panel");
   const ratchetPanel = $("ratchet-panel");
   const rightTabs = document.querySelectorAll(".right-tab");
@@ -27,9 +30,25 @@
   let currentCwd = "";
   let lastWorkspaceFolders = [];
   let lastPersistedRoots = [];
+  /** @type {{name:string,path:string,selected?:boolean,isCwd?:boolean}[]} */
+  let lastTaskScope = [];
+  const expandedScopeRoots = new Set();
   const expandedDirs = new Set();
   /** @type {Record<string, object[]>} */
   let dirCache = {};
+
+  function apiErrorMessage(status, text) {
+    const t = String(text || "").trim();
+    if (t.startsWith("<!") || t.includes("<html")) {
+      return status === 404
+        ? "API 不可用 — 请重启 meris ui 后 Ctrl+Shift+R 刷新"
+        : `服务器错误 (${status}) — 请重启 meris ui`;
+    }
+    if (t.includes("Unexpected token '<'")) {
+      return "API 返回了 HTML 而非 JSON — 请重启 meris ui";
+    }
+    return t.slice(0, 160) || `request failed (${status})`;
+  }
 
   function post(msg) {
     if (standalone) {
@@ -39,12 +58,26 @@
         body: JSON.stringify(msg),
       })
         .then(async (r) => {
-          const data = await r.json().catch(() => ({}));
-          if (!r.ok) throw new Error(data.error || "request failed");
+          const ct = r.headers.get("content-type") || "";
+          let data = {};
+          if (ct.includes("application/json")) {
+            try {
+              data = await r.json();
+            } catch {
+              data = {};
+            }
+          } else if (!r.ok) {
+            const text = await r.text().catch(() => "");
+            throw new Error(apiErrorMessage(r.status, text));
+          }
+          if (!r.ok) {
+            throw new Error(apiErrorMessage(r.status, data.error || ""));
+          }
           return data;
         })
         .catch((err) => {
-          setWorkspaceStatus(String(err.message || err), "err");
+          const quiet = msg.type === "setTaskScope";
+          if (!quiet) setWorkspaceStatus(String(err.message || err), "err");
           return null;
         });
     }
@@ -200,7 +233,7 @@
       li.className = "workspace-root-item" + (samePath(f.path, currentCwd) ? " is-active" : "");
       const label = document.createElement("span");
       label.className = "workspace-root-path";
-      label.textContent = samePath(f.path, currentCwd) ? `${f.path} （当前）` : f.path;
+      label.textContent = samePath(f.path, currentCwd) ? `${f.path} （主项目）` : f.path;
       label.title = f.path;
       label.addEventListener("click", () => {
         if (!samePath(f.path, currentCwd)) {
@@ -228,6 +261,170 @@
     });
   }
 
+  function getProjectOptions() {
+    const raw = lastPersistedRoots.length
+      ? lastPersistedRoots
+      : lastWorkspaceFolders.length
+        ? lastWorkspaceFolders
+        : currentCwd
+          ? [{ name: currentCwd.split(/[/\\]/).pop() || "project", path: currentCwd }]
+          : [];
+    return dedupeFolders(filterProjectRoots(raw));
+  }
+
+  function getProjectScopeItems() {
+    if (lastTaskScope.length) return lastTaskScope;
+    return getProjectOptions().map((f) => ({
+      name: f.name,
+      path: f.path,
+      selected: samePath(f.path, currentCwd),
+      isCwd: samePath(f.path, currentCwd),
+    }));
+  }
+
+  function getSelectedScopeRoots() {
+    const selected = getProjectScopeItems()
+      .filter((i) => i.selected)
+      .map((i) => ({ path: i.path, name: i.name || i.path.split(/[/\\]/).pop() || "project" }));
+    return dedupeFolders(selected);
+  }
+
+  function scopeRootKey(rootPath) {
+    return String(rootPath || "")
+      .replace(/\\/g, "/")
+      .replace(/\/+$/, "")
+      .toLowerCase();
+  }
+
+  function renderProjectList() {
+    if (!projectList) return;
+    projectList.innerHTML = "";
+    const items = getProjectScopeItems();
+    if (!items.length) {
+      const empty = document.createElement("p");
+      empty.className = "file-tree-empty";
+      empty.textContent = "点 + 添加项目，勾选后下方显示文件";
+      projectList.appendChild(empty);
+      renderTaskScopeChips();
+      rebuildTree();
+      return;
+    }
+    const labeled = folderOptionLabels(items.map((i) => ({ name: i.name, path: i.path })));
+    labeled.forEach(({ folder: f, label }, idx) => {
+      const item = items[idx];
+      const isMain = Boolean(item.isCwd);
+      const row = document.createElement("div");
+      row.className = "project-item" + (isMain ? " is-main" : "");
+      row.title = item.path;
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "project-scope-check";
+      cb.checked = Boolean(item.selected);
+      cb.title = "纳入本轮 Agent 范围";
+      cb.addEventListener("change", () => {
+        const selected = [];
+        const nextScope = getProjectScopeItems().map((ent, rowIdx) => {
+          const rowEl = projectList.querySelectorAll(".project-item")[rowIdx];
+          const input = rowEl && rowEl.querySelector(".project-scope-check");
+          const on = Boolean(input && input.checked);
+          if (on) selected.push(ent.path);
+          return { ...ent, selected: on };
+        });
+        lastTaskScope = nextScope;
+        renderTaskScopeChips();
+        rebuildTree();
+        persistTaskScope(selected);
+      });
+
+      const mainBtn = document.createElement("button");
+      mainBtn.type = "button";
+      mainBtn.className = "project-main-btn" + (isMain ? " is-active" : "");
+      mainBtn.textContent = isMain ? "★" : "☆";
+      mainBtn.title = isMain ? "主项目 (cwd)" : "设为主项目";
+      mainBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!isMain) {
+          const paths = getProjectScopeItems()
+            .filter((i) => i.selected || samePath(i.path, item.path))
+            .map((i) => i.path);
+          if (!paths.some((p) => samePath(p, item.path))) paths.push(item.path);
+          lastTaskScope = getProjectOptions().map((f) => ({
+            name: f.name,
+            path: f.path,
+            selected: paths.some((p) => samePath(p, f.path)),
+            isCwd: samePath(f.path, item.path),
+          }));
+          persistTaskScope(paths);
+          openWorkspacePath(item.path);
+        }
+      });
+
+      const name = document.createElement("span");
+      name.className = "project-item-label";
+      name.textContent = label;
+
+      row.appendChild(cb);
+      row.appendChild(mainBtn);
+      row.appendChild(name);
+      if (isMain) {
+        const badge = document.createElement("span");
+        badge.className = "project-main-badge";
+        badge.textContent = "主";
+        badge.title = "主项目 (cwd)";
+        row.appendChild(badge);
+      }
+      projectList.appendChild(row);
+    });
+    renderTaskScopeChips();
+    rebuildTree();
+  }
+
+  function renderTaskScopeChips() {
+    if (!taskScopeChips) return;
+    const selected = getProjectScopeItems().filter((i) => i.selected);
+    taskScopeChips.innerHTML = "";
+    if (!selected.length) return;
+    selected.forEach((item) => {
+      const chip = document.createElement("span");
+      chip.className = "task-scope-chip" + (item.isCwd ? " is-cwd" : "");
+      chip.title = item.path;
+      chip.textContent = (item.isCwd ? "主 · " : "") + (item.name || item.path);
+      taskScopeChips.appendChild(chip);
+    });
+  }
+
+  function persistTaskScope(paths) {
+    post({ type: "setTaskScope", paths: paths || [] }).then((data) => {
+      if (data && data.workspace) {
+        applyWorkspacePayload({ ...data.workspace, workspaceAction: "update" });
+      }
+    });
+  }
+
+  window.__merisGetTaskScopeSelected = function () {
+    return getProjectScopeItems().filter((i) => i.selected).map((i) => i.path);
+  };
+
+  window.__merisTaskScopePrefix = function () {
+    const selected = window.__merisGetTaskScopeSelected();
+    if (!selected.length) {
+      return (
+        "Task scope is empty — no project checked in the left sidebar. " +
+        "Do not edit files until the user checks at least one project in the left sidebar.\n\n---\n\n"
+      );
+    }
+    const lines = selected.map((p) => {
+      const ent = getProjectScopeItems().find((i) => samePath(i.path, p));
+      const mark = ent && ent.isCwd ? " (主项目 — shell/pytest 默认在此)" : "";
+      return `- ${ent && ent.name ? ent.name + ": " : ""}${p}${mark}`;
+    });
+    return (
+      "Task scope — you may READ and WRITE only within these project roots:\n" +
+      lines.join("\n") +
+      "\n\nDo not modify files outside this scope.\n\n---\n\n"
+    );
+  };
   function getWorkspaceSelectOptions() {
     const raw = lastWorkspaceFolders.length
       ? lastWorkspaceFolders
@@ -244,6 +441,7 @@
     currentCwd = info.cwd || "";
     lastWorkspaceFolders = filterProjectRoots(info.folders || []);
     lastPersistedRoots = filterProjectRoots(info.persistedRoots || []);
+    lastTaskScope = Array.isArray(info.taskScope) && info.taskScope.length ? info.taskScope : [];
     if (workspaceSelect) {
       workspaceSelect.innerHTML = "";
       const options = getWorkspaceSelectOptions();
@@ -264,14 +462,17 @@
         opt.textContent = "未打开项目";
         workspaceSelect.appendChild(opt);
       }
-      workspaceSelect.title = currentCwd ? "当前项目：" + currentCwd : "切换当前项目";
+      workspaceSelect.title = currentCwd ? "主项目：" + currentCwd : "选择主项目 (cwd)";
     }
     if (filePanelTitle) {
-      const short = currentCwd ? currentCwd.split(/[/\\]/).pop() : "";
-      filePanelTitle.textContent = short ? `文件 · ${short}` : "文件";
-      filePanelTitle.title = currentCwd || "当前项目文件树";
+      const n = getSelectedScopeRoots().length;
+      filePanelTitle.textContent = n ? `文件 · ${n} 个项目` : "文件";
+      filePanelTitle.title = n
+        ? "已勾选项目的文件树（Agent 可读写范围）"
+        : "勾选项目后显示";
     }
     renderManageRoots();
+    renderProjectList();
     dirCache = {};
     expandedDirs.clear();
     rebuildTree();
@@ -363,20 +564,76 @@
   function rebuildTree() {
     if (!fileTree) return;
     fileTree.innerHTML = "";
-    if (!currentCwd) {
+    const roots = getSelectedScopeRoots();
+    if (!roots.length) {
       const empty = document.createElement("p");
       empty.className = "file-tree-empty";
-      empty.textContent = "未选择项目 — 用顶栏下拉切换或点 + 添加";
+      empty.textContent = "请勾选上方项目";
       fileTree.appendChild(empty);
       return;
     }
-    if (!expandedDirs.size) {
-      requestDir(currentCwd, "");
-    }
-    const body = document.createElement("div");
-    body.className = "file-tree-root-body file-tree-single-root";
-    fileTree.appendChild(body);
-    renderTreeLevel(currentCwd, "", body);
+    const labeled = folderOptionLabels(roots);
+    labeled.forEach(({ folder: f, label }) => {
+      const rootKey = scopeRootKey(f.path);
+      const isCwd = samePath(f.path, currentCwd);
+      const expanded = expandedScopeRoots.has(rootKey);
+      const block = document.createElement("div");
+      block.className = "file-tree-root" + (isCwd ? " is-active-root" : "");
+
+      const headerRow = document.createElement("div");
+      headerRow.className = "file-tree-root-header-row";
+
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "file-tree-root-toggle";
+      toggle.textContent = expanded ? "▾" : "▸";
+      toggle.title = expanded ? "收起" : "展开";
+
+      const header = document.createElement("button");
+      header.type = "button";
+      header.className = "file-tree-root-header";
+      header.textContent = label;
+      header.title = f.path;
+
+      const body = document.createElement("div");
+      body.className = "file-tree-root-body" + (expanded ? "" : " hidden");
+
+      const expandRoot = () => {
+        expandedScopeRoots.add(rootKey);
+        body.classList.remove("hidden");
+        toggle.textContent = "▾";
+        if (!dirCache[cacheKey(f.path, "")]) requestDir(f.path, "");
+        else renderTreeLevel(f.path, "", body);
+      };
+
+      const collapseRoot = () => {
+        expandedScopeRoots.delete(rootKey);
+        body.classList.add("hidden");
+        toggle.textContent = "▸";
+        body.innerHTML = "";
+      };
+
+      toggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (expandedScopeRoots.has(rootKey)) collapseRoot();
+        else expandRoot();
+      });
+      header.addEventListener("click", () => {
+        if (!samePath(f.path, currentCwd)) openWorkspacePath(f.path);
+        if (!expandedScopeRoots.has(rootKey)) expandRoot();
+      });
+
+      headerRow.appendChild(toggle);
+      headerRow.appendChild(header);
+      block.appendChild(headerRow);
+      block.appendChild(body);
+      fileTree.appendChild(block);
+
+      if (expanded) {
+        if (!dirCache[cacheKey(f.path, "")]) requestDir(f.path, "");
+        else renderTreeLevel(f.path, "", body);
+      }
+    });
   }
 
   const folderModal = $("folder-modal");
@@ -570,11 +827,11 @@
       }
     });
   }
-  if (headerAddWorkspaceBtn) headerAddWorkspaceBtn.addEventListener("click", openAddWorkspaceModal);
   if (addWorkspaceRootBtn) addWorkspaceRootBtn.addEventListener("click", openAddWorkspaceModal);
   if (workspaceCollapseAllBtn) {
     workspaceCollapseAllBtn.addEventListener("click", () => {
       expandedDirs.clear();
+      expandedScopeRoots.clear();
       rebuildTree();
     });
   }
@@ -624,6 +881,19 @@
   if (folderModal) {
     folderModal.addEventListener("click", (e) => {
       if (e.target === folderModal) hideFolderModal();
+    });
+  }
+
+  if (taskScopeCurrentBtn) {
+    taskScopeCurrentBtn.addEventListener("click", () => {
+      if (!currentCwd) return;
+      persistTaskScope([currentCwd]);
+    });
+  }
+  if (taskScopeAllBtn) {
+    taskScopeAllBtn.addEventListener("click", () => {
+      const paths = getProjectOptions().map((f) => f.path);
+      persistTaskScope(paths);
     });
   }
 

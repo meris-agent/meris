@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ _UI_DIR = "ui"
 _MCP_FILE = "mcp-servers.json"
 _SKILL_PREFS_FILE = "skill-prefs.json"
 _ROOTS_FILE = "workspace-roots.json"
+_TASK_SCOPE_FILE = "task-scope.json"
 _STALE_PYTEST_ROOT = re.compile(r"[/\\]pytest-\d+[/\\]test_[^/\\]+[/\\]", re.I)
 
 
@@ -514,6 +516,10 @@ def _roots_file() -> Path:
     return _global_ui_dir() / _ROOTS_FILE
 
 
+def _task_scope_file() -> Path:
+    return _global_ui_dir() / _TASK_SCOPE_FILE
+
+
 def load_workspace_roots(*, rewrite: bool = False) -> list[Path]:
     """User-level persisted workspace roots (meris ui standalone)."""
     p = _roots_file()
@@ -703,3 +709,128 @@ def collect_workspace_folders(active_cwd: Path) -> list[dict[str, str]]:
             (meris_entries if is_meris_repo_root(p) else other_entries).append(entry)
 
     return meris_entries + other_entries
+
+
+def _dedupe_paths(paths: list[Path]) -> list[Path]:
+    seen: set[str] = set()
+    out: list[Path] = []
+    for item in paths:
+        try:
+            resolved = item.expanduser().resolve()
+            key = str(resolved)
+            norm = os.path.normcase(key) if os.name == "nt" else key.lower()
+        except OSError:
+            continue
+        if norm in seen:
+            continue
+        seen.add(norm)
+        out.append(resolved)
+    return out
+
+
+def available_project_paths(cwd: Path) -> list[Path]:
+    """Registered + active cwd roots suitable for task scope."""
+    active = cwd.expanduser().resolve()
+    seeds: list[Path] = []
+    seen: set[str] = set()
+    for candidate in [*load_workspace_roots(), active]:
+        if not candidate.is_dir() or not is_valid_workspace_root(candidate):
+            continue
+        key = str(candidate)
+        if key in seen:
+            continue
+        seen.add(key)
+        seeds.append(candidate)
+    return _dedupe_paths(seeds)
+
+
+def load_task_scope_paths() -> list[Path]:
+    """Persisted task-scope selection; empty means default to cwd only."""
+    p = _task_scope_file()
+    if not p.is_file():
+        return []
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    raw = data.get("paths") if isinstance(data, dict) else []
+    if not isinstance(raw, list):
+        return []
+    out: list[Path] = []
+    for item in raw:
+        try:
+            path = Path(str(item)).expanduser().resolve()
+        except OSError:
+            continue
+        if path.is_dir():
+            out.append(path)
+    return _dedupe_paths(out)
+
+
+def save_task_scope(paths: list[Path]) -> Path:
+    p = _task_scope_file()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    unique = [str(item) for item in _dedupe_paths(paths)]
+    p.write_text(json.dumps({"paths": unique}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return p
+
+
+def normalize_task_scope(
+    selected: list[Path] | None,
+    *,
+    available: list[Path],
+    cwd: Path,
+) -> list[Path]:
+    """Filter to available roots; empty selection defaults to current cwd."""
+    active = cwd.expanduser().resolve()
+    avail = _dedupe_paths(available)
+    avail_keys = {str(p) for p in avail}
+    if not selected:
+        return [active]
+    kept = [p for p in _dedupe_paths(selected) if str(p) in avail_keys]
+    return kept if kept else [active]
+
+
+def set_task_scope(paths: list[Path], *, cwd: Path) -> list[Path]:
+    available = available_project_paths(cwd)
+    normalized = normalize_task_scope(paths, available=available, cwd=cwd)
+    save_task_scope(normalized)
+    return normalized
+
+
+def prune_task_scope_from_paths(removed: list[Path], *, cwd: Path) -> list[Path]:
+    """Drop removed roots from saved scope; re-normalize."""
+    removed_keys = set()
+    for item in removed:
+        try:
+            removed_keys.add(str(item.expanduser().resolve()))
+        except OSError:
+            continue
+    current = [p for p in load_task_scope_paths() if str(p) not in removed_keys]
+    return set_task_scope(current, cwd=cwd)
+
+
+def task_scope_payload(cwd: Path) -> dict[str, Any]:
+    """UI payload: all available projects with selected flags."""
+    active = cwd.expanduser().resolve()
+    available = available_project_paths(cwd)
+    selected = normalize_task_scope(
+        load_task_scope_paths(),
+        available=available,
+        cwd=active,
+    )
+    selected_keys = {str(p) for p in selected}
+    items: list[dict[str, Any]] = []
+    for path in available:
+        items.append(
+            {
+                "name": path.name,
+                "path": str(path),
+                "selected": str(path) in selected_keys,
+                "isCwd": str(path) == str(active),
+            }
+        )
+    return {
+        "taskScope": items,
+        "taskScopeSelected": sorted(selected_keys),
+    }

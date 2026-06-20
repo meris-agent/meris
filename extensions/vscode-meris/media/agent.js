@@ -27,7 +27,22 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(msg),
-        }).catch(() => {});
+        })
+          .then(async (r) => {
+            const ct = r.headers.get("content-type") || "";
+            if (!ct.includes("application/json")) return null;
+            try {
+              return await r.json();
+            } catch {
+              return null;
+            }
+          })
+          .then((data) => {
+            if (data && data.type) {
+              window.dispatchEvent(new MessageEvent("message", { data }));
+            }
+          })
+          .catch(() => {});
       },
     };
   }
@@ -1133,4 +1148,16 @@
     '<div class="empty-hint"><strong>开始一个任务</strong>在下方描述你想做的事，按 <kbd>Ctrl</kbd>+<kbd>Enter</kbd> 或点 Run。<br>右侧「历史」可恢复过往任务。</div>';
   vscode.postMessage({ type: "refreshSessions" });
   vscode.postMessage({ type: "refreshRatchet" });
+  if (window.__merisStandalone) {
+    fetch("/api/sessions")
+      .then(async (r) => {
+        const ct = r.headers.get("content-type") || "";
+        if (!r.ok || !ct.includes("application/json")) return { sessions: [] };
+        return r.json();
+      })
+      .then((data) => {
+        if (data && data.sessions) renderSessions(data.sessions);
+      })
+      .catch(() => {});
+  }
 })();

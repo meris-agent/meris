@@ -54,6 +54,7 @@
 - [x] 全局 Skill `~/.meris/skills/`；顶栏 cwd 短标签（`#composer-cwd-chip`）
 - [x] MCP 扩展双源 parity；settings→UI 迁移；Composer `@` 分组；全局技能编辑/安装
 - [x] 左栏改「文件」仅当前项目树；过滤 Skill/.system 误入项目列表；顶栏去冗余 chip
+- [x] **多仓库 task scope** — 左栏「本次涉及」勾选 · Composer chips · prompt 前缀 · [multi-repo.md](docs/harness/multi-repo.md)
 
 ## Phase K — 设计模式闭环（✅ P0/P1 + J5–J7）
 
