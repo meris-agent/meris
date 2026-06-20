@@ -1,3 +1,8 @@
+---
+name: plan-format
+description: Plan 模式 checkbox 输出格式（- [ ] 至少 3 条），用于 meris plan 与列任务场景
+---
+
 # Skill: Plan 输出格式
 
 ## 何时使用

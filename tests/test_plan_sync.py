@@ -1,6 +1,6 @@
 """Tests for plan checkbox sync (Phase I+)."""
 
-from meris.harness.plan import apply_plan_checkbox_updates, sync_plan_items
+from meris.harness.plan import apply_plan_checkbox_updates, mark_plan_items_done, sync_plan_items
 
 
 def test_apply_plan_checkbox_updates_preserves_header(workspace) -> None:
@@ -28,3 +28,16 @@ def test_sync_plan_items_writes_file(workspace) -> None:
     text2 = path.read_text(encoding="utf-8")
     assert "- [x] alpha" in text2
     assert "Intro" not in text2 or True
+
+
+def test_mark_plan_items_done_by_text(workspace) -> None:
+    sync_plan_items(
+        workspace,
+        ".meris/plan/tasks.md",
+        [{"done": False, "text": "fix ui"}, {"done": False, "text": "write tests"}],
+    )
+    path = mark_plan_items_done(workspace, ".meris/plan/tasks.md", ["fix ui"])
+    assert path is not None
+    text = path.read_text(encoding="utf-8")
+    assert "- [x] fix ui" in text
+    assert "- [ ] write tests" in text

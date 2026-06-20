@@ -1,3 +1,8 @@
+---
+name: harness
+description: Meris Harness 配置与约定（settings、sessions、skills、DoD）
+---
+
 # Example skill — copy to .meris/skills/ and customize
 
 ## When to use

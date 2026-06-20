@@ -65,6 +65,27 @@ def apply_plan_checkbox_updates(text: str, items: list[dict]) -> str:
     return body
 
 
+def mark_plan_items_done(workspace: Path, out: str | Path, texts: list[str]) -> Path | None:
+    """Mark plan checkbox lines done when task text matches (Plan → Run sync)."""
+    if not texts:
+        return None
+    path = resolve_plan_path(workspace, out)
+    if not path.is_file():
+        return None
+    want = {t.strip() for t in texts if t.strip()}
+    items = parse_plan_checkboxes(path.read_text(encoding="utf-8"))
+    if not items:
+        return None
+    changed = False
+    for item in items:
+        if item["text"] in want and not item.get("done"):
+            item["done"] = True
+            changed = True
+    if not changed:
+        return path
+    return sync_plan_items(workspace, out, items)
+
+
 def sync_plan_items(workspace: Path, out: str | Path, items: list[dict]) -> Path:
     """Merge checkbox states into an existing plan file (or create a minimal one)."""
     path = resolve_plan_path(workspace, out)

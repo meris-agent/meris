@@ -15,7 +15,7 @@
 - [x] release workflow 验证 + `install_meris_rs_from_ci.ps1`
 - [x] env 就绪（`MERIS_NATIVE_LOOP=auto` · native status 全 True · doctor 全绿）
 - [x] live benchmark Route B 3 task 标准（`read_hello` + `docs_smoke` + `list_tools`）
-- [ ] 日常真实任务 dogfood（1–2 周）
+- [ ] 日常真实任务 dogfood（1–2 周）— `meris dogfood` · [`docs/DOGFOOD_DAILY.md`](docs/DOGFOOD_DAILY.md)
 - [x] Ratchet 30 分钟闭环（2026-06-07 · 见下方）
 
 ## Phase G — Codex CLI 对标（✅ 完成）
@@ -37,8 +37,35 @@
 - [x] Parallel 多任务 JSONL 事件流 + UI 分栏
 - [x] 功能优先级三问 → `.meris/rules/feature-prioritization.md`
 
-## 进行中
-- [x] Linux bubblewrap OS 沙箱（`sandbox.osSandbox: auto|require`）
+## Phase J — TRAE 对标 UI（✅ J1–J7）
+
+见 [docs/PLAN_PHASE_J.md](docs/PLAN_PHASE_J.md)
+
+- [x] 设置中心 overlay（通用/智能体/模型/MCP/Skill/规则/导入）
+- [x] 右栏历史 + Ratchet；历史按时间分组
+- [x] Composer：`@` Skill、`#` 文件、模型下拉；MCP/Skill 配置迁入设置
+- [x] J7：语音输入（Web Speech）+ 截图/粘贴图片 context
+- [x] Composer v2：卡片式输入框（@Agent 顶栏 · 内嵌工具栏 · ↑ 发送）
+- [x] 设置中心「CLI 命令」速查 + Composer `?` 快捷入口
+- [x] CLI 命令 **▶ 一键运行**（输出 → 底部 Terminal，如 `meris doctor`）
+- [x] **Harness 概念文档** — [docs/harness/concepts.md](docs/harness/concepts.md)（工作区/项目/Skill/MCP）
+- [x] 设置页显示当前项目根；Skill `source: installed`；导航「技能」与「CLI 命令」分离
+- [x] cwd 切换自动刷新 Harness 设置；MCP 双源提示；导入页与技能导入职责分离
+- [x] 全局 Skill `~/.meris/skills/`；顶栏 cwd 短标签（`#composer-cwd-chip`）
+- [x] MCP 扩展双源 parity；settings→UI 迁移；Composer `@` 分组；全局技能编辑/安装
+- [x] 左栏改「文件」仅当前项目树；过滤 Skill/.system 误入项目列表；顶栏去冗余 chip
+
+## Phase K — 设计模式闭环（✅ P0/P1 + J5–J7）
+
+对照 `Articles/Meris-Agent设计模式对照.md`：
+
+- [x] Plan → Run plan：自动切嵌套 `meris/` 根 + `--from-plan` + checkbox 回写
+- [x] DoD 失败 → Ratchet 面板高亮 + 自动 scan（loop + UI）
+- [x] Parallel 结束汇总条
+- [x] `docs/harness/routing.md` 意图→mode→model 决策表
+- [x] Phase J5 设置中心 Harness 文档索引
+- [x] Phase J6 MCP 连接状态指示点
+- [x] Phase J7 Composer 语音输入 + 截图/粘贴图片 context chip
 - [x] 网络隔离（`network: isolated`）+ `.env` 遮罩（`maskSecrets`）
 - [x] Windows `doctor` WSL/bwrap 检测
 - [x] **Live benchmark** — `run_benchmark_live.py` + GitHub workflow_dispatch
@@ -51,6 +78,7 @@
 - [x] **P5-4 M4** — hooks / EventStream / plan 模式
 - [x] **P5-4 M5** — system-prompt 桥 + `meris-rs run` 原生入口
 - [x] **Phase F** — native 稳定化与发布准备（F1–F4 + F3-M2 ✅；F5 tag 暂缓）· [PLAN_PHASE_F.md](docs/PLAN_PHASE_F.md)
+- [x] PyPI 发布流程文档化（实际上传暂缓）— [`docs/PYPI_PUBLISH_READY.md`](docs/PYPI_PUBLISH_READY.md)
 
 ## 近期落地（E0 / P5-1）
 - [x] `settings.local` 文档（[USER_SETUP.md](docs/USER_SETUP.md)）
@@ -96,6 +124,7 @@ meris run "…" --event-stream .meris/events/run.jsonl
 meris exec "…" --json
 meris review --staged
 meris ratchet digest
+meris dogfood                         # 日常 dogfood 环境检查
 ```
 
 ## Ratchet 摘要
@@ -126,9 +155,8 @@ meris ratchet digest
 
 ## Session note (2026-06-07 02:42 UTC)
 - **Task**: Reply with exactly: pong
-- **Status**: dod_failed
-
+- **Status**: dod_failed — superseded by later harness work; close on next dogfood review
 
 ## Session note (2026-06-07 02:48 UTC)
 - **Task**: List top-level files in meris/ as bullet points
-- **Status**: dod_failed
+- **Status**: dod_failed — superseded; paths rule applied (see Ratchet 闭环)

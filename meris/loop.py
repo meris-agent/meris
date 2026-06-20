@@ -168,6 +168,9 @@ async def agent_loop(
         return
 
     settings = load_settings(ws)
+    from meris.harness.ui_config import get_effective_mcp_servers
+
+    settings = {**settings, "mcpServers": get_effective_mcp_servers(ws)}
     explicit_provider = provider is not None
     if explicit_provider:
         route_note = ""
@@ -218,6 +221,7 @@ async def agent_loop(
 
     status = "completed"
     dod_sensor_out = ""
+    ratchet_hint: str | None = None
     lines: list[str] = []
 
     def emit(line: str) -> None:
@@ -488,6 +492,7 @@ async def agent_loop(
         if status in ("dod_failed", "error"):
             from meris.harness.check import is_harness_check_failure
             from meris.harness.ratchet import record_event
+            from meris.harness.ratchet.post_run import ratchet_post_run
 
             kind = status
             detail = dod_sensor_out[:800] if dod_sensor_out else status
@@ -501,6 +506,11 @@ async def agent_loop(
                 detail=detail,
                 tags=["loop", mode, "dod"],
             )
+            _created, post_run_msg = ratchet_post_run(ws, session_id=record.id)
+            if post_run_msg and event_stream:
+                event_stream.emit("status", message=post_run_msg)
+            if post_run_msg:
+                ratchet_hint = post_run_msg
 
     if mode == "plan" and plan_output is not None and status == "completed":
         from meris.harness.plan import extract_last_assistant_text, save_plan
@@ -524,7 +534,9 @@ async def agent_loop(
                     items=parse_plan_checkboxes(text),
                 )
 
-    if status == "dod_failed":
+    if status == "dod_failed" and ratchet_hint:
+        yield ratchet_hint
+    elif status == "dod_failed":
         from meris.harness.ratchet import list_proposals
 
         pending = list_proposals(ws, status="pending")

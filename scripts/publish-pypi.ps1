@@ -3,6 +3,7 @@
 #   powershell -ExecutionPolicy Bypass -File scripts\publish-pypi.ps1
 #   powershell -ExecutionPolicy Bypass -File scripts\publish-pypi.ps1 -TestPyPI
 #   powershell -ExecutionPolicy Bypass -File scripts\publish-pypi.ps1 -SkipTests
+#   powershell -ExecutionPolicy Bypass -File scripts\publish-pypi.ps1 -SkipUpload
 #
 # 凭证（不要写进仓库）:
 #   $env:TWINE_USERNAME = "__token__"
@@ -19,22 +20,49 @@ $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 
 function Write-Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 
+function Resolve-ProjectPython([string]$ProjectRoot) {
+    $candidates = @(
+        (Join-Path $ProjectRoot ".venv\Scripts\python.exe"),
+        (Join-Path $ProjectRoot "venv\Scripts\python.exe")
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path $c) { return $c }
+    }
+    try {
+        $exe = & py -3.14 -c "import sys; print(sys.executable)" 2>$null
+        if ($exe -and (Test-Path $exe.Trim())) { return $exe.Trim() }
+    } catch {}
+    try {
+        $exe = & py -3 -c "import sys; print(sys.executable)" 2>$null
+        if ($exe -and (Test-Path $exe.Trim())) { return $exe.Trim() }
+    } catch {}
+    $meris = Get-Command meris -ErrorAction SilentlyContinue
+    if ($meris) {
+        $scripts = Split-Path $meris.Source
+        $py = Join-Path (Split-Path $scripts) "python.exe"
+        if (Test-Path $py) { return $py }
+    }
+    return "python"
+}
+
 Push-Location $Root
 try {
-    Write-Step "Check tools"
-    foreach ($cmd in @("python", "pip")) {
-        if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) {
-            throw "$cmd not found on PATH"
+    $Python = Resolve-ProjectPython $Root
+    Write-Step "Check tools ($Python)"
+    if (-not (Test-Path $Python) -and $Python -eq "python") {
+        if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+            throw "python not found on PATH"
         }
     }
 
-    python -m pip install -q --upgrade build twine
-    $version = python -c "import meris; print(meris.__version__)"
+    & $Python -m pip install -q --upgrade build twine pip
+    $env:PYTHONPATH = $Root
+    $version = & $Python -c "import meris; print(meris.__version__)"
     Write-Host "Package: meris-agent $version" -ForegroundColor Green
 
     if (-not $SkipTests) {
         Write-Step "Run tests"
-        python -m pytest tests/ -m "not integration" -q
+        & $Python -m pytest tests/ -m "not integration" -q
     }
 
     if (-not $SkipClean) {
@@ -43,7 +71,7 @@ try {
     }
 
     Write-Step "Build wheel + sdist"
-    python -m build
+    & $Python -m build
     Get-ChildItem dist | ForEach-Object { Write-Host "  $($_.Name)" -ForegroundColor Gray }
 
     if ($SkipUpload) {
@@ -73,7 +101,7 @@ Then re-run this script.
 
     Write-Step "Upload to $(if ($TestPyPI) { 'TestPyPI' } else { 'PyPI' })"
     if ($TestPyPI) {
-        python -m twine upload --repository testpypi dist/*
+        & $Python -m twine upload --repository testpypi dist/*
         Write-Host @"
 
 Test install:
@@ -81,7 +109,7 @@ Test install:
   meris version
 "@ -ForegroundColor Green
     } else {
-        python -m twine upload dist/*
+        & $Python -m twine upload dist/*
         Write-Host @"
 
 Live install:

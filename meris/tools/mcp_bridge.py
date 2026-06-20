@@ -8,12 +8,14 @@ from pathlib import Path
 from typing import Any
 
 from meris.harness.settings import load_settings
+from meris.harness.ui_config import get_effective_mcp_servers
 from meris.tools.mcp import MCPManager
 
 
 async def serve_jsonl(workspace: Path) -> None:
     """Read JSONL commands on stdin; write JSONL responses on stdout."""
     settings = load_settings(workspace)
+    settings = {**settings, "mcpServers": get_effective_mcp_servers(workspace)}
     servers = settings.get("mcpServers") or {}
     mgr, notes = await MCPManager.connect(servers)
     try:
@@ -61,6 +63,7 @@ async def fetch_schemas(
     read_only: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, bool], list[str]]:
     settings = load_settings(workspace)
+    settings = {**settings, "mcpServers": get_effective_mcp_servers(workspace)}
     servers = settings.get("mcpServers") or {}
     mgr, notes = await MCPManager.connect(servers)
     try:
@@ -79,6 +82,7 @@ async def call_tool_once(
     args: dict[str, Any],
 ) -> tuple[bool, str]:
     settings = load_settings(workspace)
+    settings = {**settings, "mcpServers": get_effective_mcp_servers(workspace)}
     servers = settings.get("mcpServers") or {}
     mgr, notes = await MCPManager.connect(servers)
     try:

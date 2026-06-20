@@ -32,7 +32,11 @@ powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1 -SkipRust
 - **设置**：右上角 **⚙** → 主题预设（深色/午夜/柔和/浅色）+ 自定义背景色
 - **草稿持久化**：任务输入 / mode / approve 勾选自动恢复
 - **错误横幅**：进程失败时顶部显示 stderr
-- **左栏 Sessions**：读取 `.meris/sessions/`，点击可恢复（`running` / `cancelled` / `error`）
+- **左栏 Sessions / Files**：Sessions 历史；**Files** 可展开目录树，点击文件附加到上下文
+- **顶栏项目**：多根工作区可切换；自动识别 `meris` 子目录并优先选中
+- **Files**：左栏目录树；**📁 Open Folder** / **meris** 按钮定位仓库根
+- **Skill**：页面内新建/保存到 `.meris/skills/`（不必手改文件）
+- **MCP**：页面内配置，保存到 `.meris/ui/mcp-servers.json`（不必写 settings.yaml）
 - **可折叠 Tool 卡片**：`args` + `output` 分区，`tool_end` 后自动折叠
 - **Approve 模式**：勾选 approve → 内联 **Approve / Deny** 条（`approval_request` + 文件通道）
 - assistant 回复：**流式 token**（OpenAI 兼容 API）+ 流式中 **Markdown 轻渲染**

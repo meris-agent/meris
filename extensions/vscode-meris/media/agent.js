@@ -34,6 +34,8 @@
 
   const vscode =
     typeof acquireVsCodeApi !== "undefined" ? acquireVsCodeApi() : createStandaloneBridge();
+  window.__merisVscode = vscode;
+  window.__merisStandalone = typeof acquireVsCodeApi === "undefined";
 
   const timeline = document.getElementById("timeline");
   const taskInput = document.getElementById("task-input");
@@ -54,7 +56,6 @@
   const approveYes = document.getElementById("approve-yes");
   const approveNo = document.getElementById("approve-no");
   const settingsBtn = document.getElementById("settings-btn");
-  const settingsPanel = document.getElementById("settings-panel");
   const bgColorPicker = document.getElementById("bg-color-picker");
   const bgColorText = document.getElementById("bg-color-text");
   const settingsResetBtn = document.getElementById("settings-reset");
@@ -107,7 +108,6 @@
     },
   };
 
-  let settingsOpen = false;
   let themePreset = "vibe";
   let customBg = "";
 
@@ -132,6 +132,7 @@
   if (saved.mode && modeSelect.querySelector('option[value="' + saved.mode + '"]')) {
     modeSelect.value = saved.mode;
   }
+  updateComposerModeLabel();
   if (saved.themePreset && THEMES[saved.themePreset]) {
     themePreset = saved.themePreset;
   }
@@ -279,13 +280,6 @@
     }
   }
 
-  function setSettingsOpen(open) {
-    settingsOpen = open;
-    if (settingsPanel) settingsPanel.classList.toggle("hidden", !open);
-    if (settingsBtn) settingsBtn.classList.toggle("active", open);
-    document.body.classList.toggle("settings-open", open);
-  }
-
   function persistState() {
     vscode.setState({
       taskDraft: taskInput.value,
@@ -309,6 +303,7 @@
     errorBanner.classList.remove("hidden");
     document.body.classList.add("has-error");
   }
+  window.__merisShowError = showErrorBanner;
 
   function setStatus(text, cls) {
     statusEl.textContent = text;
@@ -319,8 +314,14 @@
     running = isRunning;
     const submit = document.getElementById("submit-btn");
     const stop = document.getElementById("stop-btn");
-    if (submit) submit.disabled = isRunning;
-    if (stop) stop.disabled = !isRunning;
+    if (submit) {
+      submit.disabled = isRunning;
+      submit.classList.toggle("hidden", isRunning);
+    }
+    if (stop) {
+      stop.disabled = !isRunning;
+      stop.classList.toggle("hidden", !isRunning);
+    }
     modeSelect.disabled = isRunning;
     approveCheck.disabled = isRunning;
     updateSessionItemsDisabled(isRunning);
@@ -328,6 +329,20 @@
       if (isRunning) el.classList.add("disabled");
       else el.classList.remove("disabled");
     });
+  }
+
+  function updateComposerModeLabel() {
+    const pill = document.getElementById("composer-agent-pill");
+    const label = document.getElementById("composer-mode-label");
+    if (!label || !modeSelect) return;
+    const mode = modeSelect.value || "run";
+    const names = { run: "@Agent", ask: "@Ask", plan: "@Plan" };
+    label.textContent = names[mode] || "@Agent";
+    if (pill) {
+      pill.classList.remove("mode-ask", "mode-plan");
+      if (mode === "ask") pill.classList.add("mode-ask");
+      if (mode === "plan") pill.classList.add("mode-plan");
+    }
   }
 
   function updateSessionItemsDisabled(disabled) {
@@ -627,46 +642,71 @@
     if (hint) hint.remove();
   }
 
+  function sessionGroupLabel(mtime) {
+    if (!mtime) return "更早";
+    const diff = Date.now() / 1000 - mtime;
+    if (diff < 86400) return "今天";
+    if (diff < 86400 * 7) return "本周";
+    if (diff < 86400 * 365) return "今年内";
+    return "更早";
+  }
+
   function renderSessions(sessions) {
+    if (!sessionList) return;
     sessionList.innerHTML = "";
     if (!sessions || !sessions.length) {
-      sessionList.innerHTML = '<li class="sessions-empty">No sessions yet</li>';
+      sessionList.innerHTML = '<div class="sessions-empty">暂无历史记录</div>';
       return;
     }
+    const groups = new Map();
     for (const s of sessions) {
-      const li = document.createElement("li");
-      li.className = "session-item";
-      if (s.id === activeSessionId) li.classList.add("active");
-      if (!RESUMABLE.has(s.status)) li.classList.add("disabled");
-      li.dataset.sessionId = s.id;
-      li.dataset.status = s.status;
-      li.dataset.mode = s.mode;
-      li.innerHTML =
-        '<div class="session-id">' +
-        escapeHtml(s.id.slice(0, 8)) +
-        "</div>" +
-        '<div class="session-meta">' +
-        escapeHtml(s.status) +
-        " · " +
-        escapeHtml(s.mode) +
-        " · t" +
-        escapeHtml(String(s.turn)) +
-        "</div>" +
-        '<div class="session-task" title="' +
-        escapeHtml(s.task) +
-        '">' +
-        escapeHtml(s.task.slice(0, 48)) +
-        "</div>";
-      li.addEventListener("click", () => {
-        if (running) return;
-        if (!RESUMABLE.has(s.status)) return;
-        vscode.postMessage({
-          type: "resumeSession",
-          sessionId: s.id,
-          approve: approveCheck.checked,
+      const label = sessionGroupLabel(s.mtime);
+      if (!groups.has(label)) groups.set(label, []);
+      groups.get(label).push(s);
+    }
+    const order = ["今天", "本周", "今年内", "更早"];
+    for (const label of order) {
+      const items = groups.get(label);
+      if (!items || !items.length) continue;
+      const section = document.createElement("div");
+      section.className = "history-group";
+      const head = document.createElement("div");
+      head.className = "history-group-title";
+      head.textContent = label;
+      section.appendChild(head);
+      const ul = document.createElement("ul");
+      ul.className = "history-group-list";
+      for (const s of items) {
+        const li = document.createElement("li");
+        li.className = "session-item";
+        if (s.id === activeSessionId) li.classList.add("active");
+        if (!RESUMABLE.has(s.status)) li.classList.add("disabled");
+        li.dataset.sessionId = s.id;
+        const task = (s.task || "").trim() || "(无任务描述)";
+        li.innerHTML =
+          '<div class="session-task" title="' +
+          escapeHtml(task) +
+          '">' +
+          escapeHtml(task.slice(0, 80)) +
+          "</div>" +
+          '<div class="session-meta">' +
+          escapeHtml(s.mode) +
+          " · " +
+          escapeHtml(s.status) +
+          "</div>";
+        li.addEventListener("click", () => {
+          if (running) return;
+          if (!RESUMABLE.has(s.status)) return;
+          vscode.postMessage({
+            type: "resumeSession",
+            sessionId: s.id,
+            approve: approveCheck.checked,
+          });
         });
-      });
-      sessionList.appendChild(li);
+        ul.appendChild(li);
+      }
+      section.appendChild(ul);
+      sessionList.appendChild(section);
     }
   }
 
@@ -884,6 +924,9 @@
           "sensor " + (ev.ok === false ? "FAIL" : "PASS"),
           msg.slice(0, 1200)
         );
+        if (ev.ok === false) {
+          vscode.postMessage({ type: "refreshRatchet" });
+        }
         break;
 
       case "status":
@@ -895,6 +938,9 @@
         currentAssistantEl = null;
         pendingTools.clear();
         appendEntry("done", "done", "status: " + (ev.status || msg || "completed"));
+        if (ev.status === "dod_failed" || ev.status === "error") {
+          vscode.postMessage({ type: "ratchetScan" });
+        }
         break;
 
       case "plan":
@@ -941,13 +987,10 @@
 
   taskInput.addEventListener("input", persistState);
   approveCheck.addEventListener("change", persistState);
-  modeSelect.addEventListener("change", persistState);
-
-  if (settingsBtn) {
-    settingsBtn.addEventListener("click", () => {
-      setSettingsOpen(!settingsOpen);
-    });
-  }
+  modeSelect.addEventListener("change", () => {
+    updateComposerModeLabel();
+    persistState();
+  });
 
   if (themePresetsEl) {
     themePresetsEl.addEventListener("click", (e) => {
@@ -1043,6 +1086,16 @@
 
       case "ratchet":
         renderRatchet(msg);
+        if (msg.highlight && window.__merisOpenRatchet) window.__merisOpenRatchet(true);
+        break;
+
+      case "ratchetAlert":
+        if (window.__merisOpenRatchet) window.__merisOpenRatchet(true);
+        appendEntry(
+          "meta",
+          "ratchet",
+          "DoD/运行失败 — 已扫描 Harness 提案，见右侧 Ratchet 面板"
+        );
         break;
 
       case "ratchetResult":
@@ -1077,8 +1130,7 @@
   });
 
   timeline.innerHTML =
-    '<div class="empty-hint"><strong>开始一个任务</strong>在下方描述你想做的事，按 <kbd>Ctrl</kbd>+<kbd>Enter</kbd> 或点 Run。<br>左侧可恢复历史 Session。</div>';
+    '<div class="empty-hint"><strong>开始一个任务</strong>在下方描述你想做的事，按 <kbd>Ctrl</kbd>+<kbd>Enter</kbd> 或点 Run。<br>右侧「历史」可恢复过往任务。</div>';
   vscode.postMessage({ type: "refreshSessions" });
   vscode.postMessage({ type: "refreshRatchet" });
-  window.__merisVscode = vscode;
 })();

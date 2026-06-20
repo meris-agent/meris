@@ -5,6 +5,7 @@
 
 | 文档 | 何时读 |
 |------|--------|
+| [concepts.md](concepts.md) | **工作区 / 项目 / Skill / MCP 边界**（改 UI 或 Harness 前必读） |
 | [architecture.md](architecture.md) | 改包结构、找模块、加 CLI 子命令 |
 | [testing.md](testing.md) | 跑测试、DoD、benchmark |
 | [routing.md](routing.md) | 模型路由、`settings.yaml` / local 覆盖 |

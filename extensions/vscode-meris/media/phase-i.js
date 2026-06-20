@@ -1,18 +1,23 @@
 /* Phase I — vibe coding UX (loaded after agent.js) */
 (function () {
-  const vscode =
-    typeof acquireVsCodeApi !== "undefined"
-      ? acquireVsCodeApi()
-      : window.__merisVscode || { postMessage: () => {}, getState: () => ({}), setState: () => {} };
+  const vscode = window.__merisVscode || {
+    postMessage: () => {},
+    getState: () => ({}),
+    setState: () => {},
+  };
 
   const $ = (id) => document.getElementById(id);
 
   const contextChips = $("context-chips");
   const atBtn = $("at-btn");
+  const hashBtn = $("hash-btn");
   const atDropdown = $("at-dropdown");
-  const atSearch = $("at-search");
-  const atFileList = $("at-file-list");
-  const atSelection = $("at-selection");
+  const hashDropdown = $("hash-dropdown");
+  const atSkillList = $("at-skill-list");
+  const hashSearch = $("hash-search");
+  const hashFileList = $("hash-file-list");
+  const hashSelection = $("hash-selection");
+  const modelSelect = $("model-select");
   const modelBar = $("model-bar");
   const modelLabel = $("model-label");
   const routeLabel = $("route-label");
@@ -25,6 +30,7 @@
   const parallelInput = $("parallel-input");
   const parallelRunBtn = $("parallel-run-btn");
   const parallelLanes = $("parallel-lanes");
+  const parallelSummary = $("parallel-summary");
   const previewFrame = $("preview-frame");
   const previewPath = $("preview-path");
   const previewRefresh = $("preview-refresh");
@@ -34,7 +40,7 @@
   const parallelView = $("parallel-view");
   const previewView = $("preview-view");
 
-  if (!atBtn) return;
+  if (!atBtn && !hashBtn) return;
 
   let contextItems = [];
   let sessionsCache = [];
@@ -53,9 +59,15 @@
   }
 
   function buildContextPrefix() {
-    if (!contextItems.length) return "";
-    let p = "The user attached context:\n";
+    let p = "";
+    if (window.__merisMcpPrefix) p += window.__merisMcpPrefix();
+    if (!contextItems.length) return p;
+    p += "The user attached context:\n";
     for (const item of contextItems) {
+      if (item.kind === "image") {
+        p += `\n### Image: ${item.path}\n${item.content || "[screenshot attached]"}\n`;
+        continue;
+      }
       p += `\n### ${item.path}`;
       if (item.startLine) p += ` (L${item.startLine}-${item.endLine})`;
       p += `\n\`\`\`\n${(item.content || "").slice(0, 10000)}\n\`\`\`\n`;
@@ -63,21 +75,48 @@
     return p + "\n---\n\n";
   }
 
+  window.__merisAddContextItem = function (item) {
+    if (!item) return;
+    contextItems.push(item);
+    renderContextChips();
+  };
+
   function renderContextChips() {
     if (!contextChips) return;
     contextChips.innerHTML = "";
     for (let i = 0; i < contextItems.length; i++) {
       const chip = document.createElement("span");
-      chip.className = "context-chip";
-      chip.innerHTML =
-        escapeHtml(contextItems[i].path) +
-        ' <button type="button" data-idx="' +
-        i +
-        '">×</button>';
-      chip.querySelector("button").addEventListener("click", () => {
+      const item = contextItems[i];
+      chip.className = "context-chip" + (item.kind === "image" ? " context-chip-image" : "");
+
+      if (item.kind === "image") {
+        const img = document.createElement("img");
+        img.className = "context-chip-thumb";
+        img.alt = "";
+        if (item.previewUrl) {
+          img.src = item.previewUrl;
+        } else if (window.__merisStandalone) {
+          img.src =
+            "/api/workspace-file?path=" +
+            encodeURIComponent(item.path);
+        }
+        chip.appendChild(img);
+      }
+
+      const label = document.createElement("span");
+      label.className = "context-chip-label";
+      label.textContent = item.kind === "image" ? item.path.split("/").pop() : item.path;
+      chip.appendChild(label);
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("data-idx", String(i));
+      btn.textContent = "×";
+      btn.addEventListener("click", () => {
         contextItems.splice(i, 1);
         renderContextChips();
       });
+      chip.appendChild(btn);
       contextChips.appendChild(chip);
     }
   }
@@ -108,7 +147,10 @@
     viewTabs.forEach((t) => t.classList.toggle("active", t.dataset.view === name));
     Object.keys(map).forEach((k) => {
       const el = map[k];
-      if (el) el.classList.toggle("hidden", k !== name);
+      if (!el) return;
+      const on = k === name;
+      el.classList.toggle("hidden", !on);
+      el.classList.toggle("active", on);
     });
   }
 
@@ -134,6 +176,10 @@
     laneState = {};
     parallelLanes.innerHTML = "";
     parallelLanes.classList.remove("hidden");
+    if (parallelSummary) {
+      parallelSummary.classList.add("hidden");
+      parallelSummary.textContent = "";
+    }
     tasks.forEach((task, index) => {
       const lane = document.createElement("div");
       lane.className = "parallel-lane";
@@ -308,31 +354,98 @@
     timeline.scrollTop = timeline.scrollHeight;
   };
 
-  if (atBtn) {
-    atBtn.addEventListener("click", () => {
+  window.__merisRenderAtSkills = function (skills) {
+    if (!atSkillList) return;
+    atSkillList.innerHTML = "";
+    if (!skills || !skills.length) {
+      atSkillList.innerHTML = '<li class="empty-hint">无 skill — 在设置中创建</li>';
+      return;
+    }
+    const project = skills.filter((s) => s.source === "installed");
+    const global = skills.filter((s) => s.source === "global");
+    const other = skills.filter((s) => s.source !== "installed" && s.source !== "global");
+
+    function appendGroup(title, items) {
+      if (!items.length) return;
+      const head = document.createElement("li");
+      head.className = "at-skill-group-title";
+      head.textContent = title;
+      atSkillList.appendChild(head);
+      items.forEach((sk) => {
+        const li = document.createElement("li");
+        li.textContent = sk.title ? `${sk.title} (${sk.name})` : sk.name;
+        li.addEventListener("click", () => {
+          vscode.postMessage({ type: "readSkill", name: sk.name });
+          if (atDropdown) atDropdown.classList.add("hidden");
+        });
+        atSkillList.appendChild(li);
+      });
+    }
+
+    appendGroup("当前项目", project);
+    appendGroup("全局", global);
+    appendGroup("其他", other);
+  };
+
+  if (atBtn && atDropdown) {
+    atBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
       atDropdown.classList.toggle("hidden");
+      if (hashDropdown) hashDropdown.classList.add("hidden");
       if (!atDropdown.classList.contains("hidden")) {
-        vscode.postMessage({ type: "listContextFiles", query: "" });
-        if (atSearch) atSearch.focus();
+        vscode.postMessage({ type: "listSkills" });
       }
     });
   }
 
-  if (atSearch) {
+  if (hashBtn && hashDropdown) {
+    hashBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hashDropdown.classList.toggle("hidden");
+      if (atDropdown) atDropdown.classList.add("hidden");
+      if (!hashDropdown.classList.contains("hidden")) {
+        vscode.postMessage({ type: "listContextFiles", query: "" });
+        if (hashSearch) hashSearch.focus();
+      }
+    });
+  }
+
+  if (hashSearch) {
     let debounce = null;
-    atSearch.addEventListener("input", () => {
+    hashSearch.addEventListener("input", () => {
       clearTimeout(debounce);
       debounce = setTimeout(() => {
-        vscode.postMessage({ type: "listContextFiles", query: atSearch.value.trim() });
+        vscode.postMessage({ type: "listContextFiles", query: hashSearch.value.trim() });
       }, 200);
     });
   }
 
-  if (atSelection) {
-    atSelection.addEventListener("click", () => {
+  if (hashSelection) {
+    hashSelection.addEventListener("click", () => {
       vscode.postMessage({ type: "addContextSelection" });
-      atDropdown.classList.add("hidden");
+      if (hashDropdown) hashDropdown.classList.add("hidden");
     });
+  }
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#at-btn") && !e.target.closest("#at-dropdown") && atDropdown) {
+      atDropdown.classList.add("hidden");
+    }
+    if (!e.target.closest("#hash-btn") && !e.target.closest("#hash-dropdown") && hashDropdown) {
+      hashDropdown.classList.add("hidden");
+    }
+  });
+
+  if (modelSelect) {
+    modelSelect.addEventListener("change", () => {
+      const s = vscode.getState() || {};
+      s.modelOverride = modelSelect.value;
+      vscode.setState(s);
+    });
+    const saved = vscode.getState() || {};
+    if (saved.modelOverride && modelSelect.querySelector('option[value="' + saved.modelOverride + '"]')) {
+      modelSelect.value = saved.modelOverride;
+    }
   }
 
   if (sessionSearch) {
@@ -350,11 +463,46 @@
     });
   }
 
+  function renderParallelSummary(code) {
+    if (!parallelSummary) return;
+    const lanes = Object.keys(laneState)
+      .map(Number)
+      .sort((a, b) => a - b);
+    if (!lanes.length) return;
+    const rows = lanes.map((i) => {
+      const lane = laneState[i];
+      const status = (lane.statusEl && lane.statusEl.textContent) || "unknown";
+      const task = (lane.task || "").slice(0, 80);
+      return `#${i} ${status} — ${task}`;
+    });
+    const ok = lanes.filter((i) => {
+      const s = (laneState[i].statusEl && laneState[i].statusEl.textContent) || "";
+      return s === "completed" || s === "done";
+    }).length;
+    parallelSummary.classList.remove("hidden");
+    parallelSummary.innerHTML =
+      `<strong>Parallel 汇总</strong> · ${ok}/${lanes.length} 完成` +
+      (code !== 0 ? " · 进程退出码 " + code : "") +
+      `<ul class="parallel-summary-list">${rows
+        .map((r) => "<li>" + escapeHtml(r) + "</li>")
+        .join("")}</ul>`;
+  }
+
   if (planRunBtn) {
     planRunBtn.addEventListener("click", () => {
-      const pending = planItems.filter((i) => !i.done).map((i) => i.text);
-      const task = "Implement plan:\n" + pending.map((t) => "- [ ] " + t).join("\n");
-      vscode.postMessage({ type: "submit", task, mode: "run", approve: false, context: [] });
+      const pending = planItems.filter((i) => !i.done);
+      if (!pending.length) return;
+      const task =
+        pending.length === planItems.length
+          ? "implement the plan"
+          : "Implement plan:\n" + pending.map((i) => "- [ ] " + i.text).join("\n");
+      vscode.postMessage({
+        type: "planRun",
+        task,
+        planPath: planPath || ".meris/plan/tasks.md",
+        markDone: pending.map((i) => i.text),
+        approve: false,
+      });
       switchView("chat");
     });
   }
@@ -405,26 +553,68 @@
     const msg = event.data;
     if (!msg || !msg.type) return;
     switch (msg.type) {
+      case "cliRunStart":
+        clearTerminal();
+        appendTerminal("stdout", "$ " + (msg.cmd || "meris") + "\n");
+        break;
+      case "cliRunDone":
+        if (window.__merisComposerHint) {
+          const label = msg.ok ? "命令完成" : "命令失败 (exit " + (msg.code ?? "?") + ")";
+          window.__merisComposerHint(label, msg.ok ? "ok" : "error");
+        }
+        break;
       case "terminal":
         appendTerminal(msg.stream || "stdout", msg.chunk || "");
         break;
       case "contextFiles":
-        if (!atFileList) break;
-        atFileList.innerHTML = "";
+        if (!hashFileList) break;
+        hashFileList.innerHTML = "";
         (msg.files || []).forEach((f) => {
           const li = document.createElement("li");
           li.textContent = f;
           li.addEventListener("click", () => {
             vscode.postMessage({ type: "readContextFile", path: f });
-            atDropdown.classList.add("hidden");
+            if (hashDropdown) hashDropdown.classList.add("hidden");
           });
-          atFileList.appendChild(li);
+          hashFileList.appendChild(li);
         });
+        break;
+      case "skillsList":
+        if (window.__merisRenderAtSkills) window.__merisRenderAtSkills(msg.skills || []);
+        break;
+      case "modelsInfo":
+        if (modelSelect) {
+          const cur = modelSelect.value;
+          modelSelect.innerHTML = '<option value="auto">Auto</option>';
+          const bm = msg.byMode || {};
+          Object.keys(bm).forEach((mode) => {
+            if (!bm[mode]) return;
+            const opt = document.createElement("option");
+            opt.value = "mode:" + mode;
+            opt.textContent = mode + " → " + bm[mode];
+            modelSelect.appendChild(opt);
+          });
+          if (msg.defaultModel && msg.defaultModel !== "auto") {
+            const opt = document.createElement("option");
+            opt.value = "default";
+            opt.textContent = "default → " + msg.defaultModel;
+            modelSelect.appendChild(opt);
+          }
+          if (cur && modelSelect.querySelector('option[value="' + cur + '"]')) modelSelect.value = cur;
+        }
         break;
       case "contextItem":
         if (msg.item) {
           contextItems.push(msg.item);
           renderContextChips();
+          if (msg.item.kind === "image" && window.__merisComposerHint) {
+            window.__merisComposerHint("已添加图片", "ok");
+          }
+        }
+        break;
+      case "contextImageError":
+        if (window.__merisComposerHint) {
+          window.__merisComposerHint(msg.error || "图片保存失败", "error");
         }
         break;
       case "modelBar":
@@ -449,6 +639,12 @@
         break;
       case "sessions":
         sessionsCache = msg.sessions || [];
+        break;
+      case "parallelDone":
+        renderParallelSummary(msg.code);
+        break;
+      case "ratchetAlert":
+        if (window.__merisOpenRatchet) window.__merisOpenRatchet(true);
         break;
       case "runStart":
         clearTerminal();
@@ -483,7 +679,10 @@
         laneState[idx].statusEl.textContent = ev.status || "done";
         return;
       }
-      if (kind === "parallel_done") return;
+      if (kind === "parallel_done") {
+        renderParallelSummary(0);
+        return;
+      }
       if (idx === undefined) return;
       const msg = ev.message || "";
       switch (kind) {
@@ -508,4 +707,7 @@
       }
     },
   };
+
+  window.__merisClearTerminal = clearTerminal;
+  window.__merisAppendTerminal = appendTerminal;
 })();

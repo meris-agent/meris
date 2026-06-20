@@ -9,8 +9,15 @@
 <body>
   <div id="header">
     <span class="brand">Meris Agent</span>
+    <div class="workspace-bar">
+      <select id="workspace-select" class="workspace-select" title="切换当前项目（cwd）"></select>
+      <button type="button" id="header-add-workspace-btn" class="workspace-icon-btn" title="添加项目到列表">+</button>
+    </div>
     <div class="header-actions">
-      <button id="settings-btn" type="button" title="设置">⚙</button>
+      <button id="settings-btn" type="button" title="设置" aria-label="设置">
+        <span class="settings-btn-icon">⚙</span>
+        <span class="settings-btn-label">设置</span>
+      </button>
       <span id="status" class="status idle">Ready</span>
     </div>
   </div>
@@ -18,33 +25,240 @@
     <span id="model-label"></span>
     <span id="route-label"></span>
   </div>
-  <div id="settings-panel" class="hidden">
-    <div class="settings-title">设置</div>
-    <div class="settings-row">
-      <span class="settings-label">主题</span>
-      <div id="theme-presets" class="theme-presets">
-        <button type="button" class="theme-chip active" data-theme="vibe">默认</button>
-        <button type="button" class="theme-chip" data-theme="dark">石墨</button>
-        <button type="button" class="theme-chip" data-theme="midnight">午夜</button>
-        <button type="button" class="theme-chip" data-theme="light">浅色</button>
+  <div id="error-banner" class="hidden"></div>
+
+  <div id="workspace-manage-popover" class="workspace-manage-popover hidden" aria-hidden="true">
+    <div class="workspace-manage-title">项目列表 <span id="workspace-root-count" class="workspace-root-count"></span></div>
+    <ul id="workspace-roots-list" class="workspace-roots-list"></ul>
+    <p class="workspace-manage-hint">仅项目文件夹（非 Skill）。点击切换 cwd；× 移除。Skill 在设置 → 技能。</p>
+  </div>
+
+  <div id="folder-modal" class="folder-modal hidden" aria-hidden="true">
+    <div class="folder-modal-card">
+      <h3 class="folder-modal-title">添加项目</h3>
+      <p id="folder-modal-hint" class="folder-modal-hint">选择<strong>项目文件夹</strong>（含代码或 Harness），不是 Skill 目录。「添加」加入项目列表；「切换」设为当前 cwd。</p>
+      <div class="folder-quick-links">
+        <button type="button" id="folder-goto-roots-btn" class="folder-quick-btn">此电脑</button>
+        <button type="button" id="folder-goto-home-btn" class="folder-quick-btn">用户文件夹</button>
+        <button type="button" id="folder-goto-cwd-btn" class="folder-quick-btn">启动目录</button>
       </div>
-    </div>
-    <div class="settings-row">
-      <span class="settings-label">背景</span>
-      <input type="color" id="bg-color-picker" value="#0b0d11" title="自定义背景色">
-      <span id="bg-color-text">#0b0d11</span>
-      <button type="button" id="settings-reset">恢复默认</button>
+      <div class="folder-browse-bar">
+        <span id="folder-browse-path" class="folder-browse-path">—</span>
+        <button type="button" id="folder-select-current-btn" class="folder-select-current-btn">切换到此目录</button>
+        <button type="button" id="folder-add-root-btn" class="folder-add-root-btn secondary-btn">添加根目录</button>
+      </div>
+      <ul id="folder-browse-list" class="folder-browse-list"></ul>
+      <div class="folder-modal-actions">
+        <button type="button" id="folder-modal-cancel-btn">取消</button>
+      </div>
     </div>
   </div>
-  <div id="error-banner" class="hidden"></div>
+
+  <div id="settings-overlay" class="hidden" aria-hidden="true">
+    <div class="settings-shell">
+      <aside class="settings-nav">
+        <div class="settings-nav-top">
+          <span class="settings-nav-title">设置</span>
+          <button type="button" id="settings-close" class="settings-close-btn" title="关闭">×</button>
+        </div>
+        <input type="search" id="settings-search" placeholder="搜索设置…" autocomplete="off">
+        <nav class="settings-nav-list" id="settings-nav-list">
+          <button type="button" class="settings-nav-item active" data-settings="general">通用</button>
+          <button type="button" class="settings-nav-item" data-settings="agent">智能体</button>
+          <button type="button" class="settings-nav-item" data-settings="models">模型</button>
+          <button type="button" class="settings-nav-item" data-settings="mcp">MCP</button>
+          <button type="button" class="settings-nav-item" data-settings="skills">技能</button>
+          <button type="button" class="settings-nav-item" data-settings="rules">规则</button>
+          <button type="button" class="settings-nav-item" data-settings="docs">文档</button>
+          <button type="button" class="settings-nav-item" data-settings="commands">CLI 命令</button>
+          <button type="button" class="settings-nav-item" data-settings="import">导入配置</button>
+        </nav>
+      </aside>
+      <main class="settings-main">
+        <p id="settings-project-banner" class="settings-harness-banner settings-hint hidden">
+          当前项目根（Harness）：<code id="settings-project-root">—</code>
+        </p>
+        <section id="settings-general" class="settings-page active" data-settings="general">
+          <h2 class="settings-page-title">通用</h2>
+          <div class="settings-field">
+            <label class="settings-field-label">主题</label>
+            <div id="theme-presets" class="theme-presets">
+              <button type="button" class="theme-chip active" data-theme="vibe">默认</button>
+              <button type="button" class="theme-chip" data-theme="dark">石墨</button>
+              <button type="button" class="theme-chip" data-theme="midnight">午夜</button>
+              <button type="button" class="theme-chip" data-theme="light">浅色</button>
+            </div>
+          </div>
+          <div class="settings-field">
+            <label class="settings-field-label">背景</label>
+            <div class="settings-inline">
+              <input type="color" id="bg-color-picker" value="#0b0d11" title="自定义背景色">
+              <span id="bg-color-text">#0b0d11</span>
+              <button type="button" id="settings-reset">恢复默认</button>
+            </div>
+          </div>
+        </section>
+        <section id="settings-agent" class="settings-page hidden" data-settings="agent">
+          <h2 class="settings-page-title">智能体</h2>
+          <div class="settings-field">
+            <label class="settings-field-label" for="default-mode-select">默认模式</label>
+            <select id="default-mode-select">
+              <option value="run">run</option>
+              <option value="ask">ask</option>
+              <option value="plan">plan</option>
+            </select>
+          </div>
+          <div class="settings-field">
+            <label class="settings-field-label"><input type="checkbox" id="default-approve-check"> 默认开启 approve</label>
+          </div>
+          <p class="settings-hint">影响新会话的默认选项；当前 composer 仍可临时修改。</p>
+        </section>
+        <section id="settings-models" class="settings-page hidden" data-settings="models">
+          <h2 class="settings-page-title">模型</h2>
+          <div id="models-summary" class="settings-summary"></div>
+          <p class="settings-hint">路由配置来自 <code>.meris/settings.json</code> 的 <code>models</code> 段。Composer 的 Auto 由路由自动选择。</p>
+        </section>
+        <section id="settings-mcp" class="settings-page hidden" data-settings="mcp">
+          <h2 class="settings-page-title">MCP</h2>
+          <p id="mcp-source-hint" class="settings-hint">外挂工具服务。保存后写入 <code>.meris/ui/mcp-servers.json</code> 并覆盖 <code>settings.yaml</code> 中的 <code>mcpServers</code>。绿点=已连接，红点=失败，灰点=已禁用。</p>
+          <ul id="mcp-list" class="settings-list"></ul>
+          <textarea id="mcp-json-input" class="settings-code" rows="12" spellcheck="false" placeholder='{"mcpServers": {}}'></textarea>
+          <div class="settings-actions">
+            <button type="button" id="mcp-migrate-btn" class="secondary-btn hidden">从 settings.yaml 迁移到 UI</button>
+            <button type="button" id="mcp-save-btn">保存 MCP</button>
+          </div>
+          <div id="mcp-json-error" class="settings-error hidden"></div>
+        </section>
+        <section id="settings-skills" class="settings-page hidden" data-settings="skills">
+          <h2 class="settings-page-title">技能</h2>
+          <div class="skill-import-card settings-card">
+            <div class="skill-import-text">
+              <strong>从本地目录导入技能</strong>
+              <p class="settings-hint">导入到<strong>当前项目</strong> <code>.meris/skills/</code>（与下方「导入配置」页的 MCP/规则无关）。全局技能放 <code>~/.meris/skills/</code>。</p>
+            </div>
+            <div class="skill-import-path-row">
+              <code id="skill-import-path" class="skill-import-path">未选择目录</code>
+            </div>
+            <div class="settings-inline skill-import-actions">
+              <button type="button" id="pick-skill-import-dir-btn">选择目录</button>
+              <button type="button" id="import-skills-btn">导入</button>
+              <button type="button" id="import-cursor-skills-btn" class="link-btn">从 .cursor/skills</button>
+              <span id="skills-import-status" class="settings-hint"></span>
+            </div>
+            <div id="skill-import-browse" class="skill-import-browse hidden">
+              <div class="folder-browse-bar">
+                <span id="skill-browse-path" class="folder-browse-path">—</span>
+                <button type="button" id="skill-browse-refresh-btn" class="icon-btn" title="刷新">↻</button>
+              </div>
+              <ul id="skill-browse-list" class="folder-browse-list skill-browse-list"></ul>
+              <div class="settings-inline">
+                <button type="button" id="skill-browse-use-btn">使用此目录</button>
+                <button type="button" id="skill-browse-close-btn" class="link-btn">收起</button>
+              </div>
+            </div>
+          </div>
+          <div class="skills-section-head">
+            <div>
+              <h3 class="skills-subtitle">技能</h3>
+              <p class="settings-hint">当前项目 <code>.meris/skills/</code> + 全局 <code>~/.meris/skills/</code>；Agent 通过 <code>load_skill</code> 按需加载。</p>
+            </div>
+            <div class="skills-toolbar">
+              <button type="button" id="skills-refresh-btn" class="icon-btn" title="刷新">↻</button>
+              <button type="button" id="skill-global-create-btn" class="secondary-btn">+ 全局</button>
+              <button type="button" id="skill-create-btn" class="primary-btn">+ 项目</button>
+            </div>
+          </div>
+          <div id="settings-skill-cards" class="skill-cards"></div>
+          <div id="skill-editor-panel" class="skill-editor-panel hidden">
+            <div class="skill-editor-head">
+              <h4 id="skill-editor-title">编辑技能</h4>
+              <button type="button" id="skill-editor-close" class="icon-btn" title="关闭">×</button>
+            </div>
+            <div class="settings-inline skill-quick-add">
+              <input type="text" id="skill-name-input" placeholder="新建 skill 名称（kebab-case）">
+            </div>
+            <textarea id="skill-content-input" class="settings-code" rows="12" spellcheck="false" placeholder="# Skill Markdown&#10;---&#10;name: my-skill&#10;description: 简要说明何时使用&#10;---"></textarea>
+            <div class="settings-actions">
+              <button type="button" id="skill-save-btn">保存 Skill</button>
+            </div>
+          </div>
+          <div class="skills-commands-block">
+            <div class="skills-section-head">
+              <div>
+                <h3 class="skills-subtitle">命令</h3>
+                <p class="settings-hint">常用 CLI 速查；▶ 在终端运行，完整列表见「CLI 命令」页。</p>
+              </div>
+              <button type="button" id="skills-open-commands-btn" class="link-btn">查看全部 →</button>
+            </div>
+            <div id="skills-commands-preview" class="skills-commands-preview"></div>
+          </div>
+        </section>
+        <section id="settings-rules" class="settings-page hidden" data-settings="rules">
+          <h2 class="settings-page-title">规则</h2>
+          <p class="settings-hint">编辑 <code>.meris/rules/*.md</code>，注入策略由 frontmatter <code>inject</code> 控制。</p>
+          <ul id="settings-rule-list" class="settings-list selectable"></ul>
+          <textarea id="rule-content-input" class="settings-code" rows="12" spellcheck="false" placeholder="# Rule Markdown"></textarea>
+          <div class="settings-actions">
+            <button type="button" id="rule-save-btn">保存规则</button>
+          </div>
+        </section>
+        <section id="settings-docs" class="settings-page hidden" data-settings="docs">
+          <h2 class="settings-page-title">Harness 文档</h2>
+          <p class="settings-hint">Meris Harness 索引（<code>docs/harness/</code>）。点击条目预览。</p>
+          <ul id="docs-index-list" class="settings-list selectable"></ul>
+          <textarea id="docs-preview" class="settings-code" rows="16" readonly spellcheck="false" placeholder="选择左侧文档…"></textarea>
+        </section>
+        <section id="settings-commands" class="settings-page hidden" data-settings="commands">
+          <h2 class="settings-page-title">CLI 命令</h2>
+          <p class="settings-hint">终端 <code>meris</code> 子命令速查；带 <span class="cmd-ui-badge">UI</span> 的可在此窗口完成。<strong>▶</strong> 一键运行，输出在底部 Terminal。点击命令行复制。</p>
+          <input id="commands-search" type="search" class="settings-search-inline" placeholder="搜索命令…" autocomplete="off">
+          <div id="commands-groups" class="commands-groups"></div>
+        </section>
+        <section id="settings-import" class="settings-page hidden" data-settings="import">
+          <h2 class="settings-page-title">导入配置</h2>
+          <p class="settings-hint">仅迁移 <strong>MCP</strong> 与 <strong>规则</strong> 到当前项目 Harness。技能请用「技能」页的目录导入。</p>
+          <div class="settings-import-cards">
+            <button type="button" class="settings-import-card" id="import-cursor-mcp-btn">
+              <strong>导入 MCP（.cursor）</strong>
+              <span><code>.cursor/mcp.json</code> → <code>.meris/ui/mcp-servers.json</code></span>
+            </button>
+            <button type="button" class="settings-import-card" id="import-cursor-rules-btn">
+              <strong>导入规则（.cursor）</strong>
+              <span><code>.cursor/rules/</code> → <code>.meris/rules/</code></span>
+            </button>
+          </div>
+          <div class="settings-import-custom settings-card">
+            <h3 class="skills-subtitle">自定义路径</h3>
+            <div class="settings-import-path-row">
+              <label for="import-mcp-path">MCP 文件</label>
+              <input type="text" id="import-mcp-path" class="settings-path-input" placeholder="任意 mcp.json 路径">
+              <button type="button" id="pick-import-mcp-btn">选择文件</button>
+              <button type="button" id="import-mcp-path-btn">导入 MCP</button>
+            </div>
+            <div class="settings-import-path-row">
+              <label for="import-rules-path">规则目录</label>
+              <input type="text" id="import-rules-path" class="settings-path-input" placeholder="任意 rules 目录">
+              <button type="button" id="pick-import-rules-btn">选择目录</button>
+              <button type="button" id="import-rules-path-btn">导入规则</button>
+            </div>
+          </div>
+          <div id="import-status" class="settings-hint"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
   <div id="layout">
-    <aside id="sessions-panel">
-      <div class="panel-header">
-        <span>Sessions</span>
-        <button id="refresh-sessions" type="button" title="Refresh">↻</button>
+    <aside id="left-panel">
+      <div class="panel-header workspace-panel-header">
+        <span class="workspace-panel-title" id="file-panel-title">文件</span>
+        <div class="workspace-panel-actions">
+          <button type="button" id="add-workspace-root-btn" class="workspace-panel-btn" title="添加项目到列表">+</button>
+          <button type="button" id="workspace-collapse-all-btn" class="workspace-panel-btn" title="折叠全部目录">⊟</button>
+          <button type="button" id="manage-workspace-roots-btn" class="workspace-panel-btn" title="管理项目列表">⋯</button>
+        </div>
       </div>
-      <input id="session-search" type="search" placeholder="搜索 session…" autocomplete="off">
-      <ul id="session-list"></ul>
+      <div id="file-tree" class="file-tree workspace-tree"></div>
     </aside>
     <div id="main">
       <div id="view-tabs">
@@ -66,6 +280,7 @@
       <div id="parallel-view" class="view-panel hidden">
         <textarea id="parallel-input" placeholder="每行一个任务…" rows="4"></textarea>
         <button type="button" id="parallel-run-btn">Run parallel</button>
+        <div id="parallel-summary" class="parallel-summary hidden"></div>
         <div id="parallel-lanes" class="parallel-lanes hidden"></div>
       </div>
       <div id="preview-view" class="view-panel hidden">
@@ -90,39 +305,90 @@
           </div>
         </div>
         <div id="context-chips"></div>
-        <div class="composer-input-row">
-          <button id="at-btn" type="button" title="添加上下文 @">@</button>
-          <div id="at-dropdown" class="hidden">
-            <input id="at-search" type="search" placeholder="搜索文件…" autocomplete="off">
-            <button type="button" id="at-selection" class="at-action">+ 当前选区</button>
-            <ul id="at-file-list"></ul>
+        <div id="composer-hint" class="composer-hint hidden" aria-live="polite"></div>
+        <div class="composer-card">
+          <div class="composer-topbar">
+            <div class="composer-agent-pill" id="composer-agent-pill">
+              <span class="composer-agent-icon" aria-hidden="true">◇</span>
+              <span id="composer-mode-label">@Agent</span>
+            </div>
+            <div class="composer-topbar-actions">
+              <button type="button" id="composer-help-btn" class="composer-topbar-btn" title="CLI 命令速查">?</button>
+              <button type="button" id="composer-tools-btn" class="composer-topbar-btn" title="工具与 MCP">⛭</button>
+              <button type="button" id="composer-settings-btn" class="composer-topbar-btn" title="设置">⚙</button>
+            </div>
           </div>
-          <textarea id="task-input" placeholder="描述你的任务…" rows="2"></textarea>
-        </div>
-        <div id="composer-actions">
-          <select id="mode-select">
-            <option value="run" selected>run</option>
-            <option value="ask">ask</option>
-            <option value="plan">plan</option>
-          </select>
-          <label><input type="checkbox" id="approve-check"> approve</label>
-          <button id="submit-btn" type="button">Run</button>
-          <button id="stop-btn" type="button" disabled>Stop</button>
+          <div class="composer-editor-wrap">
+            <textarea id="task-input" placeholder="您正在与 Agent 聊天…" rows="3"></textarea>
+            <div class="composer-toolbar">
+              <div class="composer-toolbar-left">
+                <button id="at-btn" type="button" class="composer-icon-btn" title="Skill @">@</button>
+                <button id="hash-btn" type="button" class="composer-icon-btn" title="文件 #">#</button>
+                <button id="image-btn" type="button" class="composer-icon-btn" title="截图/粘贴图片" aria-label="图片">🖼</button>
+                <input id="image-input" type="file" accept="image/*" class="hidden" tabindex="-1" aria-hidden="true">
+                <div id="at-dropdown" class="ctx-picker hidden">
+                  <div class="ctx-picker-title">Skills</div>
+                  <ul id="at-skill-list"></ul>
+                </div>
+                <div id="hash-dropdown" class="ctx-picker hidden">
+                  <input id="hash-search" type="search" placeholder="搜索文件…" autocomplete="off">
+                  <button type="button" id="hash-selection" class="at-action">+ 当前选区</button>
+                  <ul id="hash-file-list"></ul>
+                </div>
+              </div>
+              <div class="composer-toolbar-right">
+                <select id="mode-select" class="composer-mode-select" title="模式">
+                  <option value="run" selected>Agent</option>
+                  <option value="ask">Ask</option>
+                  <option value="plan">Plan</option>
+                </select>
+                <select id="model-select" class="composer-model-select" title="模型">
+                  <option value="auto" selected>Auto</option>
+                </select>
+                <label class="composer-approve-toggle" title="每步确认 (approve)">
+                  <input type="checkbox" id="approve-check" class="hidden">
+                  <span class="composer-approve-icon" aria-hidden="true">✦</span>
+                </label>
+                <button id="mic-btn" type="button" class="composer-icon-btn" title="语音输入" aria-label="语音">🎤</button>
+                <button id="submit-btn" type="button" class="composer-send-btn" title="发送 (Ctrl+Enter)" aria-label="发送">
+                  <span class="composer-send-icon" aria-hidden="true">↑</span>
+                </button>
+                <button id="stop-btn" type="button" class="composer-stop-btn hidden" disabled title="停止" aria-label="停止">■</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-    <aside id="ratchet-panel">
-      <div class="panel-header">
-        <span>Ratchet</span>
-        <div class="panel-actions">
-          <button id="ratchet-scan" type="button" title="Scan">⊕</button>
-          <button id="refresh-ratchet" type="button" title="Refresh">↻</button>
-        </div>
+    <aside id="right-panel">
+      <div class="right-tabs">
+        <button type="button" class="right-tab active" data-right="history">历史</button>
+        <button type="button" class="right-tab" data-right="ratchet">Ratchet</button>
       </div>
-      <ul id="ratchet-list"></ul>
+      <div id="history-panel">
+        <div class="panel-header">
+          <span>历史记录</span>
+          <button id="refresh-sessions" type="button" title="Refresh">↻</button>
+        </div>
+        <input id="session-search" type="search" placeholder="搜索任务…" autocomplete="off">
+        <div id="session-list"></div>
+      </div>
+      <div id="ratchet-panel" class="hidden">
+        <div class="panel-header">
+          <span>Ratchet</span>
+          <div class="panel-actions">
+            <button id="ratchet-scan" type="button" title="Scan">⊕</button>
+            <button id="refresh-ratchet" type="button" title="Refresh">↻</button>
+          </div>
+        </div>
+        <ul id="ratchet-list"></ul>
+      </div>
     </aside>
   </div>
   <script src="/media/agent.js"></script>
   <script src="/media/phase-i.js"></script>
+  <script src="/media/harness-ui.js"></script>
+  <script src="/media/settings-ui.js"></script>
+  <script src="/media/composer-media.js"></script>
 </body>
 </html>

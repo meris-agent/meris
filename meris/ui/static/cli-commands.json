@@ -1,0 +1,227 @@
+{
+  "groups": [
+    {
+      "id": "core",
+      "title": "核心任务",
+      "hint": "日常 coding；Composer 选模式即等价入口",
+      "commands": [
+        {
+          "id": "ask",
+          "cmd": "meris ask \"问题\"",
+          "summary": "只读探索代码库，不改文件",
+          "ui": "Composer → Ask + 发送"
+        },
+        {
+          "id": "plan",
+          "cmd": "meris plan \"需求\"",
+          "summary": "生成 `- [ ]` 任务清单（tasks.md）",
+          "ui": "Composer → Plan + 发送；Plan 面板勾选"
+        },
+        {
+          "id": "run",
+          "cmd": "meris run \"任务\"",
+          "summary": "完整 Agent 循环 + 工具 + DoD",
+          "ui": "Composer → Agent + ↑ 发送"
+        },
+        {
+          "id": "exec",
+          "cmd": "meris exec \"任务\" --json",
+          "summary": "单次执行，JSON 输出（脚本/CI）",
+          "ui": null
+        },
+        {
+          "id": "review",
+          "cmd": "meris review --staged",
+          "summary": "审查暂存区 diff",
+          "ui": null
+        },
+        {
+          "id": "parallel",
+          "cmd": "meris parallel \"t1\" \"t2\" --isolate",
+          "summary": "多任务并行（可选 worktree 隔离）",
+          "ui": "Parallel 标签页"
+        },
+        {
+          "id": "plan-sync",
+          "cmd": "meris plan-sync .meris/plan/tasks.md",
+          "summary": "Plan checkbox 智能回写",
+          "ui": "Plan 面板保存"
+        }
+      ]
+    },
+    {
+      "id": "ui",
+      "title": "界面与交互",
+      "commands": [
+        {
+          "id": "ui",
+          "cmd": "meris ui",
+          "summary": "启动 Agent Window（本界面）",
+          "ui": "当前窗口"
+        },
+        {
+          "id": "tui",
+          "cmd": "meris tui",
+          "summary": "终端全屏 TUI",
+          "ui": null
+        }
+      ]
+    },
+    {
+      "id": "harness",
+      "title": "Harness 与自检",
+      "commands": [
+        {
+          "id": "harness-check",
+          "cmd": "meris harness check",
+          "summary": "静态 Harness 检查（路径、import）",
+          "ui": null
+        },
+        {
+          "id": "doctor",
+          "cmd": "meris doctor",
+          "summary": "环境/API/沙箱/native 诊断",
+          "ui": null
+        },
+        {
+          "id": "dogfood",
+          "cmd": "meris dogfood",
+          "summary": "日常 dogfood 就绪检查",
+          "ui": null
+        },
+        {
+          "id": "init-harness",
+          "cmd": "meris init-harness .",
+          "summary": "初始化 AGENTS.md / .meris/",
+          "ui": null
+        },
+        {
+          "id": "release-check",
+          "cmd": "meris release check",
+          "summary": "发版前自检",
+          "ui": null
+        }
+      ]
+    },
+    {
+      "id": "ratchet",
+      "title": "Ratchet 进化",
+      "commands": [
+        {
+          "id": "ratchet-status",
+          "cmd": "meris ratchet status",
+          "summary": "待审核提案数量",
+          "ui": "右侧 Ratchet 面板"
+        },
+        {
+          "id": "ratchet-scan",
+          "cmd": "meris ratchet scan",
+          "summary": "扫描失败模式生成提案",
+          "ui": "Ratchet ⊕ 按钮"
+        },
+        {
+          "id": "ratchet-digest",
+          "cmd": "meris ratchet digest",
+          "summary": "会话洞察摘要",
+          "ui": null
+        },
+        {
+          "id": "ratchet-apply",
+          "cmd": "meris ratchet apply <id>",
+          "summary": "应用提案到 rules/skills",
+          "ui": "Ratchet 列表 Apply"
+        }
+      ]
+    },
+    {
+      "id": "session",
+      "title": "会话",
+      "commands": [
+        {
+          "id": "session-list",
+          "cmd": "meris session list",
+          "summary": "列出历史会话",
+          "ui": "右侧历史面板"
+        },
+        {
+          "id": "session-resume",
+          "cmd": "meris session resume <id>",
+          "summary": "恢复会话继续跑",
+          "ui": "点击历史条目"
+        },
+        {
+          "id": "session-prune",
+          "cmd": "meris session prune",
+          "summary": "清理旧会话文件",
+          "ui": null
+        }
+      ]
+    },
+    {
+      "id": "mcp",
+      "title": "MCP 与工具",
+      "commands": [
+        {
+          "id": "mcp-list",
+          "cmd": "meris mcp list",
+          "summary": "列出已配置 MCP 工具",
+          "ui": "设置 → MCP"
+        },
+        {
+          "id": "mcp-schemas",
+          "cmd": "meris mcp schemas",
+          "summary": "导出 MCP 工具 schema",
+          "ui": null
+        },
+        {
+          "id": "native-status",
+          "cmd": "meris native status",
+          "summary": "meris-rs 原生循环状态",
+          "ui": null
+        }
+      ]
+    },
+    {
+      "id": "quality",
+      "title": "测试与评测",
+      "commands": [
+        {
+          "id": "pytest",
+          "cmd": "pytest tests/ -m \"not integration\" -q",
+          "summary": "单元测试（DoD）",
+          "ui": null
+        },
+        {
+          "id": "benchmark",
+          "cmd": "meris benchmark run --local-only",
+          "summary": "Harness benchmark 套件",
+          "ui": null
+        },
+        {
+          "id": "models-route",
+          "cmd": "meris models route \"任务描述\"",
+          "summary": "预览路由到的模型",
+          "ui": "设置 → 模型"
+        }
+      ]
+    },
+    {
+      "id": "spec",
+      "title": "Spec 工作流",
+      "commands": [
+        {
+          "id": "spec-init",
+          "cmd": "meris spec init",
+          "summary": "生成 requirements/design/tasks",
+          "ui": null
+        },
+        {
+          "id": "spec-status",
+          "cmd": "meris spec status",
+          "summary": "查看 Spec 进度",
+          "ui": null
+        }
+      ]
+    }
+  ]
+}

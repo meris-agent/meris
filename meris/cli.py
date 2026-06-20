@@ -1,4 +1,4 @@
-"""Meris CLI — ask | plan | run | tui | mcp | session | parallel | init-harness | spec | doctor."""
+"""Meris CLI — ask | plan | run | tui | mcp | session | parallel | init-harness | spec | doctor | dogfood."""
 
 from __future__ import annotations
 
@@ -275,6 +275,24 @@ def doctor_cmd(
             fails += 1
     console.print(table)
     if fails:
+        raise typer.Exit(1)
+
+
+@app.command("dogfood")
+def dogfood_cmd(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+) -> None:
+    """Daily dogfood readiness (PROGRESS · harness · env). See docs/DOGFOOD_DAILY.md."""
+    from meris.harness.dogfood import dogfood_check_failed, run_dogfood_check
+
+    results = run_dogfood_check(cwd.resolve())
+    table = Table("Check", "Status", "Detail")
+    for r in results:
+        style = {"ok": "green", "warn": "yellow", "fail": "red"}.get(r.status, "white")
+        table.add_row(r.name, f"[{style}]{r.status}[/{style}]", r.detail[:80])
+    console.print(table)
+    console.print("[dim]Next: pick 1 real task — docs/DOGFOOD_DAILY.md[/dim]")
+    if dogfood_check_failed(results):
         raise typer.Exit(1)
 
 
