@@ -406,6 +406,26 @@
     return getProjectScopeItems().filter((i) => i.selected).map((i) => i.path);
   };
 
+  window.__merisProjectLabelForPath = function (p) {
+    const ent = getProjectScopeItems().find((i) => samePath(i.path, p));
+    if (ent && ent.name) {
+      const parts = String(p || "").replace(/\\/g, "/").split("/").filter(Boolean);
+      const dupes = getProjectScopeItems().filter((i) => i.name === ent.name).length;
+      if (dupes > 1) {
+        const tail = parts.length > 3 ? parts.slice(-4).join("/") : p;
+        return `${ent.name} · ${tail}`;
+      }
+      return ent.name;
+    }
+    const folder = getProjectOptions().find((f) => samePath(f.path, p));
+    if (folder) {
+      const labeled = folderOptionLabels([folder])[0];
+      return labeled ? labeled.label : folder.name || p;
+    }
+    const name = String(p || "").replace(/\\/g, "/").split("/").filter(Boolean).pop();
+    return name || p;
+  };
+
   window.__merisTaskScopePrefix = function () {
     const selected = window.__merisGetTaskScopeSelected();
     if (!selected.length) {

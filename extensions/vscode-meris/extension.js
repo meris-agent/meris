@@ -1046,6 +1046,7 @@ function getAgentWebviewContent(webview, extensionUri) {
   const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media", "agent.js"));
   const phaseIUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media", "phase-i.js"));
   const harnessUiUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media", "harness-ui.js"));
+  const gitUiUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media", "git-ui.js"));
   const settingsUiUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media", "settings-ui.js"));
   const composerMediaUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "media", "composer-media.js")
@@ -1305,23 +1306,37 @@ function getAgentWebviewContent(webview, extensionUri) {
 
   <div id="layout">
     <aside id="left-panel">
-      <div class="panel-header workspace-panel-header project-panel-header">
-        <span class="workspace-panel-title">项目</span>
-        <div class="workspace-panel-actions">
-          <button type="button" id="add-workspace-root-btn" class="workspace-panel-btn" title="添加项目">+</button>
-          <button type="button" id="manage-workspace-roots-btn" class="workspace-panel-btn" title="管理项目列表">⋯</button>
-          <button type="button" id="task-scope-current-btn" class="task-scope-btn" title="仅勾选主项目">仅当前</button>
-          <button type="button" id="task-scope-all-btn" class="task-scope-btn" title="勾选全部项目">全选</button>
+      <section class="sidebar-block sidebar-block-projects">
+        <div class="panel-header workspace-panel-header project-panel-header">
+          <span class="workspace-panel-title">项目</span>
+          <div class="workspace-panel-actions">
+            <button type="button" id="add-workspace-root-btn" class="workspace-panel-btn" title="添加项目">+</button>
+            <button type="button" id="manage-workspace-roots-btn" class="workspace-panel-btn" title="管理项目列表">⋯</button>
+            <button type="button" id="task-scope-current-btn" class="task-scope-btn" title="仅勾选主项目">仅当前</button>
+            <button type="button" id="task-scope-all-btn" class="task-scope-btn" title="勾选全部项目">全选</button>
+          </div>
         </div>
-      </div>
-      <div id="project-list" class="project-list"></div>
-      <div class="panel-header workspace-panel-header file-panel-header">
-        <span class="workspace-panel-title" id="file-panel-title">文件</span>
-        <div class="workspace-panel-actions">
-          <button type="button" id="workspace-collapse-all-btn" class="workspace-panel-btn" title="折叠全部">⊟</button>
+        <div id="project-list" class="project-list"></div>
+      </section>
+      <section class="sidebar-block sidebar-block-files">
+        <div class="panel-header workspace-panel-header file-panel-header">
+          <span class="workspace-panel-title" id="file-panel-title">文件</span>
+          <div class="workspace-panel-actions">
+            <button type="button" id="workspace-collapse-all-btn" class="workspace-panel-btn" title="折叠全部">⊟</button>
+          </div>
         </div>
-      </div>
-      <div id="file-tree" class="file-tree workspace-tree"></div>
+        <div id="file-tree" class="file-tree workspace-tree"></div>
+      </section>
+      <section class="sidebar-block sidebar-block-changes">
+        <div class="panel-header workspace-panel-header git-panel-header">
+          <span class="workspace-panel-title">改动</span>
+          <div class="workspace-panel-actions">
+            <button type="button" id="git-ship-all-btn" class="git-ship-all-btn" title="暂存并提交范围内全部脏仓库（不 push）">提交全部</button>
+            <button type="button" id="git-refresh-btn" class="workspace-panel-btn" title="刷新 git 状态">↻</button>
+          </div>
+        </div>
+        <div id="git-changes-panel" class="git-changes-panel"></div>
+      </section>
     </aside>
     <div id="main">
       <div id="view-tabs">
@@ -1346,6 +1361,13 @@ function getAgentWebviewContent(webview, extensionUri) {
       </div>
       <div id="parallel-view" class="view-panel hidden">
         <textarea id="parallel-input" placeholder="每行一个任务…" rows="4"></textarea>
+        <div class="parallel-options">
+          <label class="parallel-isolate-label"><input type="checkbox" id="parallel-isolate-check"> 隔离 worktree（--isolate，仅 run 模式）</label>
+          <select id="parallel-mode-select" title="parallel 模式">
+            <option value="ask">ask</option>
+            <option value="run">run</option>
+          </select>
+        </div>
         <button type="button" id="parallel-run-btn">Run parallel</button>
         <div id="parallel-summary" class="parallel-summary hidden"></div>
         <div id="parallel-lanes" class="parallel-lanes hidden"></div>
@@ -1456,6 +1478,7 @@ function getAgentWebviewContent(webview, extensionUri) {
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${phaseIUri}"></script>
   <script nonce="${nonce}" src="${harnessUiUri}"></script>
+  <script nonce="${nonce}" src="${gitUiUri}"></script>
   <script nonce="${nonce}" src="${settingsUiUri}"></script>
   <script nonce="${nonce}" src="${composerMediaUri}"></script>
 </html>`;
@@ -1696,6 +1719,109 @@ function writeApprovalResponse(cwd, requestId, approved) {
   fs.writeFileSync(resPath, JSON.stringify({ request_id: requestId, approved }), "utf8");
 }
 
+/** Run meris Python helpers and parse JSON stdout. */
+function merisPythonJson(code, argvPayload) {
+  const script =
+    "import json,sys\nfrom pathlib import Path\n" +
+    code +
+    "\n";
+  try {
+    const out = execFileSync("python", ["-c", script, argvPayload || "[]"], {
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024,
+      env: { ...process.env },
+    });
+    return JSON.parse(String(out).trim() || "{}");
+  } catch (err) {
+    const out = err.stdout ? String(err.stdout).trim() : "";
+    if (out) {
+      try {
+        return JSON.parse(out);
+      } catch {
+        /* fall through */
+      }
+    }
+    return { ok: false, error: String(err.message || err) };
+  }
+}
+
+/** @param {string[]} roots */
+function buildGitSummaryPayload(roots) {
+  return merisPythonJson(
+    "roots=[Path(p) for p in json.loads(sys.argv[1])]\n" +
+      "from meris.harness.git_summary import git_summary_for_roots\n" +
+      "from meris.harness.ui_config import load_scope_commits\n" +
+      'print(json.dumps({"summaries": git_summary_for_roots(roots), "scopeCommits": load_scope_commits()}))',
+    JSON.stringify(roots || [])
+  );
+}
+
+/** @param {string} root */
+function gitStageRoot(root) {
+  return merisPythonJson(
+    "root=Path(json.loads(sys.argv[1]))\n" +
+      "from meris.harness.git_summary import git_stage_all\n" +
+      "print(json.dumps(git_stage_all(root)))",
+    JSON.stringify(root)
+  );
+}
+
+/** @param {string} root @param {string} message @param {string} cwd */
+function gitCommitRoot(root, message, cwd) {
+  return merisPythonJson(
+    "payload=json.loads(sys.argv[1])\n" +
+      "root=Path(payload['root'])\n" +
+      "from meris.harness.git_summary import git_commit\n" +
+      "from meris.harness.ui_config import record_scope_commit\n" +
+      "result=git_commit(root, payload['message'])\n" +
+      "if result.get('ok'):\n" +
+      "  record_scope_commit(root=root, message=str(result.get('commitMessage') or ''), cwd=Path(payload['cwd']))\n" +
+      "print(json.dumps(result))",
+    JSON.stringify({ root, message, cwd })
+  );
+}
+
+/** @param {string} root */
+function gitSuggestRoot(root) {
+  return merisPythonJson(
+    "root=Path(json.loads(sys.argv[1]))\n" +
+      "from meris.harness.git_summary import suggest_commit_message\n" +
+      'print(json.dumps({"ok": True, "message": suggest_commit_message(root)}))',
+    JSON.stringify(root)
+  );
+}
+
+/** @param {string} cwd */
+function gitShipScope(cwd) {
+  return merisPythonJson(
+    "cwd=Path(json.loads(sys.argv[1]))\n" +
+      "from meris.harness.git_summary import git_commit, git_stage_all, git_summary, suggest_commit_message\n" +
+      "from meris.harness.ui_config import available_project_paths, load_task_scope_paths, normalize_task_scope, record_scope_commit\n" +
+      "roots=normalize_task_scope(load_task_scope_paths(), available=available_project_paths(cwd), cwd=cwd)\n" +
+      "results=[]\n" +
+      "for root in roots:\n" +
+      "  summary=git_summary(root)\n" +
+      "  if not summary.get('isRepo') or not summary.get('dirty'): continue\n" +
+      "  staged=git_stage_all(root)\n" +
+      "  if not staged.get('ok'):\n" +
+      "    results.append({'path': str(root), 'ok': False, 'error': staged.get('error')}); continue\n" +
+      "  msg=suggest_commit_message(root)\n" +
+      "  committed=git_commit(root, msg)\n" +
+      "  if committed.get('ok'):\n" +
+      "    record_scope_commit(root=root, message=str(committed.get('commitMessage') or msg), cwd=cwd)\n" +
+      "  results.append({'path': str(root), 'ok': bool(committed.get('ok')), 'message': committed.get('commitMessage') or msg, 'error': committed.get('error')})\n" +
+      'print(json.dumps({"ok": True, "results": results}))',
+    JSON.stringify(cwd)
+  );
+}
+
+/** @param {string[]} roots @param {string} [reqId] */
+function postGitSummary(roots, reqId) {
+  const payload = buildGitSummaryPayload(roots);
+  postToAgentWebviews({ type: "gitSummary", _gitReqId: reqId, ...payload });
+  return payload;
+}
+
 function getGitDiff(cwd, relPath) {
   if (!relPath) {
     return "";
@@ -1869,8 +1995,8 @@ function savePlanFile(cwd, planPath, items) {
   }
 }
 
-/** @param {string} cwd @param {string[]} tasks @param {string} mode */
-function spawnMerisParallel(cwd, tasks, mode) {
+/** @param {string} cwd @param {string[]} tasks @param {string} mode @param {boolean} isolate */
+function spawnMerisParallel(cwd, tasks, mode, isolate) {
   killActiveProcess();
   const eventsPath = path.join(cwd, ".meris", "events", "agent-window.jsonl");
   const eventsArg = eventsPath.replace(/\\/g, "/");
@@ -1894,6 +2020,7 @@ function spawnMerisParallel(cwd, tasks, mode) {
     "--event-stream",
     eventsArg,
   ];
+  if (isolate) args.push("--isolate");
   activeProcess = spawn("meris", args, { cwd, shell: true, env: { ...process.env } });
   let stderr = "";
   const emitTerm = (stream, chunk) =>
@@ -1954,6 +2081,37 @@ function spawnCliCommand(cwd, commandId) {
 async function handleAgentMessage(msg) {
   if (msg.type === "getWorkspace") {
     postWorkspaceInfo();
+    return;
+  }
+  if (msg.type === "getGitSummary") {
+    const roots = Array.isArray(msg.roots) ? msg.roots.map(String) : [];
+    postGitSummary(roots, msg._gitReqId);
+    return;
+  }
+  if (msg.type === "gitStage" && msg.root) {
+    const result = gitStageRoot(String(msg.root));
+    postGitSummary([]);
+    postToAgentWebviews({ type: "gitStageResult", _gitReqId: msg._gitReqId, ...result });
+    return;
+  }
+  if (msg.type === "gitCommit" && msg.root) {
+    const cwd = getWorkspaceCwd() || String(msg.root);
+    const result = gitCommitRoot(String(msg.root), String(msg.message || ""), cwd);
+    postGitSummary([]);
+    postToAgentWebviews({ type: "gitCommitResult", _gitReqId: msg._gitReqId, ...result });
+    return;
+  }
+  if (msg.type === "gitSuggestMessage" && msg.root) {
+    const result = gitSuggestRoot(String(msg.root));
+    postToAgentWebviews({ type: "gitSuggestResult", _gitReqId: msg._gitReqId, ...result });
+    return;
+  }
+  if (msg.type === "gitShipScope") {
+    const cwd = getWorkspaceCwd();
+    if (!cwd) return;
+    const result = gitShipScope(cwd);
+    postGitSummary([]);
+    postToAgentWebviews({ type: "gitShipResult", _gitReqId: msg._gitReqId, ...result });
     return;
   }
   if (msg.type === "setWorkspace" && msg.path) {
@@ -2645,7 +2803,7 @@ async function handleAgentMessage(msg) {
     case "parallelRun": {
       const tasks = Array.isArray(msg.tasks) ? msg.tasks : [];
       if (!tasks.length) break;
-      spawnMerisParallel(cwd, tasks, msg.mode || "ask");
+      spawnMerisParallel(cwd, tasks, msg.mode || "ask", Boolean(msg.isolate));
       break;
     }
     default:

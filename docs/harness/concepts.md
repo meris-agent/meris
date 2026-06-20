@@ -140,6 +140,8 @@ Agent 犯错 → **改 Harness 文件**，不是只重试同一句 prompt。
 - [x] 左栏仅显示**当前项目**文件树；Skill / `.system` 路径不得进入项目列表
 - [x] 左栏「本次涉及」task scope 勾选 + Composer 范围 chips / prompt 前缀
 - [x] 文档 [multi-repo.md](multi-repo.md) + Skill `multi-repo-workflow`
+- [x] 左栏 **改动** git 摘要 + Stage/Commit + 提交全部 · [git-workflow.md](git-workflow.md) · Skill `git-ship`
+- [x] Parallel **--isolate** worktree 勾选（run 模式）
 
 ### 故意不做
 
@@ -149,6 +151,7 @@ Agent 犯错 → **改 Harness 文件**，不是只重试同一句 prompt。
 ## 相关
 
 - [multi-repo.md](multi-repo.md) — task scope 与跨项目流程
+- [git-workflow.md](git-workflow.md) — 改动面板与 Ship 流程
 - [routing.md](routing.md) — cwd 与 model 路由
 - [architecture.md](architecture.md) — 包布局
 - `.meris/rules/workspace.md` — vault / meris 双 cwd

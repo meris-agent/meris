@@ -23,6 +23,10 @@ body = body
     '<script nonce="${nonce}" src="${harnessUiUri}"></script>'
   )
   .replace(
+    '<script src="/media/git-ui.js"></script>',
+    '<script nonce="${nonce}" src="${gitUiUri}"></script>'
+  )
+  .replace(
     '<script src="/media/settings-ui.js"></script>',
     '<script nonce="${nonce}" src="${settingsUiUri}"></script>'
   )

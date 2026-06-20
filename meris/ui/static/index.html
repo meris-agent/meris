@@ -250,23 +250,37 @@
 
   <div id="layout">
     <aside id="left-panel">
-      <div class="panel-header workspace-panel-header project-panel-header">
-        <span class="workspace-panel-title">项目</span>
-        <div class="workspace-panel-actions">
-          <button type="button" id="add-workspace-root-btn" class="workspace-panel-btn" title="添加项目">+</button>
-          <button type="button" id="manage-workspace-roots-btn" class="workspace-panel-btn" title="管理项目列表">⋯</button>
-          <button type="button" id="task-scope-current-btn" class="task-scope-btn" title="仅勾选主项目">仅当前</button>
-          <button type="button" id="task-scope-all-btn" class="task-scope-btn" title="勾选全部项目">全选</button>
+      <section class="sidebar-block sidebar-block-projects">
+        <div class="panel-header workspace-panel-header project-panel-header">
+          <span class="workspace-panel-title">项目</span>
+          <div class="workspace-panel-actions">
+            <button type="button" id="add-workspace-root-btn" class="workspace-panel-btn" title="添加项目">+</button>
+            <button type="button" id="manage-workspace-roots-btn" class="workspace-panel-btn" title="管理项目列表">⋯</button>
+            <button type="button" id="task-scope-current-btn" class="task-scope-btn" title="仅勾选主项目">仅当前</button>
+            <button type="button" id="task-scope-all-btn" class="task-scope-btn" title="勾选全部项目">全选</button>
+          </div>
         </div>
-      </div>
-      <div id="project-list" class="project-list"></div>
-      <div class="panel-header workspace-panel-header file-panel-header">
-        <span class="workspace-panel-title" id="file-panel-title">文件</span>
-        <div class="workspace-panel-actions">
-          <button type="button" id="workspace-collapse-all-btn" class="workspace-panel-btn" title="折叠全部">⊟</button>
+        <div id="project-list" class="project-list"></div>
+      </section>
+      <section class="sidebar-block sidebar-block-files">
+        <div class="panel-header workspace-panel-header file-panel-header">
+          <span class="workspace-panel-title" id="file-panel-title">文件</span>
+          <div class="workspace-panel-actions">
+            <button type="button" id="workspace-collapse-all-btn" class="workspace-panel-btn" title="折叠全部">⊟</button>
+          </div>
         </div>
-      </div>
-      <div id="file-tree" class="file-tree workspace-tree"></div>
+        <div id="file-tree" class="file-tree workspace-tree"></div>
+      </section>
+      <section class="sidebar-block sidebar-block-changes">
+        <div class="panel-header workspace-panel-header git-panel-header">
+          <span class="workspace-panel-title">改动</span>
+          <div class="workspace-panel-actions">
+            <button type="button" id="git-ship-all-btn" class="git-ship-all-btn" title="暂存并提交范围内全部脏仓库（不 push）">提交全部</button>
+            <button type="button" id="git-refresh-btn" class="workspace-panel-btn" title="刷新 git 状态">↻</button>
+          </div>
+        </div>
+        <div id="git-changes-panel" class="git-changes-panel"></div>
+      </section>
     </aside>
     <div id="main">
       <div id="view-tabs">
@@ -291,6 +305,13 @@
       </div>
       <div id="parallel-view" class="view-panel hidden">
         <textarea id="parallel-input" placeholder="每行一个任务…" rows="4"></textarea>
+        <div class="parallel-options">
+          <label class="parallel-isolate-label"><input type="checkbox" id="parallel-isolate-check"> 隔离 worktree（--isolate，仅 run 模式）</label>
+          <select id="parallel-mode-select" title="parallel 模式">
+            <option value="ask">ask</option>
+            <option value="run">run</option>
+          </select>
+        </div>
         <button type="button" id="parallel-run-btn">Run parallel</button>
         <div id="parallel-summary" class="parallel-summary hidden"></div>
         <div id="parallel-lanes" class="parallel-lanes hidden"></div>
@@ -401,6 +422,7 @@
   <script src="/media/agent.js"></script>
   <script src="/media/phase-i.js"></script>
   <script src="/media/harness-ui.js"></script>
+  <script src="/media/git-ui.js"></script>
   <script src="/media/settings-ui.js"></script>
   <script src="/media/composer-media.js"></script>
 </body>

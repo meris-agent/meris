@@ -31,6 +31,8 @@
   const planPanel = $("plan-panel");
   const parallelInput = $("parallel-input");
   const parallelRunBtn = $("parallel-run-btn");
+  const parallelIsolateCheck = $("parallel-isolate-check");
+  const parallelModeSelect = $("parallel-mode-select");
   const parallelLanes = $("parallel-lanes");
   const parallelSummary = $("parallel-summary");
   const previewFrame = $("preview-frame");
@@ -535,8 +537,10 @@
         .map((t) => t.trim())
         .filter(Boolean);
       if (!tasks.length) return;
+      const mode = parallelModeSelect ? parallelModeSelect.value : "ask";
+      const isolate = parallelIsolateCheck ? parallelIsolateCheck.checked : false;
       initParallelLanes(tasks);
-      vscode.postMessage({ type: "parallelRun", tasks, mode: "ask" });
+      vscode.postMessage({ type: "parallelRun", tasks, mode, isolate });
     });
   }
 

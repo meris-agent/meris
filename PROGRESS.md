@@ -55,6 +55,8 @@
 - [x] MCP 扩展双源 parity；settings→UI 迁移；Composer `@` 分组；全局技能编辑/安装
 - [x] 左栏改「文件」仅当前项目树；过滤 Skill/.system 误入项目列表；顶栏去冗余 chip
 - [x] **多仓库 task scope** — 左栏「本次涉及」勾选 · Composer chips · prompt 前缀 · [multi-repo.md](docs/harness/multi-repo.md)
+- [x] **Git 改动面板 G1–G4** — `git_summary` API · Stage/Commit/提交全部 · scope 提交记录 · [git-workflow.md](docs/harness/git-workflow.md)
+- [x] **Parallel --isolate** — worktree 勾选 + server/extension 传参
 
 ## Phase K — 设计模式闭环（✅ P0/P1 + J5–J7）
 

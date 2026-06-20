@@ -185,12 +185,14 @@ class UiRuntime:
 
         threading.Thread(target=_wait, daemon=True).start()
 
-    def spawn_parallel(self, *, tasks: list[str], mode: str) -> None:
+    def spawn_parallel(self, *, tasks: list[str], mode: str, isolate: bool = False) -> None:
         self.kill()
         self.stderr = ""
         self._prepare_events_file()
         events_arg = self.events_path.as_posix()
         cmd = ["meris", "parallel", *tasks, "--mode", mode, "--event-stream", events_arg]
+        if isolate:
+            cmd.append("--isolate")
 
         self.broadcast({"type": "parallelStart", "tasks": tasks, "mode": mode})
         self.broadcast({"type": "status", "status": "running"})
@@ -227,6 +229,7 @@ class UiRuntime:
             self.broadcast({"type": "status", "status": status, "code": code})
             self.broadcast({"type": "parallelDone", "code": code, "tasks": tasks})
             self.broadcast({"type": "sessions", "sessions": load_sessions(self.cwd)})
+            _broadcast_git_summary(self)
 
         threading.Thread(target=_wait, daemon=True).start()
 
@@ -405,6 +408,31 @@ def _finalize_after_run(
                 rt.broadcast({"type": "plan", **payload})
 
     rt.broadcast({"type": "sessions", "sessions": load_sessions(cwd)})
+    _broadcast_git_summary(rt)
+
+
+def _broadcast_git_summary(rt: UiRuntime) -> None:
+    from meris.harness.git_summary import git_summary_for_roots
+    from meris.harness.ui_config import (
+        available_project_paths,
+        load_scope_commits,
+        load_task_scope_paths,
+        normalize_task_scope,
+    )
+
+    cwd = rt.cwd
+    roots = normalize_task_scope(
+        load_task_scope_paths(),
+        available=available_project_paths(cwd),
+        cwd=cwd,
+    )
+    rt.broadcast(
+        {
+            "type": "gitSummary",
+            "summaries": git_summary_for_roots(roots),
+            "scopeCommits": load_scope_commits(),
+        }
+    )
 
 
 def load_sessions(cwd: Path) -> list[dict[str, Any]]:
@@ -678,6 +706,38 @@ class MerisUiHandler(BaseHTTPRequestHandler):
             from meris.ui.harness_data import list_harness_docs_for_ui
 
             return self._send_json({"docs": list_harness_docs_for_ui()})
+        if route == "/api/git/summary":
+            from urllib.parse import parse_qs
+
+            from meris.harness.git_summary import git_summary_for_roots
+
+            qs = parse_qs(parsed.query)
+            raw_roots = qs.get("roots") or qs.get("roots[]") or []
+            roots: list[Path] = []
+            for item in raw_roots:
+                try:
+                    p = Path(str(item)).expanduser().resolve()
+                except OSError:
+                    continue
+                if p.is_dir():
+                    roots.append(p)
+            if not roots:
+                from meris.harness.ui_config import (
+                    available_project_paths,
+                    load_task_scope_paths,
+                    normalize_task_scope,
+                )
+
+                cwd = self.runtime.cwd
+                roots = normalize_task_scope(
+                    load_task_scope_paths(),
+                    available=available_project_paths(cwd),
+                    cwd=cwd,
+                )
+            summaries = git_summary_for_roots(roots)
+            from meris.harness.ui_config import load_scope_commits
+
+            return self._send_json({"summaries": summaries, "scopeCommits": load_scope_commits()})
         if route == "/api/doc":
             from meris.ui.harness_data import read_harness_doc_for_ui
             from urllib.parse import parse_qs
@@ -1582,7 +1642,106 @@ class MerisUiHandler(BaseHTTPRequestHandler):
         elif mtype == "parallelRun":
             tasks = [str(t) for t in (msg.get("tasks") or []) if t]
             if tasks:
-                rt.spawn_parallel(tasks=tasks, mode=str(msg.get("mode") or "ask"))
+                rt.spawn_parallel(
+                    tasks=tasks,
+                    mode=str(msg.get("mode") or "ask"),
+                    isolate=bool(msg.get("isolate")),
+                )
+        elif mtype == "getGitSummary":
+            from meris.harness.git_summary import git_summary_for_roots
+            from meris.harness.ui_config import (
+                available_project_paths,
+                load_scope_commits,
+                load_task_scope_paths,
+                normalize_task_scope,
+            )
+
+            raw_roots = msg.get("roots")
+            roots: list[Path] = []
+            if isinstance(raw_roots, list) and raw_roots:
+                for item in raw_roots:
+                    try:
+                        p = Path(str(item)).expanduser().resolve()
+                    except OSError:
+                        continue
+                    if p.is_dir():
+                        roots.append(p)
+            if not roots:
+                roots = normalize_task_scope(
+                    load_task_scope_paths(),
+                    available=available_project_paths(rt.cwd),
+                    cwd=rt.cwd,
+                )
+            payload = {
+                "summaries": git_summary_for_roots(roots),
+                "scopeCommits": load_scope_commits(),
+            }
+            rt.broadcast({"type": "gitSummary", **payload})
+            return self._send_json({"ok": True, **payload})
+        elif mtype == "gitStage":
+            from meris.harness.git_summary import git_stage_all
+
+            root = Path(str(msg.get("root") or "")).expanduser().resolve()
+            result = git_stage_all(root)
+            if result.get("ok"):
+                _broadcast_git_summary(rt)
+            return self._send_json(result)
+        elif mtype == "gitCommit":
+            from meris.harness.git_summary import git_commit
+            from meris.harness.ui_config import record_scope_commit
+
+            root = Path(str(msg.get("root") or "")).expanduser().resolve()
+            result = git_commit(root, str(msg.get("message") or ""))
+            if result.get("ok"):
+                record_scope_commit(root=root, message=str(result.get("commitMessage") or ""), cwd=rt.cwd)
+                _broadcast_git_summary(rt)
+            return self._send_json(result)
+        elif mtype == "gitSuggestMessage":
+            from meris.harness.git_summary import suggest_commit_message
+
+            root = Path(str(msg.get("root") or "")).expanduser().resolve()
+            return self._send_json({"ok": True, "message": suggest_commit_message(root)})
+        elif mtype == "gitShipScope":
+            from meris.harness.git_summary import git_commit, git_stage_all, git_summary, suggest_commit_message
+            from meris.harness.ui_config import (
+                available_project_paths,
+                load_task_scope_paths,
+                normalize_task_scope,
+                record_scope_commit,
+            )
+
+            roots = normalize_task_scope(
+                load_task_scope_paths(),
+                available=available_project_paths(rt.cwd),
+                cwd=rt.cwd,
+            )
+            results: list[dict[str, Any]] = []
+            for root in roots:
+                summary = git_summary(root)
+                if not summary.get("isRepo") or not summary.get("dirty"):
+                    continue
+                staged = git_stage_all(root)
+                if not staged.get("ok"):
+                    results.append({"path": str(root), "ok": False, "error": staged.get("error")})
+                    continue
+                msg_text = suggest_commit_message(root)
+                committed = git_commit(root, msg_text)
+                if committed.get("ok"):
+                    record_scope_commit(
+                        root=root,
+                        message=str(committed.get("commitMessage") or msg_text),
+                        cwd=rt.cwd,
+                    )
+                results.append(
+                    {
+                        "path": str(root),
+                        "ok": bool(committed.get("ok")),
+                        "message": committed.get("commitMessage") or msg_text,
+                        "error": committed.get("error"),
+                    }
+                )
+            _broadcast_git_summary(rt)
+            return self._send_json({"ok": True, "results": results})
         elif mtype == "runCliCommand":
             from meris.ui.cli_runner import resolve_runnable_cli
 

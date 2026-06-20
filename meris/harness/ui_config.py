@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,7 @@ _MCP_FILE = "mcp-servers.json"
 _SKILL_PREFS_FILE = "skill-prefs.json"
 _ROOTS_FILE = "workspace-roots.json"
 _TASK_SCOPE_FILE = "task-scope.json"
+_GIT_SCOPE_LOG_FILE = "git-scope-log.json"
 _STALE_PYTEST_ROOT = re.compile(r"[/\\]pytest-\d+[/\\]test_[^/\\]+[/\\]", re.I)
 
 
@@ -834,3 +836,49 @@ def task_scope_payload(cwd: Path) -> dict[str, Any]:
         "taskScope": items,
         "taskScopeSelected": sorted(selected_keys),
     }
+
+
+def _git_scope_log_file() -> Path:
+    return _global_ui_dir() / _GIT_SCOPE_LOG_FILE
+
+
+def record_scope_commit(*, root: Path, message: str, cwd: Path) -> None:
+    """Append a commit record for multi-repo ship history."""
+    try:
+        root_key = str(root.expanduser().resolve())
+        cwd_key = str(cwd.expanduser().resolve())
+    except OSError:
+        return
+    p = _git_scope_log_file()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    rows: list[dict[str, Any]] = []
+    if p.is_file():
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                rows = [r for r in data if isinstance(r, dict)]
+        except (json.JSONDecodeError, OSError):
+            rows = []
+    rows.insert(
+        0,
+        {
+            "root": root_key,
+            "cwd": cwd_key,
+            "message": message.strip(),
+            "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        },
+    )
+    p.write_text(json.dumps(rows[:40], ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def load_scope_commits(*, limit: int = 12) -> list[dict[str, Any]]:
+    p = _git_scope_log_file()
+    if not p.is_file():
+        return []
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
+    if not isinstance(data, list):
+        return []
+    return [r for r in data if isinstance(r, dict)][:limit]
