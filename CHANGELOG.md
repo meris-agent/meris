@@ -20,6 +20,8 @@ First PyPI release after **Meris Cloud split** from the open-source monorepo.
 pip install meris-agent==0.0.2
 ```
 
+PyPI ships both **sdist** and **wheel** (`meris_agent-0.0.2-py3-none-any.whl`).
+
 ## 0.0.1
 
 Initial public preview on PyPI (monorepo era, included Cloud extras).
