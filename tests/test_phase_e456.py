@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-import pytest
 
 from meris.harness.guides import build_system_prompt
 from meris.harness.protocol import EventStream

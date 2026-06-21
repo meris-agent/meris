@@ -8,7 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 from meris.native import _binary_source, _bundled_dir, find_native_binary
 

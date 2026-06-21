@@ -74,7 +74,6 @@ def test_install_bundled_skill(workspace) -> None:
 
 
 def test_skill_prefs_roundtrip(workspace) -> None:
-    from meris.harness.ui_config import save_skill_prefs, set_skill_import_source
 
     set_skill_import_source(workspace, str(workspace / "external-skills"))
     prefs = load_skill_prefs(workspace)
@@ -82,7 +81,6 @@ def test_skill_prefs_roundtrip(workspace) -> None:
 
 
 def test_import_skills_from_custom_dir(workspace, tmp_path) -> None:
-    from meris.harness.ui_config import import_skills_from_dir, set_skill_import_source
 
     src = tmp_path / "my-skills"
     src.mkdir()

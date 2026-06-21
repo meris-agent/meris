@@ -734,7 +734,7 @@ def plan_sync_cmd(
     if not isinstance(items, list):
         console.print("[red]items must be a list[/red]")
         raise typer.Exit(1)
-    from meris.harness.plan import parse_plan_checkboxes, sync_plan_items
+    from meris.harness.plan import sync_plan_items
 
     out = sync_plan_items(ws, path, items)
     rel = str(out.relative_to(ws)) if out.is_relative_to(ws) else str(out)

@@ -86,7 +86,7 @@ def test_probe_os_sandbox(workspace: Path) -> None:
 
 
 def test_collect_mask_paths(workspace: Path) -> None:
-    from meris.harness.sandbox import collect_mask_paths, get_mask_secrets
+    from meris.harness.sandbox import collect_mask_paths
 
     (workspace / ".env").write_text("KEY=secret\n", encoding="utf-8")
     settings = {"sandbox": {"maskSecrets": True}}

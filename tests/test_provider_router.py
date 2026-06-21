@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
 
 from meris.harness.paths import HARNESS_DIR
 from meris.provider.router import resolve_task_routing

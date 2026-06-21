@@ -12,9 +12,9 @@ import tempfile
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Union
 
-ApproveFn = Callable[[str, dict], Union[bool, Awaitable[bool]]]
-
 from meris.config import env_get, env_tri
+
+ApproveFn = Callable[[str, dict], Union[bool, Awaitable[bool]]]
 
 
 def _subprocess_run(*popenargs, **kwargs) -> subprocess.CompletedProcess:

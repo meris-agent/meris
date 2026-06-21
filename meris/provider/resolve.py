@@ -6,7 +6,7 @@ import os
 from dataclasses import dataclass
 
 from meris.config import env_get
-from meris.provider.presets import PRESETS, ProviderPreset, get_preset, normalize_preset_id
+from meris.provider.presets import ProviderPreset, get_preset, normalize_preset_id
 
 
 @dataclass

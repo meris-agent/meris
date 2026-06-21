@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from meris.harness.protocol import EventStream
 from meris.parallel import run_parallel
 
 

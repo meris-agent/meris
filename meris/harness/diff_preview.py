@@ -23,7 +23,7 @@ def build_file_change_preview(tool: str, args: dict[str, Any]) -> str:
     if tool == "write_file":
         content = str(args.get("content") or "")
         lines = content.splitlines()
-        body: list[str] = [f"--- /dev/null", f"+++ {path}", "@@ new file @@"]
+        body: list[str] = ["--- /dev/null", f"+++ {path}", "@@ new file @@"]
         for line in lines[:_MAX_LINES]:
             body.append(f"+{line}")
         if len(lines) > _MAX_LINES:

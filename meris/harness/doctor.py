@@ -14,7 +14,6 @@ from meris.harness.sandbox import (
     get_effective_network_mode,
     get_mask_secrets,
     get_network_allowlist,
-    get_network_mode,
     get_os_sandbox_mode,
     get_sandbox_mode,
     get_sandbox_preset,
@@ -111,7 +110,6 @@ def check_harness(workspace: Path) -> list[CheckResult]:
     mode = get_sandbox_mode(settings)
     timeout = get_bash_timeout(settings)
     os_mode = get_os_sandbox_mode(settings)
-    net_mode = get_network_mode(settings)
     eff_net = get_effective_network_mode(settings)
     allowlist = get_network_allowlist(settings)
     preset = get_sandbox_preset(settings)

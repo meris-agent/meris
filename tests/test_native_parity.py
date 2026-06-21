@@ -148,7 +148,6 @@ def test_parity_fixtures_json(workspace: Path) -> None:
         denied = err is not None
         assert denied == case["expect_denied"], case
     for case in data.get("sandbox") or []:
-        from meris.harness.sandbox import check_bash_sandbox
 
         settings = {"sandbox": {"mode": case["mode"]}}
         verdict = check_bash_sandbox(workspace, case["command"], settings)

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from meris.harness.ratchet.analyze import _extract_json_object

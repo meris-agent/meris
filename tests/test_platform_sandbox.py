@@ -10,7 +10,6 @@ from meris.harness.doctor import check_harness
 from meris.harness.sandbox import (
     describe_platform_sandbox,
     format_codex_preset_hint,
-    get_sandbox_preset,
 )
 
 

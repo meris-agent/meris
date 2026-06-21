@@ -7,7 +7,6 @@ from meris.harness.sandbox import (
     check_network_allowlist,
     extract_network_hosts,
     get_effective_network_mode,
-    get_network_allowlist,
     host_allowed,
 )
 
