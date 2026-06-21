@@ -12,7 +12,9 @@ from meris.native import build_native, compress_messages_auto, native_status
 
 def test_brand_doc_exists() -> None:
     root = Path(__file__).resolve().parent.parent
-    assert (root / "BRAND.md").is_file()
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    assert "Meris" in readme
+    assert "meris-agent" in readme or "Harness" in readme
 
 
 def test_meris_rs_manifest() -> None:

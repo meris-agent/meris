@@ -22,7 +22,7 @@ try {
     if ($code -eq 0) {
         Write-Host "Optional: meris doctor --no-probe" -ForegroundColor DarkGray
     }
-    Write-Host "Next: pick 1 real task today (see docs/DOGFOOD_DAILY.md)`n" -ForegroundColor Cyan
+    Write-Host "Next: pick 1 real task today (see docs/README.md)`n" -ForegroundColor Cyan
     exit $code
 } finally {
     Pop-Location

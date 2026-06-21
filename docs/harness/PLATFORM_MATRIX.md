@@ -1,7 +1,7 @@
 # 平台沙箱矩阵（Phase G3 · Codex CLI 对照）
 
 Meris 与 [OpenAI Codex CLI](https://github.com/openai/codex) 在不同操作系统上的沙箱能力对照。  
-配置 preset 见 [sandbox.md](sandbox.md) · 路线图 [PLAN_PHASE_G.md](../PLAN_PHASE_G.md)。
+配置 preset 见 [sandbox.md](sandbox.md)。
 
 ## Preset 映射（全平台一致）
 
@@ -68,5 +68,4 @@ WSL 内安装：`sudo apt install bubblewrap`
 ## 相关
 
 - [sandbox.md](sandbox.md) — 配置与 allowlist
-- [PLAN_PHASE_G.md](../PLAN_PHASE_G.md) — G1–G6 里程碑
 - [USER_SETUP.md](../USER_SETUP.md) — 用户安装

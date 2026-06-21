@@ -209,7 +209,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
             CheckResult(
                 "native loop",
                 "warn",
-                "meris-rs present — add MERIS_NATIVE_LOOP=auto to .env (see ROUTE_B_COMPLETION.md)",
+                "meris-rs present — add MERIS_NATIVE_LOOP=auto to .env (see docs/NATIVE_BINARY.md)",
             )
         )
     elif binary and not native_enabled():

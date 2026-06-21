@@ -3,6 +3,10 @@
 .env.*
 !.env.example
 !.env.baota.example
+meris-cloud/.env
+
+# Private Baota / server one-off scripts (keep in Obsidian vault ops/, not here)
+meris-cloud/scripts/_*
 
 # --- Python ---
 __pycache__/

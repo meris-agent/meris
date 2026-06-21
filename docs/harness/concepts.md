@@ -1,7 +1,7 @@
 # Vibe Coding 概念：工作区、项目、Skill、MCP
 
 > **改 Agent UI / 设置页 / Harness 前先读本文**，避免把 cwd、Skill、MCP 混在同一套文案里。  
-> 与 [routing.md](routing.md)（顶栏下拉 = cwd 路由）、[VISION.md](../../VISION.md)（Harness 分层）配套。
+> 与 [routing.md](routing.md)（顶栏下拉 = cwd 路由）、README North star（Harness 分层）配套。
 
 ## 一张表
 
@@ -44,7 +44,7 @@
 
 ## Harness 分层（进化写在哪）
 
-来自 [VISION.md](../../VISION.md)：
+Harness 分层（摘要）：
 
 | 层 | 路径 | 注入 / 使用 |
 |----|------|-------------|
@@ -110,7 +110,7 @@ Agent 犯错 → **改 Harness 文件**，不是只重试同一句 prompt。
 
 ## Meris Cloud（SaaS）概念映射
 
-公网多租户时，**本地单机概念不变**，但**存储与隔离键**迁移到控制面 + 沙箱 Worker。总规划见 [PLAN_SAAS.md](../PLAN_SAAS.md)；Harness 迁移见 [saas-sandbox.md](saas-sandbox.md)。
+公网多租户时，**本地单机概念不变**，但**存储与隔离键**迁移到控制面 + 沙箱 Worker。Harness 迁移见 [saas-sandbox.md](saas-sandbox.md)。
 
 | 本地（单机 `meris ui`） | Meris Cloud |
 |-------------------------|-------------|
@@ -121,7 +121,7 @@ Agent 犯错 → **改 Harness 文件**，不是只重试同一句 prompt。
 | 左栏 改动 / git ship | 沙箱内 `git_summary` + session git API |
 | VS Code 扩展桥 | 本地产品线；Cloud 用 `cloud-web` |
 
-**禁止混用**：Cloud 不能把 `meris ui` 单进程挂公网——会串会话与配置（见 PLAN_SAAS §2）。
+**禁止混用**：Cloud 不能把 `meris ui` 单进程挂公网——会串会话与配置。
 
 ## UI / 代码待对齐（优化清单）
 
@@ -171,4 +171,4 @@ Agent 犯错 → **改 Harness 文件**，不是只重试同一句 prompt。
 - [routing.md](routing.md) — cwd 与 model 路由
 - [architecture.md](architecture.md) — 包布局
 - `.meris/rules/workspace.md` — vault / meris 双 cwd
-- [PLAN_PHASE_J.md](../PLAN_PHASE_J.md) — 设置中心信息架构
+- [multi-repo.md](multi-repo.md) — 多仓库 task scope

@@ -212,9 +212,9 @@ meris-rs run ask "List top-level files"
 meris-rs run review --staged
 ```
 
-无本地编译时，可从 GitHub Actions **release** workflow 下载各平台 `meris-rs` 二进制。Windows 可运行 `scripts\install_meris_rs_from_ci.ps1`（需 `gh auth login`）。日常 dogfood 见 [ROUTE_B_DOGFOOD.md](ROUTE_B_DOGFOOD.md) · [NATIVE_BINARY.md](NATIVE_BINARY.md)。
+无本地编译时，可从 GitHub Actions **release** workflow 下载各平台 `meris-rs` 二进制。Windows 可运行 `scripts\install_meris_rs_from_ci.ps1`（需 `gh auth login`）。详见 [NATIVE_BINARY.md](NATIVE_BINARY.md)。
 
-详见 [LOCAL_SETUP.md](LOCAL_SETUP.md) · [NATIVE_BINARY.md](NATIVE_BINARY.md) · [PLAN_PHASE_F.md](PLAN_PHASE_F.md) · [RUST_ROADMAP.md](RUST_ROADMAP.md)。
+详见 [LOCAL_SETUP.md](LOCAL_SETUP.md) · [NATIVE_BINARY.md](NATIVE_BINARY.md) · [harness/testing.md](harness/testing.md)。
 
 ---
 
@@ -258,5 +258,5 @@ meris-rs run review --staged
 
 - [MODELS.md](MODELS.md) — 全厂商与自部署  
 - [README.md](../README.md) — 命令表与 Harness 说明  
-- [RATCHET_30MIN.md](RATCHET_30MIN.md) — 进化闭环练手（进阶）  
+- [RATCHET_DESIGN.md](RATCHET_DESIGN.md) — 进化闭环设计（进阶）  
 - [LOCAL_SETUP.md](LOCAL_SETUP.md) — 维护者本机 Rust / VS Code 扩展

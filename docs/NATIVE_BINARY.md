@@ -20,7 +20,7 @@ powershell -ExecutionPolicy Bypass -File scripts\install_meris_rs_from_ci.ps1
 powershell -ExecutionPolicy Bypass -File scripts\install_meris_rs_from_ci.ps1 -CleanDebug
 ```
 
-日常 dogfood 清单见 [ROUTE_B_DOGFOOD.md](ROUTE_B_DOGFOOD.md)。
+日常 dogfood：跑真实小任务 + `meris ratchet scan`，见 [RATCHET_DESIGN.md](RATCHET_DESIGN.md)。
 
 验证：
 
@@ -67,4 +67,4 @@ set MERIS_NATIVE_LOOP=auto
 meris-rs run ask "List top-level files"
 ```
 
-见 [USER_SETUP.md](USER_SETUP.md) · [PLAN_PHASE_F.md](PLAN_PHASE_F.md)
+见 [USER_SETUP.md](USER_SETUP.md) · [harness/testing.md](harness/testing.md)

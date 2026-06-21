@@ -13,7 +13,7 @@ Meris 在 **permissions** 之外增加两层 **sandbox**：
 | workspace-write（Auto 默认） | `workspace-write` |
 | danger-full-access | `danger-full-access` |
 
-显式 `mode` / `network` / `osSandbox` **覆盖** preset。详见 [PLAN_PHASE_G.md](../PLAN_PHASE_G.md)。
+显式 `mode` / `network` / `osSandbox` **覆盖** preset。详见 [sandbox.md](sandbox.md) 与 [PLATFORM_MATRIX.md](PLATFORM_MATRIX.md)。
 
 ## 配置（`.meris/settings.yaml`）
 

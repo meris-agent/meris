@@ -4,7 +4,7 @@
 
 ## 三问
 
-1. **第二次做同类任务会更快吗？**（`VISION.md` 检验）  
+1. **第二次做同类任务会更快吗？**（产品宗旨：进化在 Harness）  
    用户在**同一项目**里重复同类工作时，是否明显省时、少错、少点步骤？
 
 2. **Dogfood 里真的痛过吗？**  
@@ -22,5 +22,5 @@
 
 ## 参考
 
-- 产品宗旨：[VISION.md](../../VISION.md)  
-- Dogfood：[docs/ROUTE_B_DOGFOOD.md](../../docs/ROUTE_B_DOGFOOD.md)
+- 产品宗旨：README North star（详细见私有知识库 `Meris-产品宗旨`）
+- Dogfood：私有知识库 `docs-meris/planning/`

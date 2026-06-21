@@ -4,6 +4,7 @@
 #   powershell -ExecutionPolicy Bypass -File scripts\publish-github.ps1
 param(
     [string]$Tag = "v0.0.1",
+    [string]$NotesFile = "",
     [switch]$SkipAbout,
     [switch]$SkipRelease
 )
@@ -43,8 +44,12 @@ try {
     }
 
     if (-not $SkipRelease) {
-        $notes = Join-Path $Root "docs\RELEASE_v0.0.1.md"
-        if (-not (Test-Path $notes)) { throw "Missing $notes" }
+        if ($NotesFile) {
+            $notes = $NotesFile
+        } else {
+            $notes = Join-Path $Root "README.md"
+        }
+        if (-not (Test-Path $notes)) { throw "Missing release notes file: $notes" }
 
         Write-Step "Create GitHub Release $Tag"
         $existing = gh release view $Tag 2>$null

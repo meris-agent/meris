@@ -57,7 +57,7 @@ meris native status
 | `agent` | M1–M5 loop + session + MCP + hooks/events/plan + system-prompt/review bridges |
 | `run` | `meris-rs run ask|plan|run|review` native entry; else delegates to Python |
 | `review` | via `harness review-task --json` bridge |
-| MCP / TUI / parallel | Python `meris` (see [PLAN_P5_4.md](../docs/PLAN_P5_4.md), [PLAN_PHASE_F.md](../docs/PLAN_PHASE_F.md)) |
+| MCP / TUI / parallel | Python `meris` (see [docs/README.md](../docs/README.md)) |
 | `mcp` | JSONL bridge via `meris mcp serve` (stdio MCP via Python SDK) |
 
-**Docs**: [../docs/LOCAL_SETUP.md](../docs/LOCAL_SETUP.md) · [../docs/RUST_ROADMAP.md](../docs/RUST_ROADMAP.md) · [../docs/PLAN_P5_4.md](../docs/PLAN_P5_4.md)
+**Docs**: [../docs/LOCAL_SETUP.md](../docs/LOCAL_SETUP.md) · [../docs/NATIVE_BINARY.md](../docs/NATIVE_BINARY.md) · [../docs/README.md](../docs/README.md)

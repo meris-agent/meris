@@ -41,4 +41,4 @@ meris exec "task" --json                   # 内存收集 + JSON 摘要
 ## 相关
 
 - 实现：`meris/harness/protocol.py`
-- Codex 对照：[PLAN_PHASE_E.md](../PLAN_PHASE_E.md) E4
+- Codex 对照：events 与 session 路由见 [adr/001-session-event-routing.md](../adr/001-session-event-routing.md)

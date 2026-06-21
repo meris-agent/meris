@@ -11,7 +11,7 @@ def test_dogfood_check_ok_repo(tmp_path) -> None:
     (h / "settings.json").write_text("{}", encoding="utf-8")
     docs = tmp_path / "docs"
     docs.mkdir()
-    (docs / "DOGFOOD_DAILY.md").write_text("# daily\n", encoding="utf-8")
+    (docs / "README.md").write_text("# docs\n", encoding="utf-8")
     (docs / "harness").mkdir()
     (docs / "harness" / "README.md").write_text("# h\n", encoding="utf-8")
 
@@ -34,7 +34,7 @@ def test_dogfood_warns_open_session(tmp_path) -> None:
     docs = tmp_path / "docs" / "harness"
     docs.mkdir(parents=True)
     (docs / "README.md").write_text("# h\n", encoding="utf-8")
-    (tmp_path / "docs" / "DOGFOOD_DAILY.md").write_text("# d\n", encoding="utf-8")
+    (tmp_path / "docs" / "README.md").write_text("# d\n", encoding="utf-8")
 
     rows = run_dogfood_check(tmp_path)
     prog = next(r for r in rows if r.name == "progress-sessions")

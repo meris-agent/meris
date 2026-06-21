@@ -1,6 +1,6 @@
 # Meris Ratchet — 自我进化设计
 
-> 状态：**MVP 已实现**（`meris ratchet scan|list|show|review|apply|revert`）· 对应宗旨 [VISION.md](../VISION.md)  
+> 状态：**MVP 已实现**（`meris ratchet scan|list|show|review|apply|revert`）· 进化写在 Harness（见 README North star）  
 > 目标：把「人工改 Harness」变成 **可重复、可验证、半自动** 的闭环。
 
 ---
@@ -377,7 +377,5 @@ meris/cli.py        # ratchet 子命令组
 
 ## 13. 相关文档
 
-- [VISION.md](../VISION.md) — 产品宗旨  
-- [RATCHET_30MIN.md](RATCHET_30MIN.md) — **30 分钟闭环清单**（scan/analyze → review → apply --verify → benchmark）  
-- [DOGFOOD_7DAY.md](DOGFOOD_7DAY.md) — 手工 Ratchet 样例  
-- [ROADMAP.md](../ROADMAP.md) — 排期  
+- [harness/testing.md](harness/testing.md) — pytest 与 benchmark
+- [docs/README.md](README.md) — 文档索引  

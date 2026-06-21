@@ -41,12 +41,12 @@ def run_dogfood_check(cwd: Path) -> list[DogfoodResult]:
     else:
         rows.append(DogfoodResult("progress-sessions", "warn", "PROGRESS.md missing"))
 
-    guide = ws / "docs" / "DOGFOOD_DAILY.md"
+    guide = ws / "docs" / "README.md"
     rows.append(
         DogfoodResult(
-            "dogfood-guide",
+            "docs-index",
             "ok" if guide.is_file() else "warn",
-            "docs/DOGFOOD_DAILY.md present" if guide.is_file() else "missing dogfood guide",
+            "docs/README.md present" if guide.is_file() else "missing docs/README.md",
         )
     )
 

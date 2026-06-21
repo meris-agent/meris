@@ -17,8 +17,8 @@
 |------|------|
 | `README.md` | 对外说明（**cwd 在本仓库时不要用 `meris/README.md`**） |
 | `AGENTS.md` | Agent 地图（本目录的索引） |
-| `PROGRESS.md` | 跨会话进度 |
-| `VISION.md` / `ROADMAP.md` | 产品宗旨与路线 |
+| `PROGRESS.md` | 跨会话进度（各用户项目根目录） |
+| README / `docs/README.md` | 产品宗旨摘要与文档索引 |
 
 ## 路径与 import
 

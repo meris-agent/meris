@@ -151,7 +151,7 @@ powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1
 
 ## 相关文档
 
-- [RUST_ROADMAP.md](RUST_ROADMAP.md) — Rust 移植阶段规划
+- [NATIVE_BINARY.md](NATIVE_BINARY.md) — Rust 二进制与 CI 安装
 - [../meris-rs/README.md](../meris-rs/README.md) — crate 说明
 - [../extensions/vscode-meris/README.md](../extensions/vscode-meris/README.md) — 扩展详情
 - [../README.md](../README.md) — 项目总览

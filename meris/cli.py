@@ -285,7 +285,7 @@ def doctor_cmd(
 def dogfood_cmd(
     cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
 ) -> None:
-    """Daily dogfood readiness (PROGRESS · harness · env). See docs/DOGFOOD_DAILY.md."""
+    """Daily dogfood readiness (PROGRESS · harness · env). See docs/README.md."""
     from meris.harness.dogfood import dogfood_check_failed, run_dogfood_check
 
     results = run_dogfood_check(cwd.resolve())
@@ -294,7 +294,7 @@ def dogfood_cmd(
         style = {"ok": "green", "warn": "yellow", "fail": "red"}.get(r.status, "white")
         table.add_row(r.name, f"[{style}]{r.status}[/{style}]", r.detail[:80])
     console.print(table)
-    console.print("[dim]Next: pick 1 real task — docs/DOGFOOD_DAILY.md[/dim]")
+    console.print("[dim]Next: pick 1 real task — docs/README.md · docs/RATCHET_DESIGN.md[/dim]")
     if dogfood_check_failed(results):
         raise typer.Exit(1)
 
@@ -605,7 +605,7 @@ def init_harness(
         console.print(f"[green]Created[/green] {env_file} (MERIS_NATIVE_LOOP=auto — edit API key)")
 
     console.print("[bold]Harness initialized.[/bold] Edit AGENTS.md for your stack.")
-    console.print("[dim]Next: meris ratchet learn --init · Route B: docs/ROUTE_B_COMPLETION.md[/dim]")
+    console.print("[dim]Next: meris ratchet learn --init · docs/RATCHET_DESIGN.md[/dim]")
 
 
 @spec_app.command("init")
@@ -1136,7 +1136,7 @@ def release_check_cmd(
         table.add_row(c.name, f"[{style}]{c.status}[/{style}]", c.detail[:70])
     console.print(table)
     if release_ready(checks):
-        console.print("\n[green]Ready to tag[/green] — see docs/RELEASE_v0.0.2.md")
+        console.print("\n[green]Ready to tag[/green] — see README and docs/harness/testing.md")
     else:
         console.print("\n[red]Fix failed checks before release[/red]")
         raise typer.Exit(1)

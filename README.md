@@ -6,7 +6,7 @@ Model-agnostic terminal coding agent — **Harness-first**, inspired by AtomCode
 Agent = Model + Harness
 ```
 
-**North star**: a **self-evolving** coding agent — the more you use it in a project, the better it fits your repo and habits. Evolution lives in the Harness (rules, skills, sessions), not in hoping the model remembers. See [VISION.md](VISION.md).
+**North star**: a **self-evolving** coding agent — the more you use it in a project, the better it fits your repo and habits. Evolution lives in the Harness (rules, skills, sessions), not in hoping the model remembers.
 
 Meris ships a lean CLI (`meris`) plus a **Harness** layer you control: `AGENTS.md`, permissions, hooks, and Definition-of-Done sensors. Bring your own LLM (OpenAI-compatible or Anthropic).
 
@@ -248,7 +248,7 @@ Env: `MERIS_TOOL_NAME`, `MERIS_TOOL_ARGS`, `MERIS_TOOL_RESULT`, `MERIS_HOOK_PHAS
 | Component | Docs |
 |-----------|------|
 | VS Code / Cursor extension | [`extensions/vscode-meris/`](extensions/vscode-meris/) · [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
-| Rust core (`meris-rs`) | [RUST_ROADMAP](docs/RUST_ROADMAP.md) · `meris native build` · auto native when binary present |
+| Rust core (`meris-rs`) | `meris native build` · [NATIVE_BINARY](docs/NATIVE_BINARY.md) · auto native when binary present |
 
 Windows one-shot dev setup: `powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1`
 
@@ -256,12 +256,12 @@ Windows one-shot dev setup: `powershell -ExecutionPolicy Bypass -File scripts\se
 
 | Topic | Link |
 |-------|------|
-| **Vision — self-evolving agent** | [VISION.md](VISION.md) |
+| **Documentation index** | [docs/README.md](docs/README.md) |
 | **Ratchet (`meris ratchet scan`)** | [docs/RATCHET_DESIGN.md](docs/RATCHET_DESIGN.md) |
-| Roadmap & release phases (P1–P5, Phase A–D) | [ROADMAP.md](ROADMAP.md) |
-| Brand & naming | [BRAND.md](BRAND.md) |
-| 7-day dogfood / Ratchet | [docs/DOGFOOD_7DAY.md](docs/DOGFOOD_7DAY.md) |
+| Harness architecture | [docs/harness/architecture.md](docs/harness/architecture.md) |
 | Publish to PyPI | `scripts/publish-pypi.ps1` |
+
+**Naming**: **Meris** · CLI `meris` · PyPI `meris-agent` · env `MERIS_*` · Harness dir `.meris/`
 
 **Repo layout:**
 
