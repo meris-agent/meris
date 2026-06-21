@@ -103,7 +103,7 @@ Linux 以外，macOS 通过 `/usr/bin/sandbox-exec` 执行 bash（`osSandbox: au
 | `workspace-write` | workspace + `/private/tmp` 可写 |
 | `danger-full-access` | `osSandbox: off`，不启用 |
 
-`network: isolated` 时在 SBPL 中加入 `(deny network*)`。详见 [G6_MACOS_SANDBOX.md](../spikes/G6_MACOS_SANDBOX.md) 与 [SEATBELT_DESIGN.md](SEATBELT_DESIGN.md)。
+`network: isolated` 时在 SBPL 中加入 `(deny network*)`。详见 [SEATBELT_DESIGN.md](SEATBELT_DESIGN.md)。
 
 ## Phase G6.3 — allowlist / maskSecrets 对齐
 

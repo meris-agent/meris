@@ -17,10 +17,16 @@
 | 文档 | 说明 |
 |------|------|
 | [harness/concepts.md](harness/concepts.md) | 工作区、项目、Skill、MCP |
+| [harness/multi-repo.md](harness/multi-repo.md) | 多仓库 task scope |
+| [harness/git-workflow.md](harness/git-workflow.md) | Agent Window 改动 / Commit 流程 |
 | [harness/architecture.md](harness/architecture.md) | 包布局、CLI |
-| [harness/testing.md](harness/testing.md) | pytest、DoD |
+| [harness/routing.md](harness/routing.md) | 模型路由、local 覆盖 |
+| [harness/testing.md](harness/testing.md) | pytest、DoD、benchmark |
 | [harness/plan-format.md](harness/plan-format.md) | Plan `- [ ]` 格式 |
-| [harness/sandbox.md](harness/sandbox.md) | Bash 沙箱 |
+| [harness/sandbox.md](harness/sandbox.md) | Bash 沙箱 preset / allowlist |
+| [harness/PLATFORM_MATRIX.md](harness/PLATFORM_MATRIX.md) | 各 OS 沙箱能力对照 |
+| [harness/SEATBELT_DESIGN.md](harness/SEATBELT_DESIGN.md) | macOS Seatbelt 设计 |
+| [harness/events.md](harness/events.md) | Loop JSONL 事件流 |
 | [harness/saas-sandbox.md](harness/saas-sandbox.md) | Cloud 沙箱与 Harness 映射 |
 
 ## 功能设计
@@ -35,10 +41,11 @@
 | 文档 | 说明 |
 |------|------|
 | [cloud/deploy-baota.md](cloud/deploy-baota.md) | 宝塔单机部署 |
-| [cloud/runbook.md](cloud/runbook.md) | 运维 |
+| [cloud/runbook.md](cloud/runbook.md) | 运维 on-call |
 | [cloud/dr.md](cloud/dr.md) | 备份与 DR |
+| [cloud/regions.md](cloud/regions.md) | 区域部署与数据驻留 |
 | [cloud/threat-model.md](cloud/threat-model.md) | 威胁模型 |
-| [cloud/compliance.md](cloud/compliance.md) | 合规 |
+| [cloud/compliance.md](cloud/compliance.md) | 合规路线图 |
 
 ## 其他
 

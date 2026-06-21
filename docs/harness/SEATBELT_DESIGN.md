@@ -67,4 +67,4 @@ CI：`macos-seatbelt` job 与 Linux bwrap job 对等（mask / write-outside / al
 ## 相关
 
 - [sandbox.md](sandbox.md)
-- [G6_MACOS_SANDBOX.md](../spikes/G6_MACOS_SANDBOX.md)
+- [PLATFORM_MATRIX.md](PLATFORM_MATRIX.md)

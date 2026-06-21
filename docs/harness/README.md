@@ -13,5 +13,8 @@
 | [sandbox.md](sandbox.md) | bash 沙箱 mode、超时、平台说明 |
 | [events.md](events.md) | Loop JSONL 事件、`meris exec --json` |
 | [saas-sandbox.md](saas-sandbox.md) | **公网 SaaS 可写沙箱**（Harness/UI 迁移） |
+| [git-workflow.md](git-workflow.md) | Agent Window 改动面板与 Commit |
+| [PLATFORM_MATRIX.md](PLATFORM_MATRIX.md) | 各 OS 沙箱矩阵（Codex 对照） |
+| [SEATBELT_DESIGN.md](SEATBELT_DESIGN.md) | macOS Seatbelt 程序化策略 |
 
 自动注入的短规则仍在 `.meris/rules/*.md`（`inject: always`）。其它 rules 见 system prompt 里的 **Rules index**。

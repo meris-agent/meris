@@ -74,5 +74,4 @@ models:
 
 ## 相关
 
-- [architecture.md](architecture.md) — 包布局  
-- [Meris Agent 设计模式对照](../../Articles/Meris-Agent设计模式对照.md)（vault 笔记）
+- [architecture.md](architecture.md) — 包布局

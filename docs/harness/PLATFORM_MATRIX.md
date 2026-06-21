@@ -60,7 +60,7 @@ WSL 内安装：`sudo apt install bubblewrap`
 
 ## 与 Codex 仍存在的差距
 
-1. **macOS Seatbelt** — G6.2 MVP（`read-only` / `workspace-write`）；TCC 扩展见 [G6_MACOS_SANDBOX.md](../spikes/G6_MACOS_SANDBOX.md)
+1. **macOS Seatbelt** — G6.2 MVP（`read-only` / `workspace-write`）；TCC 扩展见 [SEATBELT_DESIGN.md](SEATBELT_DESIGN.md)
 2. **Windows 原生 OS 沙箱** — 推荐 WSL；无 AppContainer 集成
 3. **network allowlist** — 命令级，非代理级
 4. **安装** — Codex npm/brew vs Meris pip（G5 待发 PyPI）
