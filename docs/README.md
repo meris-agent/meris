@@ -1,13 +1,15 @@
 # Meris 文档
 
-面向**用户与贡献者**的公开文档。维护者规划、进度、发版清单在 Obsidian 知识库 `docs-meris/`（不在本仓库）。
+面向**用户与贡献者**的公开文档。维护者进度、Phase 规划、Cloud GA/合规 backlog 在 Obsidian 知识库（不在本仓库）。
+
+**新用户**：从 [USER_SETUP.md](USER_SETUP.md) 开始。
 
 ## 入门
 
 | 文档 | 说明 |
 |------|------|
 | [USER_SETUP.md](USER_SETUP.md) | 安装、API Key、`init-harness` |
-| [LOCAL_SETUP.md](LOCAL_SETUP.md) | 扩展、Rust 本机构建 |
+| [LOCAL_SETUP.md](LOCAL_SETUP.md) | 扩展、Rust 本机构建（贡献者） |
 | [MODELS.md](MODELS.md) | 多厂商模型路由 |
 
 ## Harness（Agent 机制）
@@ -18,7 +20,7 @@
 |------|------|
 | [harness/concepts.md](harness/concepts.md) | 工作区、项目、Skill、MCP |
 | [harness/multi-repo.md](harness/multi-repo.md) | 多仓库 task scope |
-| [harness/git-workflow.md](harness/git-workflow.md) | Agent Window 改动 / Commit 流程 |
+| [harness/git-workflow.md](harness/git-workflow.md) | Agent Window 改动 / Commit |
 | [harness/architecture.md](harness/architecture.md) | 包布局、CLI |
 | [harness/routing.md](harness/routing.md) | 模型路由、local 覆盖 |
 | [harness/testing.md](harness/testing.md) | pytest、DoD、benchmark |
@@ -38,14 +40,14 @@
 
 ## Meris Cloud（自建）
 
+索引：[cloud/README.md](cloud/README.md)
+
 | 文档 | 说明 |
 |------|------|
 | [cloud/deploy-baota.md](cloud/deploy-baota.md) | 宝塔单机部署 |
 | [cloud/runbook.md](cloud/runbook.md) | 运维 on-call |
 | [cloud/dr.md](cloud/dr.md) | 备份与 DR |
-| [cloud/regions.md](cloud/regions.md) | 区域部署与数据驻留 |
 | [cloud/threat-model.md](cloud/threat-model.md) | 威胁模型 |
-| [cloud/compliance.md](cloud/compliance.md) | 合规路线图 |
 
 ## 其他
 
