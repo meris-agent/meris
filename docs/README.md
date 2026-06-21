@@ -1,8 +1,16 @@
 # Meris 文档
 
-面向**用户与贡献者**的公开文档。维护者规划与 Cloud 产品在私有知识库 / 闭源仓库（不在本仓库）。
+面向**用户与贡献者**的公开文档。维护者规划（Roadmap、Phase 勾选、Dogfood 日志）在 Obsidian 知识库 `docs-meris/`，不在本仓库。
 
 **新用户**：从 [USER_SETUP.md](USER_SETUP.md) 开始。
+
+## 读者分层
+
+| 层级 | 文档 | 说明 |
+|------|------|------|
+| **用户** | USER_SETUP、MODELS、harness/concepts、plan-format | 安装、日常用法、概念 |
+| **进阶** | RATCHET_DESIGN、sandbox、events | 设计原理；无 MVP/P1 进度表 |
+| **贡献者** | LOCAL_SETUP、testing、architecture、SEATBELT_DESIGN | 本机构建、pytest、实现细节 |
 
 ## 入门
 
@@ -34,7 +42,7 @@
 
 | 文档 | 说明 |
 |------|------|
-| [RATCHET_DESIGN.md](RATCHET_DESIGN.md) | Ratchet 自我进化 |
+| [RATCHET_DESIGN.md](RATCHET_DESIGN.md) | Ratchet 设计原理（进阶，非进度表） |
 | [NATIVE_BINARY.md](NATIVE_BINARY.md) | `meris-rs` 与 native loop |
 
 ## Meris Cloud

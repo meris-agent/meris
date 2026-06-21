@@ -1,4 +1,6 @@
-# Obsidian Vault — 进度（示例）
+# Obsidian Vault — 进度（**示例模板**）
+
+> 这是给用户项目用的 `PROGRESS.md` **样例**，不是 Meris 开源仓库自身的开发进度。
 
 ## 已完成
 

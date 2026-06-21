@@ -258,5 +258,5 @@ meris-rs run review --staged
 
 - [MODELS.md](MODELS.md) — 全厂商与自部署  
 - [README.md](../README.md) — 命令表与 Harness 说明  
-- [RATCHET_DESIGN.md](RATCHET_DESIGN.md) — 进化闭环设计（进阶）  
+- [RATCHET_DESIGN.md](RATCHET_DESIGN.md) — Ratchet 设计原理（进阶；命令见 README）
 - [LOCAL_SETUP.md](LOCAL_SETUP.md) — 维护者本机 Rust / VS Code 扩展

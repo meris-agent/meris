@@ -112,46 +112,6 @@ Agent 犯错 → **改 Harness 文件**，不是只重试同一句 prompt。
 
 **Meris Cloud** 为闭源公网 SaaS，不在本仓库。本地使用 `meris ui` / VS Code 扩展；勿将单机 UI 进程直接暴露公网（会串会话）。托管版见 [CLOUD.md](../../CLOUD.md)。
 
-## UI / 代码待对齐（优化清单）
-
-按优先级：
-
-### P0 — 概念与文案
-
-- [x] 本文 `concepts.md` 入库
-- [x] 设置页 Harness 相关分类顶栏显示 **当前项目根**（`cwd`）
-- [x] 技能 API `source: "installed"`（替代易混淆的 `workspace`）
-- [x] 设置导航「技能与命令」→ **「技能」**（命令已有独立页）
-- [x] 切换顶栏 cwd 时，设置页 Skill/MCP/规则 **自动刷新**
-- [x] MCP：文档统一 UI 用 `mcp-servers.json` 与 `settings.yaml` 的优先级说明
-- [x] 导入配置页与 Skill 导入职责分离（外部工具配置 vs `.meris/skills/`）
-
-### P2 — 产品对标
-
-- [x] 可选「全局 Skill」：`~/.meris/skills/`（TRAE Global）
-- [x] Composer 显示当前 cwd 短标签（除下拉外）
-
-### 后续抛光（2026-06）
-
-- [x] VS Code 扩展 MCP 双源 parity（`settings.yaml` 与 UI JSON 一致展示）
-- [x] MCP「从 settings.yaml 迁移到 UI」按钮
-- [x] 全局 Skill 创建/编辑/模板安装到全局
-- [x] Composer `@` 按「当前项目 / 全局」分组
-- [x] 技能卡片「全局」标签
-- [x] 导入配置支持自定义 MCP 文件 / 规则目录
-- [x] 技能页「从 .cursor/skills」一键导入
-- [x] 移除前端 `source: workspace` 遗留兼容
-- [x] 左栏仅显示**当前项目**文件树；Skill / `.system` 路径不得进入项目列表
-- [x] 左栏「本次涉及」task scope 勾选 + Composer 范围 chips / prompt 前缀
-- [x] 文档 [multi-repo.md](multi-repo.md) + Skill `multi-repo-workflow`
-- [x] 左栏 **改动** git 摘要 + Stage/Commit + 提交全部 · [git-workflow.md](git-workflow.md) · Skill `git-ship`
-- [x] Parallel **--isolate** worktree 勾选（run 模式）
-
-### 故意不做
-
-- 不把 Skill 放进 workspace roots 列表
-- 不在 Composer 内重配 MCP/Skill（J3.4 已移除）
-
 ## 相关
 
 - [multi-repo.md](multi-repo.md) — task scope 与跨项目流程

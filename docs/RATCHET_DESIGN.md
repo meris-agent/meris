@@ -1,7 +1,8 @@
 # Meris Ratchet — 自我进化设计
 
-> 状态：**MVP 已实现**（`meris ratchet scan|list|show|review|apply|revert`）· 进化写在 Harness（见 README North star）  
-> 目标：把「人工改 Harness」变成 **可重复、可验证、半自动** 的闭环。
+> **读者**：想理解 Ratchet 如何工作的用户与贡献者。  
+> **怎么用**：见 [README](../README.md) 的 Ratchet 命令表与 [USER_SETUP.md](USER_SETUP.md)。  
+> 维护者实现进度见私有知识库 `docs-meris/planning/RATCHET_ROADMAP.md`（不进公开仓）。
 
 ---
 
@@ -70,7 +71,7 @@ Ratchet 消费 **结构化信号**，不是扫描整个 git history。
 ├── events.jsonl      # 追加-only 事件流
 ├── proposals/        # 待审补丁 YAML/MD
 ├── applied/          # 已应用补丁归档
-└── profile.md        # 可选：用户习惯摘要（P1）
+└── profile.md        # 可选：用户习惯摘要
 ```
 
 **events.jsonl** 单行 JSON 示例：
@@ -221,7 +222,7 @@ meris ratchet analyze --last-fail
 
 ---
 
-## 7. 用户习惯层（Profile）— P1
+## 7. 用户习惯层（Profile）
 
 `.meris/profile.md`（注入 system prompt，在 rules 之后）：
 
@@ -242,7 +243,7 @@ meris ratchet analyze --last-fail
 
 ---
 
-## 8. 项目画像（Project learn）— P1
+## 8. 项目画像（Project learn）
 
 ```bash
 meris ratchet learn --init
@@ -258,7 +259,7 @@ meris ratchet learn --init
 
 ---
 
-## 8′. 主动进化（Digest / Insights）— P1.5
+## 8′. 主动进化（Digest / Insights）
 
 与 §3–§6 **被动 Ratchet**（失败 → scan/analyze → proposal）**并存**，不替代：
 
@@ -303,11 +304,11 @@ meris/harness/ratchet/
 ├── proposal.py     # Proposal dataclass, load/save yaml
 ├── apply.py        # 白名单写入 + 备份
 ├── scan.py         # scan → proposals
-├── profile.py      # profile.md（P1）
-├── learn.py        # project scan（P1）
-├── insights.py     # insight jsonl（P1.5）
-├── digest.py       # session 习惯挖掘（P1.5）
-└── digest_llm.py   # digest LLM 档（P1.5）
+├── profile.py      # profile.md
+├── learn.py        # project scan
+├── insights.py     # insight jsonl
+├── digest.py       # session 习惯挖掘
+└── digest_llm.py   # digest LLM 档
 
 meris/cli.py        # ratchet 子命令组
 ```
@@ -324,36 +325,9 @@ meris/cli.py        # ratchet 子命令组
 
 ---
 
-## 10. 分阶段交付
+## 10. 当前能力（摘要）
 
-### MVP（v0.1.x）— 已完成
-
-- [x] `events.jsonl` 写入（dod_failed, error, benchmark_fail）
-- [x] `meris ratchet scan` + 内置规则（L-path / L-format / L-cwd）
-- [x] `list` / `show` / `review` / `apply` / `revert`（`.meris/rules|skills` append）
-- [x] `meris benchmark run --filter <id>`
-- [x] `apply --verify`（调用 benchmark 子集）
-- [x] 单测：`tests/test_ratchet.py`
-
-**验收**：`plan_smoke` fail → `meris ratchet scan` → `meris ratchet apply <id>` → benchmark 绿。
-
-### P1 — 部分已做
-
-- [x] approve_denied / permission_denied 事件
-- [x] PROGRESS `## Ratchet 摘要` + `load_progress_for_prompt`
-- [x] apply 时种子模板（`templates/rules|skills`）
-- [x] `meris ratchet status` / `reject`
-- [x] `ratchet learn --init`
-- [x] profile.md 习惯层 + `meris ratchet profile`
-- [x] `run|ask|plan --ratchet` 跑完后 profile + scan
-- [x] **Digest / Insights**（主动习惯挖掘 + `insights review` → 复用 apply 链）
-
-### P2 — 部分已做
-
-- [x] `ratchet analyze` / `--last-fail` / `--dry-run`（LLM → JSON proposals）
-- [x] AGENTS.md section patch（`patch_section` + `--force-agents`）
-- [x] `settings.*` 提案（`--force-settings`）
-- [x] TUI：`Ratchet` 面板审阅 pending
+Ratchet 已包含：**被动**（失败/拒绝 → scan/analyze → 提案 → 人审 → apply/revert）与 **主动**（digest → insights review）两条链；支持 profile、learn、benchmark 验证、TUI 审阅。完整命令见 [README](../README.md#workflows)。
 
 ---
 
@@ -366,16 +340,7 @@ meris/cli.py        # ratchet 子命令组
 
 ---
 
-## 12. 开放问题
-
-1. **LLM 提案 vs 纯规则**：MVP 纯规则；analyze 是否默认 ask 模式只读？
-2. **PROGRESS 冲突**：多人 append 摘要 — 是否用 `<!-- ratchet -->` 区块合并？
-3. **Benchmark 作为 gate**：apply 失败是否自动 `revert`？
-4. **PyPI 用户**：无 benchmark 任务文件时 verify 降级为 `meris doctor`？
-
----
-
-## 13. 相关文档
+## 12. 相关文档
 
 - [harness/testing.md](harness/testing.md) — pytest 与 benchmark
 - [docs/README.md](README.md) — 文档索引  

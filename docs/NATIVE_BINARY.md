@@ -1,6 +1,6 @@
 # 下载 meris-rs 预编译二进制（无 tag）
 
-> Phase F3-M1 · 不打 tag 也可手动构建
+> 维护者/贡献者：从 CI 或本地编译安装 native 二进制。
 
 ## 方式 A — GitHub Actions（推荐）
 
@@ -20,7 +20,7 @@ powershell -ExecutionPolicy Bypass -File scripts\install_meris_rs_from_ci.ps1
 powershell -ExecutionPolicy Bypass -File scripts\install_meris_rs_from_ci.ps1 -CleanDebug
 ```
 
-日常 dogfood：跑真实小任务 + `meris ratchet scan`，见 [RATCHET_DESIGN.md](RATCHET_DESIGN.md)。
+日常用法：跑任务后 `meris ratchet scan`，见 [RATCHET_DESIGN.md](RATCHET_DESIGN.md) 与 README。
 
 验证：
 
