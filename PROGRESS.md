@@ -108,15 +108,15 @@
 - [x] E4 CLI/SDK：`usage`、`regions`、`members`、`shares`、`billing`
 - [x] E5 `GET /v1/regions` + org region 校验 + [regions.md](docs/cloud/regions.md) checklist
 
-**S6 合规路线 A→E 已全部落地**；后续为生产渗透测试与 GA 运维。
+**S6 合规路线 A→E 已全部落地**；当前推进 **批次 F（GA）**，见 [docs/cloud/GA.md](docs/cloud/GA.md)。
 
-**批次 D（生产运维与安全）** — 见 [docs/cloud/ROADMAP.md](docs/cloud/ROADMAP.md)
+**批次 F（GA 上线前）**
 
-- [x] D1 `load_test_sessions.py`（100 session 压测 + CI workflow_dispatch smoke）
-- [x] D2 ServiceMonitor 默认开启 + `meris_cloud_http_requests_total`
-- [x] D3 `X-Trace-Id` / W3C traceparent + 可选 OTLP；audit `meta.trace_id`
-- [x] D4 `security_checklist.py` + Helm `security.*`（non-root、只读根 FS、gVisor runtimeClass）
-- [x] D5 `audit_worm_etl.py` → 日 JSONL + 可选 S3（[dr.md](docs/cloud/dr.md)）
+- [x] F0 Git Ship / VS Code / `meris ui`（工作区未提交）
+- [x] F1 `smoke_stack.py` + `meris cloud smoke`
+- [x] F2 OpenAPI `1.0.0` + `ga_checklist.py` + CI job
+- [ ] F3 Staging 100 session / 渗透 / 真环境集成
+- [ ] F4 Dogfood / PyPI
 
 **Cloud 待办（后续批次）**
 
