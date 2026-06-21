@@ -108,20 +108,9 @@ Agent 犯错 → **改 Harness 文件**，不是只重试同一句 prompt。
 
 详见 [multi-repo.md](multi-repo.md)。
 
-## Meris Cloud（SaaS）概念映射
+## Meris Cloud
 
-公网多租户时，**本地单机概念不变**，但**存储与隔离键**迁移到控制面 + 沙箱 Worker。Harness 迁移见 [saas-sandbox.md](saas-sandbox.md)。
-
-| 本地（单机 `meris ui`） | Meris Cloud |
-|-------------------------|-------------|
-| 顶栏 cwd / `workspace-roots.json` | `workspace_id` + 沙箱内 `/workspace` |
-| 项目 Harness（`.meris/`） | 仍在**用户仓库**内；clone 进沙箱 FS |
-| `~/.meris/ui/task-scope.json` | `session.scope_paths`（DB） |
-| 全局 SSE `ui_broadcast` | `GET /v1/sessions/{id}/events`（仅本会话） |
-| 左栏 改动 / git ship | 沙箱内 `git_summary` + session git API |
-| VS Code 扩展桥 | 本地产品线；Cloud 用 `cloud-web` |
-
-**禁止混用**：Cloud 不能把 `meris ui` 单进程挂公网——会串会话与配置。
+**Meris Cloud** 为闭源公网 SaaS，不在本仓库。本地使用 `meris ui` / VS Code 扩展；勿将单机 UI 进程直接暴露公网（会串会话）。托管版见 [CLOUD.md](../../CLOUD.md)。
 
 ## UI / 代码待对齐（优化清单）
 
@@ -167,7 +156,6 @@ Agent 犯错 → **改 Harness 文件**，不是只重试同一句 prompt。
 
 - [multi-repo.md](multi-repo.md) — task scope 与跨项目流程
 - [git-workflow.md](git-workflow.md) — 改动面板与 Ship 流程
-- [saas-sandbox.md](saas-sandbox.md) — 公网 SaaS 可写沙箱（概念映射）
 - [routing.md](routing.md) — cwd 与 model 路由
 - [architecture.md](architecture.md) — 包布局
 - `.meris/rules/workspace.md` — vault / meris 双 cwd

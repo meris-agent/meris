@@ -260,6 +260,7 @@ Windows one-shot dev setup: `powershell -ExecutionPolicy Bypass -File scripts\se
 | **Ratchet (`meris ratchet scan`)** | [docs/RATCHET_DESIGN.md](docs/RATCHET_DESIGN.md) |
 | Harness architecture | [docs/harness/architecture.md](docs/harness/architecture.md) |
 | Publish to PyPI | `scripts/publish-pypi.ps1` |
+| **Meris Cloud (hosted SaaS)** | Proprietary — see [CLOUD.md](CLOUD.md) |
 
 **Naming**: **Meris** · CLI `meris` · PyPI `meris-agent` · env `MERIS_*` · Harness dir `.meris/`
 

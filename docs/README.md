@@ -1,6 +1,6 @@
 # Meris 文档
 
-面向**用户与贡献者**的公开文档。维护者进度、Phase 规划、Cloud GA/合规 backlog 在 Obsidian 知识库（不在本仓库）。
+面向**用户与贡献者**的公开文档。维护者规划与 Cloud 产品在私有知识库 / 闭源仓库（不在本仓库）。
 
 **新用户**：从 [USER_SETUP.md](USER_SETUP.md) 开始。
 
@@ -29,7 +29,6 @@
 | [harness/PLATFORM_MATRIX.md](harness/PLATFORM_MATRIX.md) | 各 OS 沙箱能力对照 |
 | [harness/SEATBELT_DESIGN.md](harness/SEATBELT_DESIGN.md) | macOS Seatbelt 设计 |
 | [harness/events.md](harness/events.md) | Loop JSONL 事件流 |
-| [harness/saas-sandbox.md](harness/saas-sandbox.md) | Cloud 沙箱与 Harness 映射 |
 
 ## 功能设计
 
@@ -38,22 +37,14 @@
 | [RATCHET_DESIGN.md](RATCHET_DESIGN.md) | Ratchet 自我进化 |
 | [NATIVE_BINARY.md](NATIVE_BINARY.md) | `meris-rs` 与 native loop |
 
-## Meris Cloud（自建）
+## Meris Cloud
 
-索引：[cloud/README.md](cloud/README.md)
-
-| 文档 | 说明 |
-|------|------|
-| [cloud/deploy-baota.md](cloud/deploy-baota.md) | 宝塔单机部署 |
-| [cloud/runbook.md](cloud/runbook.md) | 运维 on-call |
-| [cloud/dr.md](cloud/dr.md) | 备份与 DR |
-| [cloud/threat-model.md](cloud/threat-model.md) | 威胁模型 |
+**Meris Cloud（浏览器 SaaS）为闭源产品**，不包含在本仓库。本地 Agent 使用见上文；托管版见 [CLOUD.md](../CLOUD.md)。
 
 ## 其他
 
 | 文档 | 说明 |
 |------|------|
-| [adr/](adr/) | 架构决策记录 |
 | [examples/ainote-vault/](examples/ainote-vault/) | Obsidian vault 示例 Harness |
 
 ## 品牌与宗旨（摘要）

@@ -14,7 +14,6 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from meris.cloud.cli import cloud_app
 from meris.env import load_env
 from meris.harness.paths import harness_root
 from meris.harness.sessions import delete_session, list_sessions, load_session, prune_sessions
@@ -47,7 +46,6 @@ app.add_typer(models_app, name="models")
 app.add_typer(native_app, name="native")
 app.add_typer(harness_app, name="harness")
 app.add_typer(release_app, name="release")
-app.add_typer(cloud_app, name="cloud")
 
 console = Console()
 
