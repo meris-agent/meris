@@ -1,5 +1,7 @@
 # Meris Agent
 
+> **Meris Cloud** (hosted SaaS) is proprietary and not in this repo — see [CLOUD.md](CLOUD.md).
+
 Model-agnostic terminal coding agent — **Harness-first**, inspired by AtomCode, Claude Code, Codex, Cursor, and Kiro.
 
 ```

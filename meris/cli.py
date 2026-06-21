@@ -1675,9 +1675,7 @@ def mcp_schemas_cmd(
     if json_out:
         import json
 
-        console.print(
-            json.dumps({"ok": True, "schemas": schemas, "read_only": meta, "notes": notes})
-        )
+        typer.echo(json.dumps({"ok": True, "schemas": schemas, "read_only": meta, "notes": notes}))
     else:
         for n in notes:
             console.print(n)

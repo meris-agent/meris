@@ -23,7 +23,10 @@ def test_get_provider_uses_rust_when_enabled(monkeypatch) -> None:
     monkeypatch.setenv("MERIS_NATIVE", "1")
     monkeypatch.setenv("MERIS_PROVIDER", "deepseek")
     monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test-key")
-    monkeypatch.setattr("meris.native.find_native_binary", lambda: __import__("pathlib").Path("/x/meris-rs"))
+    monkeypatch.setattr(
+        "meris.provider.rust_openai.find_native_binary",
+        lambda: __import__("pathlib").Path("/x/meris-rs"),
+    )
 
     from meris.provider.rust_openai import RustOpenAIProvider
 
