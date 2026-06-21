@@ -10,14 +10,15 @@
 | 项目 ☑ | Task scope：Agent 读写边界 |
 | 文件树 | 仅 scope 内项目 |
 | **改动** | 各 scope 仓库 `git status` 摘要 |
-| Stage / Commit | 单仓库暂存与提交 |
+| **快捷提交条**（Composer 上方） | `Changes +N −M` · **Commit** 主项目 · ▾ 更多 |
+| Stage / Commit | 左栏单仓库暂存与提交 |
 | 提交全部 | scope 内全部脏仓库 Stage + Commit（启发式 message） |
 | Parallel **隔离 worktree** | `meris parallel … --isolate`（run 模式） |
 
 ## API
 
 - `GET /api/git/summary?roots[]=…` — 摘要 + `scopeCommits`
-- `/api/cmd`：`getGitSummary` · `gitStage` · `gitCommit` · `gitSuggestMessage` · `gitShipScope`
+- `/api/cmd`：`getGitSummary` · `gitStage` · `gitCommit` · `gitSuggestMessage` · `gitShipScope` · `gitPush`
 
 ## 持久化
 

@@ -402,6 +402,10 @@
     });
   }
 
+  window.__merisGetMainCwd = function () {
+    return currentCwd;
+  };
+
   window.__merisGetTaskScopeSelected = function () {
     return getProjectScopeItems().filter((i) => i.selected).map((i) => i.path);
   };
@@ -559,9 +563,14 @@
         const spacer = document.createElement("span");
         spacer.className = "file-tree-spacer";
         row.appendChild(spacer);
-        row.addEventListener("click", () =>
-          post({ type: "readContextFile", path: ent.path, root: root })
-        );
+        row.addEventListener("click", (e) => {
+          if (e.shiftKey) {
+            post({ type: "readContextFile", path: ent.path, root: root });
+            return;
+          }
+          post({ type: "openFile", path: ent.path, root: root });
+        });
+        row.title = "打开文件 · Shift+点击 加入上下文";
         row.classList.add("clickable");
       }
       const label = document.createElement("span");

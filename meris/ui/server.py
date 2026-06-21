@@ -1584,6 +1584,31 @@ class MerisUiHandler(BaseHTTPRequestHandler):
                 rt.broadcast({"type": "contextItem", "item": item})
             except (OSError, ValueError):
                 pass
+        elif mtype == "openFile":
+            root_cwd = Path(str(msg.get("root") or rt.cwd)).resolve()
+            rel = str(msg.get("path") or "")
+            try:
+                p = (root_cwd / rel).resolve()
+                if not str(p).startswith(str(root_cwd.resolve())):
+                    raise ValueError("path escapes workspace")
+                if not p.is_file():
+                    raise FileNotFoundError(rel)
+                text = p.read_text(encoding="utf-8", errors="replace")
+                if rel.lower().endswith((".html", ".htm")):
+                    rt.broadcast(
+                        {"type": "preview", "path": rel, "html": text, "root": str(root_cwd)}
+                    )
+                else:
+                    rt.broadcast(
+                        {
+                            "type": "filePreview",
+                            "path": rel,
+                            "content": text[:120000],
+                            "root": str(root_cwd),
+                        }
+                    )
+            except (OSError, ValueError) as exc:
+                rt.broadcast({"type": "fileOpenError", "error": str(exc), "path": rel})
         elif mtype == "saveContextImage":
             from meris.ui.harness_data import save_context_image_for_ui
 
@@ -1701,6 +1726,14 @@ class MerisUiHandler(BaseHTTPRequestHandler):
 
             root = Path(str(msg.get("root") or "")).expanduser().resolve()
             return self._send_json({"ok": True, "message": suggest_commit_message(root)})
+        elif mtype == "gitPush":
+            from meris.harness.git_summary import git_push
+
+            root = Path(str(msg.get("root") or rt.cwd)).expanduser().resolve()
+            result = git_push(root)
+            if result.get("ok"):
+                _broadcast_git_summary(rt)
+            return self._send_json(result)
         elif mtype == "gitShipScope":
             from meris.harness.git_summary import git_commit, git_stage_all, git_summary, suggest_commit_message
             from meris.harness.ui_config import (

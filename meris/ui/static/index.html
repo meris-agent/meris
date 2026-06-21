@@ -283,11 +283,14 @@
       </section>
     </aside>
     <div id="main">
-      <div id="view-tabs">
-        <button type="button" class="view-tab active" data-view="chat">Chat</button>
-        <button type="button" class="view-tab" data-view="plan">Plan</button>
-        <button type="button" class="view-tab" data-view="parallel">Parallel</button>
-        <button type="button" class="view-tab" data-view="preview">Preview</button>
+      <div id="view-tabs" class="view-tabs-bar">
+        <div class="view-tabs-inner">
+          <button type="button" class="view-tab active" data-view="chat">Chat</button>
+          <button type="button" class="view-tab" data-view="plan">Plan</button>
+          <button type="button" class="view-tab" data-view="parallel">Parallel</button>
+          <button type="button" class="view-tab" data-view="preview">Preview</button>
+        </div>
+        <button type="button" id="view-tabs-help" class="ui-help-btn" title="视图标签说明" aria-label="视图标签说明">?</button>
       </div>
       <div id="chat-view" class="view-panel active">
         <div id="timeline"></div>
@@ -318,8 +321,11 @@
       </div>
       <div id="preview-view" class="view-panel hidden">
         <div class="preview-toolbar">
-          <span id="preview-path">—</span>
-          <button type="button" id="preview-refresh">刷新</button>
+          <div id="preview-tabs" class="preview-tabs" role="tablist" aria-label="已打开文件"></div>
+          <div class="preview-toolbar-actions">
+            <button type="button" id="preview-refresh" class="preview-toolbar-btn" title="刷新当前文件">↻</button>
+            <button type="button" id="preview-close-all" class="preview-toolbar-btn" title="关闭全部标签">×</button>
+          </div>
         </div>
         <iframe id="preview-frame" title="Live preview" sandbox="allow-scripts allow-same-origin"></iframe>
       </div>
@@ -340,6 +346,26 @@
         <div id="task-scope-chips" class="task-scope-chips"></div>
         <div id="context-chips"></div>
         <div id="composer-hint" class="composer-hint hidden" aria-live="polite"></div>
+        <div id="git-ship-bar" class="git-ship-bar hidden" aria-live="polite">
+          <button type="button" id="git-ship-stats-btn" class="git-ship-stats-btn" title="点击查看左侧「改动」">
+            <span class="git-ship-stats-label">Changes</span>
+            <span id="git-stat-add" class="git-stat-add">+0</span>
+            <span id="git-stat-del" class="git-stat-del">−0</span>
+          </button>
+          <div class="git-ship-commit-wrap">
+            <button type="button" id="git-quick-commit-btn" class="git-quick-commit-btn">Commit</button>
+            <button type="button" id="git-quick-menu-btn" class="git-quick-menu-btn" title="更多 Git 操作" aria-haspopup="true">▾</button>
+            <div id="git-quick-menu" class="git-quick-menu hidden" role="menu">
+              <button type="button" class="git-quick-menu-item" data-git-action="stage-scope" role="menuitem">Stage 全部（scope）</button>
+              <button type="button" class="git-quick-menu-item" data-git-action="commit-scope" role="menuitem">Commit 全部（scope）…</button>
+              <button type="button" class="git-quick-menu-item git-quick-menu-push" data-git-action="push-main" role="menuitem">Push 主项目…</button>
+            </div>
+          </div>
+          <div class="git-ship-meta">
+            <span id="git-quick-branch" class="git-quick-branch" title="主项目分支">⎇ —</span>
+            <span id="git-quick-cwd" class="git-quick-cwd" title="主项目">Local</span>
+          </div>
+        </div>
         <div class="composer-card">
           <div class="composer-topbar">
             <div class="composer-agent-pill" id="composer-agent-pill">
@@ -371,7 +397,8 @@
                 </div>
               </div>
               <div class="composer-toolbar-right">
-                <select id="mode-select" class="composer-mode-select" title="模式">
+                <button type="button" id="mode-help-btn" class="ui-help-btn ui-help-btn-inline" title="运行模式说明" aria-label="运行模式说明">?</button>
+                <select id="mode-select" class="composer-mode-select" title="运行模式">
                   <option value="run" selected>Agent</option>
                   <option value="ask">Ask</option>
                   <option value="plan">Plan</option>
@@ -419,11 +446,24 @@
       </div>
     </aside>
   </div>
+
+  <div id="ui-help-popover" class="ui-help-popover hidden" aria-hidden="true">
+    <div class="ui-help-card" role="dialog" aria-modal="true" aria-labelledby="ui-help-title">
+      <div class="ui-help-header">
+        <span id="ui-help-title" class="ui-help-title">说明</span>
+        <button type="button" id="ui-help-close" class="ui-help-close" aria-label="关闭">×</button>
+      </div>
+      <div id="ui-help-body" class="ui-help-body"></div>
+    </div>
+  </div>
+
   <script src="/media/agent.js"></script>
   <script src="/media/phase-i.js"></script>
   <script src="/media/harness-ui.js"></script>
+  <script src="/media/file-preview.js"></script>
   <script src="/media/git-ui.js"></script>
   <script src="/media/settings-ui.js"></script>
   <script src="/media/composer-media.js"></script>
+  <script src="/media/ui-help.js"></script>
 </body>
 </html>

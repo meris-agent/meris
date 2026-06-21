@@ -23,6 +23,10 @@ body = body
     '<script nonce="${nonce}" src="${harnessUiUri}"></script>'
   )
   .replace(
+    '<script src="/media/file-preview.js"></script>',
+    '<script nonce="${nonce}" src="${filePreviewUri}"></script>'
+  )
+  .replace(
     '<script src="/media/git-ui.js"></script>',
     '<script nonce="${nonce}" src="${gitUiUri}"></script>'
   )
@@ -33,6 +37,10 @@ body = body
   .replace(
     '<script src="/media/composer-media.js"></script>',
     '<script nonce="${nonce}" src="${composerMediaUri}"></script>'
+  )
+  .replace(
+    '<script src="/media/ui-help.js"></script>',
+    '<script nonce="${nonce}" src="${uiHelpUri}"></script>'
   );
 
 const start = ext.indexOf("<body>");

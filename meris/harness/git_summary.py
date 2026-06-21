@@ -85,6 +85,24 @@ def _parse_porcelain_line(line: str) -> dict[str, Any] | None:
     }
 
 
+def _diff_line_stats(root: Path) -> tuple[int, int]:
+    """Lines added/deleted vs HEAD (tracked changes)."""
+    additions = deletions = 0
+    code, out = _run_git(root, "diff", "HEAD", "--numstat")
+    if code != 0:
+        return additions, deletions
+    for line in out.splitlines():
+        parts = line.split("\t")
+        if len(parts) < 2:
+            continue
+        try:
+            additions += int(parts[0]) if parts[0] != "-" else 0
+            deletions += int(parts[1]) if parts[1] != "-" else 0
+        except ValueError:
+            continue
+    return additions, deletions
+
+
 def git_summary(root: Path) -> dict[str, Any]:
     """Summary for one project root."""
     resolved = root.expanduser().resolve()
@@ -98,6 +116,8 @@ def git_summary(root: Path) -> dict[str, Any]:
         "unstagedCount": 0,
         "ahead": 0,
         "behind": 0,
+        "additions": 0,
+        "deletions": 0,
         "files": [],
         "error": "",
     }
@@ -126,6 +146,7 @@ def git_summary(root: Path) -> dict[str, Any]:
 
     staged_count = sum(1 for f in files if f.get("staged"))
     unstaged_count = sum(1 for f in files if f.get("unstaged"))
+    additions, deletions = _diff_line_stats(resolved) if files else (0, 0)
 
     base.update(
         {
@@ -134,6 +155,8 @@ def git_summary(root: Path) -> dict[str, Any]:
             "dirty": bool(files),
             "stagedCount": staged_count,
             "unstagedCount": unstaged_count,
+            "additions": additions,
+            "deletions": deletions,
             "ahead": ahead,
             "behind": behind,
             "files": files[:80],
@@ -217,3 +240,15 @@ def suggest_commit_message(root: Path) -> str:
         tail = Path(paths[0]).stem
         return f"{prefix}: update {tail}"
     return f"{prefix}: update {len(paths)} files"
+
+
+def git_push(root: Path) -> dict[str, Any]:
+    """Push current branch — never uses --force."""
+    resolved = root.expanduser().resolve()
+    if not is_git_repo(resolved):
+        return {"ok": False, "error": "not a git repository"}
+    code, out = _run_git(resolved, "push")
+    if code != 0:
+        return {"ok": False, "error": out or "git push failed"}
+    summary = git_summary(resolved)
+    return {"ok": True, "message": out or "pushed", "summary": summary}

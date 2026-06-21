@@ -36,8 +36,9 @@
   const parallelLanes = $("parallel-lanes");
   const parallelSummary = $("parallel-summary");
   const previewFrame = $("preview-frame");
-  const previewPath = $("preview-path");
+  const previewTabsEl = $("preview-tabs");
   const previewRefresh = $("preview-refresh");
+  const previewCloseAll = $("preview-close-all");
   const viewTabs = document.querySelectorAll(".view-tab");
   const chatView = $("chat-view");
   const planView = $("plan-view");
@@ -50,7 +51,9 @@
   let sessionsCache = [];
   let planPath = "";
   let planItems = [];
-  let currentPreviewPath = "";
+  /** @type {{key:string, path:string, root:string, content:string, html?:string, isHtml?:boolean}[]} */
+  let previewTabs = [];
+  let activePreviewKey = "";
   /** @type {Record<number, {task: string, body: HTMLElement, assistantRaw: string, currentEl: HTMLElement|null, statusEl: HTMLElement|null}>} */
   let laneState = {};
 
@@ -145,6 +148,114 @@
 
   function clearTerminal() {
     if (terminalOutput) terminalOutput.textContent = "";
+  }
+
+  function previewTabKey(path, root) {
+    return String(root || "") + "::" + String(path || "");
+  }
+
+  function previewTabLabel(path) {
+    const parts = String(path || "").replace(/\\/g, "/").split("/").filter(Boolean);
+    return parts.length ? parts[parts.length - 1] : path || "file";
+  }
+
+  function isHtmlPreviewPath(path) {
+    return /\.(html?|htm)$/i.test(String(path || ""));
+  }
+
+  function renderActivePreview() {
+    if (!previewFrame) return;
+    const tab = previewTabs.find((t) => t.key === activePreviewKey);
+    if (!tab) {
+      previewFrame.srcdoc = "";
+      return;
+    }
+    if (tab.isHtml && tab.html) {
+      previewFrame.srcdoc = tab.html;
+      return;
+    }
+    if (window.__merisBuildFilePreview) {
+      previewFrame.srcdoc = window.__merisBuildFilePreview(tab.path, tab.content || "");
+    }
+  }
+
+  function renderPreviewTabs() {
+    if (!previewTabsEl) return;
+    previewTabsEl.innerHTML = "";
+    previewTabs.forEach((tab) => {
+      const wrap = document.createElement("div");
+      wrap.className = "preview-tab" + (tab.key === activePreviewKey ? " active" : "");
+      wrap.setAttribute("role", "tab");
+      wrap.setAttribute("aria-selected", tab.key === activePreviewKey ? "true" : "false");
+      wrap.title = tab.path;
+
+      const label = document.createElement("span");
+      label.className = "preview-tab-label";
+      label.textContent = previewTabLabel(tab.path);
+
+      const close = document.createElement("button");
+      close.type = "button";
+      close.className = "preview-tab-close";
+      close.setAttribute("aria-label", "关闭");
+      close.textContent = "×";
+      close.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closePreviewTab(tab.key);
+      });
+
+      wrap.addEventListener("click", () => {
+        activePreviewKey = tab.key;
+        renderPreviewTabs();
+        renderActivePreview();
+      });
+
+      wrap.appendChild(label);
+      wrap.appendChild(close);
+      previewTabsEl.appendChild(wrap);
+    });
+  }
+
+  function openPreviewTab(msg) {
+    const path = String(msg.path || "");
+    if (!path) return;
+    const root = String(msg.root || "");
+    const key = previewTabKey(path, root);
+    const isHtml = isHtmlPreviewPath(path);
+    let tab = previewTabs.find((t) => t.key === key);
+    if (tab) {
+      if (msg.content !== undefined) tab.content = String(msg.content);
+      if (msg.html !== undefined) tab.html = String(msg.html);
+      tab.isHtml = isHtml;
+    } else {
+      tab = {
+        key,
+        path,
+        root,
+        content: String(msg.content || ""),
+        html: msg.html ? String(msg.html) : "",
+        isHtml,
+      };
+      previewTabs.push(tab);
+    }
+    activePreviewKey = key;
+    renderPreviewTabs();
+    renderActivePreview();
+  }
+
+  function closePreviewTab(key) {
+    const idx = previewTabs.findIndex((t) => t.key === key);
+    if (idx < 0) return;
+    previewTabs.splice(idx, 1);
+    if (activePreviewKey === key) {
+      const next = previewTabs[Math.min(idx, previewTabs.length - 1)];
+      activePreviewKey = next ? next.key : "";
+    }
+    renderPreviewTabs();
+    renderActivePreview();
+  }
+
+  function getActivePreviewTab() {
+    return previewTabs.find((t) => t.key === activePreviewKey) || null;
   }
 
   function switchView(name) {
@@ -546,9 +657,22 @@
 
   if (previewRefresh) {
     previewRefresh.addEventListener("click", () => {
-      if (currentPreviewPath) {
-        vscode.postMessage({ type: "loadPreview", path: currentPreviewPath });
+      const tab = getActivePreviewTab();
+      if (!tab) return;
+      if (tab.isHtml) {
+        vscode.postMessage({ type: "loadPreview", path: tab.path, root: tab.root });
+      } else {
+        vscode.postMessage({ type: "openFile", path: tab.path, root: tab.root });
       }
+    });
+  }
+
+  if (previewCloseAll) {
+    previewCloseAll.addEventListener("click", () => {
+      previewTabs = [];
+      activePreviewKey = "";
+      renderPreviewTabs();
+      renderActivePreview();
     });
   }
 
@@ -642,6 +766,11 @@
           window.__merisComposerHint(msg.error || "图片保存失败", "error");
         }
         break;
+      case "fileOpenError":
+        if (window.__merisComposerHint) {
+          window.__merisComposerHint(msg.error || "无法打开文件", "error");
+        }
+        break;
       case "modelBar":
         updateModelBar(msg.model, msg.route);
         break;
@@ -660,10 +789,21 @@
         initParallelLanes(msg.tasks || []);
         break;
       case "preview":
-        currentPreviewPath = msg.path || "";
-        if (previewPath) previewPath.textContent = currentPreviewPath;
-        if (previewFrame) previewFrame.srcdoc = msg.html || "";
+        openPreviewTab({
+          path: msg.path || "",
+          root: msg.root || "",
+          content: msg.content,
+          html: msg.html,
+        });
         switchView("preview");
+        break;
+      case "filePreview":
+        openPreviewTab({
+          path: msg.path || "",
+          root: msg.root || "",
+          content: msg.content || "",
+        });
+        if (window.__merisStandalone) switchView("preview");
         break;
       case "sessions":
         sessionsCache = msg.sessions || [];

@@ -625,6 +625,162 @@ body.has-error #layout {
   white-space: nowrap;
 }
 
+/* Composer quick git ship bar (Cursor-style) */
+.git-ship-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 12px 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+}
+
+.git-ship-bar.hidden {
+  display: none !important;
+}
+
+.git-ship-stats-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.git-ship-stats-btn:hover {
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.git-ship-stats-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.git-stat-add {
+  color: var(--success);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.git-stat-del {
+  color: var(--error);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.git-ship-commit-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+
+.git-quick-commit-btn {
+  height: 28px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.git-quick-commit-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.git-quick-commit-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.git-quick-menu-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 0 6px 6px 0;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.git-quick-menu-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.git-quick-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 200px;
+  padding: 4px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  z-index: 40;
+}
+
+.git-quick-menu.hidden {
+  display: none !important;
+}
+
+.git-quick-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.git-quick-menu-item:hover {
+  background: var(--surface-2);
+}
+
+.git-quick-menu-push {
+  color: var(--warning);
+}
+
+.git-ship-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--muted);
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.git-quick-branch,
+.git-quick-cwd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
 .parallel-options {
   display: flex;
   align-items: center;
@@ -2320,12 +2476,165 @@ body.theme-light .diff-del {
   font-size: 11px;
 }
 
-#view-tabs {
+#view-tabs,
+.view-tabs-bar {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
   padding: 8px 12px 0;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--surface);
+}
+
+.view-tabs-inner {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-help-btn {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.ui-help-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.ui-help-btn-inline {
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+}
+
+.ui-help-popover {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.ui-help-card {
+  width: min(420px, 92vw);
+  max-height: min(70vh, 520px);
+  overflow: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.ui-help-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+}
+
+.ui-help-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ui-help-close {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.ui-help-close:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.ui-help-body {
+  padding: 12px 14px 16px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.ui-help-lead {
+  margin: 0 0 12px;
+  color: var(--text);
+}
+
+.ui-help-dl {
+  margin: 0;
+}
+
+.ui-help-dl dt {
+  font-weight: 600;
+  color: var(--text);
+  margin: 10px 0 4px;
+}
+
+.ui-help-dl dt:first-child {
+  margin-top: 0;
+}
+
+.ui-help-dl dd {
+  margin: 0 0 4px;
+  padding-left: 0;
+}
+
+.ui-help-tag {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+  border: 1px solid var(--border-subtle);
+  font-family: var(--mono);
+}
+
+.ui-help-note {
+  margin: 14px 0 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  border: 1px solid var(--border-subtle);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.ui-help-body code {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--surface-2);
+  padding: 1px 4px;
+  border-radius: 4px;
 }
 
 .view-tab {
@@ -2363,10 +2672,17 @@ body.theme-light .diff-del {
 }
 
 #plan-view,
-#parallel-view,
-#preview-view {
+#parallel-view {
   padding: 12px;
   overflow: auto;
+}
+
+#preview-view {
+  padding: 8px 12px 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 #plan-list {
@@ -2512,20 +2828,107 @@ body.theme-light .diff-del {
 
 .preview-toolbar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 8px;
+  flex-shrink: 0;
+  min-height: 28px;
+}
+
+.preview-tabs {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-width: 0;
+  padding-bottom: 2px;
+}
+
+.preview-tabs:empty::before {
+  content: "点击左侧文件打开预览";
   font-size: 11px;
   color: var(--muted);
+  padding: 4px 2px;
+}
+
+.preview-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 160px;
+  height: 26px;
+  padding: 0 4px 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.preview-tab.active {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.preview-tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-tab-close {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.preview-tab-close:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.preview-toolbar-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.preview-toolbar-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.preview-toolbar-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 #preview-frame {
   width: 100%;
   flex: 1;
-  min-height: 280px;
+  min-height: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: #fff;
+  background: var(--bg);
 }
 
 .terminal-panel {

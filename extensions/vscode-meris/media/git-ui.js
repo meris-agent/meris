@@ -7,6 +7,15 @@
   const gitPanel = $("git-changes-panel");
   const gitRefreshBtn = $("git-refresh-btn");
   const gitShipAllBtn = $("git-ship-all-btn");
+  const gitShipBar = $("git-ship-bar");
+  const gitStatAdd = $("git-stat-add");
+  const gitStatDel = $("git-stat-del");
+  const gitQuickCommitBtn = $("git-quick-commit-btn");
+  const gitQuickMenuBtn = $("git-quick-menu-btn");
+  const gitQuickMenu = $("git-quick-menu");
+  const gitShipStatsBtn = $("git-ship-stats-btn");
+  const gitQuickBranch = $("git-quick-branch");
+  const gitQuickCwd = $("git-quick-cwd");
   if (!gitPanel) return;
 
   /** @type {object[]} */
@@ -99,6 +108,7 @@
   function render() {
     if (!lastSummaries.length) {
       gitPanel.innerHTML = '<div class="git-changes-empty">勾选项目后显示各仓库改动</div>';
+      updateQuickShipBar();
       return;
     }
     const dirtyCount = lastSummaries.filter((s) => s.isRepo && s.dirty).length;
@@ -164,6 +174,7 @@
     }
 
     gitPanel.innerHTML = blocks.join("") + logHtml;
+    updateQuickShipBar();
   }
 
   function escapeHtml(s) {
@@ -182,6 +193,96 @@
     const parts = String(p || "").split("/");
     if (parts.length <= 2) return p;
     return "…/" + parts.slice(-2).join("/");
+  }
+
+  function getMainCwd() {
+    if (typeof window.__merisGetMainCwd === "function") return window.__merisGetMainCwd() || "";
+    return "";
+  }
+
+  function mainSummary() {
+    const cwd = getMainCwd();
+    if (!cwd) return null;
+    return lastSummaries.find((s) => samePath(s.path, cwd)) || null;
+  }
+
+  function samePath(a, b) {
+    return (
+      String(a || "")
+        .replace(/\\/g, "/")
+        .replace(/\/+$/, "")
+        .toLowerCase() ===
+      String(b || "")
+        .replace(/\\/g, "/")
+        .replace(/\/+$/, "")
+        .toLowerCase()
+    );
+  }
+
+  function aggregateScopeStats() {
+    let add = 0;
+    let del = 0;
+    let dirty = 0;
+    lastSummaries.forEach((s) => {
+      if (!s.isRepo || !s.dirty) return;
+      dirty += 1;
+      add += Number(s.additions) || 0;
+      del += Number(s.deletions) || 0;
+    });
+    return { add, del, dirty };
+  }
+
+  function updateQuickShipBar() {
+    if (!gitShipBar) return;
+    const stats = aggregateScopeStats();
+    const main = mainSummary();
+    const hasChanges = stats.dirty > 0;
+
+    gitShipBar.classList.toggle("hidden", !hasChanges);
+    if (gitStatAdd) gitStatAdd.textContent = "+" + stats.add;
+    if (gitStatDel) gitStatDel.textContent = "−" + stats.del;
+    if (gitQuickCommitBtn) {
+      gitQuickCommitBtn.disabled = !main || !main.isRepo || !main.dirty;
+      gitQuickCommitBtn.title = main && main.dirty ? "Stage + Commit 主项目（不 push）" : "主项目无改动";
+    }
+    if (gitQuickBranch) {
+      const branch = main && main.branch ? main.branch : "—";
+      const ahead = main && main.ahead ? " ↑" + main.ahead : "";
+      const behind = main && main.behind ? " ↓" + main.behind : "";
+      gitQuickBranch.textContent = "⎇ " + branch + ahead + behind;
+    }
+    if (gitQuickCwd) {
+      const cwd = getMainCwd();
+      const label =
+        typeof window.__merisProjectLabelForPath === "function" && cwd
+          ? window.__merisProjectLabelForPath(cwd)
+          : cwd
+            ? cwd.split(/[/\\]/).pop()
+            : "Local";
+      gitQuickCwd.textContent = label || "Local";
+      gitQuickCwd.title = cwd || "主项目";
+    }
+  }
+
+  function hideQuickMenu() {
+    if (gitQuickMenu) gitQuickMenu.classList.add("hidden");
+  }
+
+  function toggleQuickMenu() {
+    if (!gitQuickMenu) return;
+    gitQuickMenu.classList.toggle("hidden");
+  }
+
+  function stageAndCommit(root) {
+    if (!root) return Promise.resolve();
+    return post({ type: "gitStage", root }).then(() =>
+      post({ type: "gitSuggestMessage", root }).then((data) => {
+        const suggested = (data && data.message) || "chore: update";
+        const msg = window.prompt("Commit message（不会 push）:", suggested);
+        if (msg === null || !String(msg).trim()) return null;
+        return post({ type: "gitCommit", root, message: String(msg).trim() });
+      })
+    );
   }
 
   function suggestAndCommit(root) {
@@ -235,6 +336,73 @@
       });
     });
   }
+
+  if (gitQuickCommitBtn) {
+    gitQuickCommitBtn.addEventListener("click", () => {
+      const root = getMainCwd();
+      if (!root) return;
+      stageAndCommit(root).then((res) => {
+        if (res && !res.ok && window.__merisComposerHint) {
+          window.__merisComposerHint(res.error || "commit failed", "error");
+        }
+        fetchSummary();
+      });
+    });
+  }
+
+  if (gitQuickMenuBtn) {
+    gitQuickMenuBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleQuickMenu();
+    });
+  }
+
+  if (gitQuickMenu) {
+    gitQuickMenu.addEventListener("click", (e) => {
+      const item = e.target.closest("[data-git-action]");
+      if (!item) return;
+      hideQuickMenu();
+      const action = item.getAttribute("data-git-action");
+      const main = getMainCwd();
+      if (action === "stage-scope") {
+        const dirty = lastSummaries.filter((s) => s.isRepo && s.dirty);
+        Promise.all(dirty.map((s) => post({ type: "gitStage", root: s.path }))).then(() => fetchSummary());
+        return;
+      }
+      if (action === "commit-scope") {
+        if (!window.confirm("对范围内全部脏仓库执行 Stage + Commit？（不会 push）")) return;
+        post({ type: "gitShipScope" }).then((res) => {
+          if (res && res.results && window.__merisComposerHint) {
+            const ok = res.results.filter((r) => r.ok).length;
+            window.__merisComposerHint(`已提交 ${ok} 个仓库`, "ok");
+          }
+          fetchSummary();
+        });
+        return;
+      }
+      if (action === "push-main" && main) {
+        if (!window.confirm("Push 主项目到 remote？（不使用 --force）")) return;
+        post({ type: "gitPush", root: main }).then((res) => {
+          if (window.__merisComposerHint) {
+            window.__merisComposerHint(
+              res && res.ok ? "已 push" : res?.error || "push failed",
+              res && res.ok ? "ok" : "error"
+            );
+          }
+          fetchSummary();
+        });
+      }
+    });
+  }
+
+  if (gitShipStatsBtn) {
+    gitShipStatsBtn.addEventListener("click", () => {
+      const block = document.querySelector(".sidebar-block-changes");
+      if (block) block.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }
+
+  document.addEventListener("click", () => hideQuickMenu());
 
   window.addEventListener("message", (event) => {
     const msg = event.data;

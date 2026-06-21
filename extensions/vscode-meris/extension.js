@@ -1046,11 +1046,15 @@ function getAgentWebviewContent(webview, extensionUri) {
   const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media", "agent.js"));
   const phaseIUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media", "phase-i.js"));
   const harnessUiUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media", "harness-ui.js"));
+  const filePreviewUri = webview.asWebviewUri(
+    vscode.Uri.joinPath(extensionUri, "media", "file-preview.js")
+  );
   const gitUiUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media", "git-ui.js"));
   const settingsUiUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media", "settings-ui.js"));
   const composerMediaUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "media", "composer-media.js")
   );
+  const uiHelpUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media", "ui-help.js"));
   const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, "media", "agent.css"));
   const nonce = getNonce();
   return `<!DOCTYPE html>
@@ -1339,11 +1343,14 @@ function getAgentWebviewContent(webview, extensionUri) {
       </section>
     </aside>
     <div id="main">
-      <div id="view-tabs">
-        <button type="button" class="view-tab active" data-view="chat">Chat</button>
-        <button type="button" class="view-tab" data-view="plan">Plan</button>
-        <button type="button" class="view-tab" data-view="parallel">Parallel</button>
-        <button type="button" class="view-tab" data-view="preview">Preview</button>
+      <div id="view-tabs" class="view-tabs-bar">
+        <div class="view-tabs-inner">
+          <button type="button" class="view-tab active" data-view="chat">Chat</button>
+          <button type="button" class="view-tab" data-view="plan">Plan</button>
+          <button type="button" class="view-tab" data-view="parallel">Parallel</button>
+          <button type="button" class="view-tab" data-view="preview">Preview</button>
+        </div>
+        <button type="button" id="view-tabs-help" class="ui-help-btn" title="视图标签说明" aria-label="视图标签说明">?</button>
       </div>
       <div id="chat-view" class="view-panel active">
         <div id="timeline"></div>
@@ -1374,8 +1381,11 @@ function getAgentWebviewContent(webview, extensionUri) {
       </div>
       <div id="preview-view" class="view-panel hidden">
         <div class="preview-toolbar">
-          <span id="preview-path">—</span>
-          <button type="button" id="preview-refresh">刷新</button>
+          <div id="preview-tabs" class="preview-tabs" role="tablist" aria-label="已打开文件"></div>
+          <div class="preview-toolbar-actions">
+            <button type="button" id="preview-refresh" class="preview-toolbar-btn" title="刷新当前文件">↻</button>
+            <button type="button" id="preview-close-all" class="preview-toolbar-btn" title="关闭全部标签">×</button>
+          </div>
         </div>
         <iframe id="preview-frame" title="Live preview" sandbox="allow-scripts allow-same-origin"></iframe>
       </div>
@@ -1396,6 +1406,26 @@ function getAgentWebviewContent(webview, extensionUri) {
         <div id="task-scope-chips" class="task-scope-chips"></div>
         <div id="context-chips"></div>
         <div id="composer-hint" class="composer-hint hidden" aria-live="polite"></div>
+        <div id="git-ship-bar" class="git-ship-bar hidden" aria-live="polite">
+          <button type="button" id="git-ship-stats-btn" class="git-ship-stats-btn" title="点击查看左侧「改动」">
+            <span class="git-ship-stats-label">Changes</span>
+            <span id="git-stat-add" class="git-stat-add">+0</span>
+            <span id="git-stat-del" class="git-stat-del">−0</span>
+          </button>
+          <div class="git-ship-commit-wrap">
+            <button type="button" id="git-quick-commit-btn" class="git-quick-commit-btn">Commit</button>
+            <button type="button" id="git-quick-menu-btn" class="git-quick-menu-btn" title="更多 Git 操作" aria-haspopup="true">▾</button>
+            <div id="git-quick-menu" class="git-quick-menu hidden" role="menu">
+              <button type="button" class="git-quick-menu-item" data-git-action="stage-scope" role="menuitem">Stage 全部（scope）</button>
+              <button type="button" class="git-quick-menu-item" data-git-action="commit-scope" role="menuitem">Commit 全部（scope）…</button>
+              <button type="button" class="git-quick-menu-item git-quick-menu-push" data-git-action="push-main" role="menuitem">Push 主项目…</button>
+            </div>
+          </div>
+          <div class="git-ship-meta">
+            <span id="git-quick-branch" class="git-quick-branch" title="主项目分支">⎇ —</span>
+            <span id="git-quick-cwd" class="git-quick-cwd" title="主项目">Local</span>
+          </div>
+        </div>
         <div class="composer-card">
           <div class="composer-topbar">
             <div class="composer-agent-pill" id="composer-agent-pill">
@@ -1427,7 +1457,8 @@ function getAgentWebviewContent(webview, extensionUri) {
                 </div>
               </div>
               <div class="composer-toolbar-right">
-                <select id="mode-select" class="composer-mode-select" title="模式">
+                <button type="button" id="mode-help-btn" class="ui-help-btn ui-help-btn-inline" title="运行模式说明" aria-label="运行模式说明">?</button>
+                <select id="mode-select" class="composer-mode-select" title="运行模式">
                   <option value="run" selected>Agent</option>
                   <option value="ask">Ask</option>
                   <option value="plan">Plan</option>
@@ -1475,12 +1506,25 @@ function getAgentWebviewContent(webview, extensionUri) {
       </div>
     </aside>
   </div>
+
+  <div id="ui-help-popover" class="ui-help-popover hidden" aria-hidden="true">
+    <div class="ui-help-card" role="dialog" aria-modal="true" aria-labelledby="ui-help-title">
+      <div class="ui-help-header">
+        <span id="ui-help-title" class="ui-help-title">说明</span>
+        <button type="button" id="ui-help-close" class="ui-help-close" aria-label="关闭">×</button>
+      </div>
+      <div id="ui-help-body" class="ui-help-body"></div>
+    </div>
+  </div>
+
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${phaseIUri}"></script>
   <script nonce="${nonce}" src="${harnessUiUri}"></script>
+  <script nonce="${nonce}" src="${filePreviewUri}"></script>
   <script nonce="${nonce}" src="${gitUiUri}"></script>
   <script nonce="${nonce}" src="${settingsUiUri}"></script>
   <script nonce="${nonce}" src="${composerMediaUri}"></script>
+  <script nonce="${nonce}" src="${uiHelpUri}"></script>
 </html>`;
 }
 
@@ -1815,6 +1859,16 @@ function gitShipScope(cwd) {
   );
 }
 
+/** @param {string} root */
+function gitPushRoot(root) {
+  return merisPythonJson(
+    "root=Path(json.loads(sys.argv[1]))\n" +
+      "from meris.harness.git_summary import git_push\n" +
+      "print(json.dumps(git_push(root)))",
+    JSON.stringify(root)
+  );
+}
+
 /** @param {string[]} roots @param {string} [reqId] */
 function postGitSummary(roots, reqId) {
   const payload = buildGitSummaryPayload(roots);
@@ -1964,10 +2018,76 @@ async function saveContextImage(cwd, dataUrl, filename) {
   };
 }
 
+/** @param {string} rel */
+function languageIdFromPath(rel) {
+  const ext = path.extname(String(rel || "")).slice(1).toLowerCase();
+  const map = {
+    py: "python",
+    pyi: "python",
+    js: "javascript",
+    mjs: "javascript",
+    cjs: "javascript",
+    jsx: "javascript",
+    ts: "typescript",
+    tsx: "typescript",
+    json: "json",
+    yaml: "yaml",
+    yml: "yaml",
+    md: "markdown",
+    markdown: "markdown",
+    mdx: "markdown",
+    html: "html",
+    htm: "html",
+    css: "css",
+    scss: "css",
+    rs: "rust",
+    go: "go",
+    sh: "shellscript",
+    bash: "shellscript",
+    ps1: "powershell",
+    sql: "sql",
+    toml: "toml",
+    xml: "xml",
+    java: "java",
+    kt: "kotlin",
+    rb: "ruby",
+    php: "php",
+    swift: "swift",
+    c: "c",
+    cpp: "cpp",
+    h: "c",
+    hpp: "cpp",
+    cs: "csharp",
+    vue: "javascript",
+    svelte: "javascript",
+  };
+  return map[ext];
+}
+
+/** @param {string} base @param {string} rel */
+async function openWorkspaceFile(base, rel) {
+  const full = path.isAbsolute(rel) ? rel : path.join(base, rel);
+  const uri = vscode.Uri.file(full);
+  const languageId = languageIdFromPath(rel);
+  const doc = languageId
+    ? await vscode.workspace.openTextDocument({ uri, language: languageId })
+    : await vscode.workspace.openTextDocument(uri);
+  await vscode.window.showTextDocument(doc, { preview: false, viewColumn: vscode.ViewColumn.One });
+  return doc;
+}
+
+function postFilePreview(rel, content, root) {
+  postToAgentWebviews({
+    type: "filePreview",
+    path: rel.replace(/\\/g, "/"),
+    content: content || "",
+    root: root ? String(root) : "",
+  });
+}
+
 /** @param {string} cwd @param {string} rel */
 async function readContextFile(cwd, rel) {
-  const full = path.join(cwd, rel);
-  const doc = await vscode.workspace.openTextDocument(full);
+  const doc = await openWorkspaceFile(cwd, rel);
   return { path: rel.replace(/\\/g, "/"), content: doc.getText().slice(0, 12000) };
 }
 
@@ -2114,6 +2234,12 @@ async function handleAgentMessage(msg) {
     postToAgentWebviews({ type: "gitShipResult", _gitReqId: msg._gitReqId, ...result });
     return;
   }
+  if (msg.type === "gitPush" && msg.root) {
+    const result = gitPushRoot(String(msg.root));
+    postGitSummary([]);
+    postToAgentWebviews({ type: "gitPushResult", _gitReqId: msg._gitReqId, ...result });
+    return;
+  }
   if (msg.type === "setWorkspace" && msg.path) {
     setActiveWorkspace(String(msg.path));
     return;
@@ -2244,10 +2370,18 @@ async function handleAgentMessage(msg) {
       break;
     case "openFile": {
       if (!msg.path) return;
-      const full = path.isAbsolute(msg.path) ? msg.path : path.join(cwd, msg.path);
-      const uri = vscode.Uri.file(full);
-      const doc = await vscode.workspace.openTextDocument(uri);
-      await vscode.window.showTextDocument(doc, { preview: false });
+      const base = String(msg.root || cwd);
+      const rel = String(msg.path);
+      try {
+        const full = path.isAbsolute(rel) ? rel : path.join(base, rel);
+        const content = fs.readFileSync(full, "utf8");
+        postFilePreview(rel, content, base);
+        await openWorkspaceFile(base, rel);
+      } catch (e) {
+        vscode.window.showErrorMessage(
+          "Meris: cannot open " + msg.path + " — " + String(e.message || e)
+        );
+      }
       break;
     }
     case "ratchetApply":
@@ -2788,10 +2922,15 @@ async function handleAgentMessage(msg) {
     }
     case "loadPreview": {
       if (!msg.path) break;
-      const full = path.isAbsolute(msg.path) ? msg.path : path.join(cwd, msg.path);
+      const base = String(msg.root || cwd);
+      const full = path.isAbsolute(msg.path) ? msg.path : path.join(base, msg.path);
       try {
-        const html = fs.readFileSync(full, "utf8");
-        postToAgentWebviews({ type: "preview", path: msg.path, html });
+        const text = fs.readFileSync(full, "utf8");
+        if (/\.(html?|htm)$/i.test(msg.path)) {
+          postToAgentWebviews({ type: "preview", path: msg.path, html: text });
+        } else {
+          postFilePreview(msg.path, text, base);
+        }
       } catch {
         vscode.window.showErrorMessage("Meris: preview failed for " + msg.path);
       }
