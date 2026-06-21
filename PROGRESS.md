@@ -115,7 +115,7 @@
 - [x] F0 Git Ship / VS Code / `meris ui`（工作区未提交）
 - [x] F1 `smoke_stack.py` + `meris cloud smoke`
 - [x] F2 OpenAPI `1.0.0` + `ga_checklist.py` + CI job
-- [ ] F3 Staging 100 session / 渗透 / 真环境集成
+- [ ] F3 Staging 100 session / 渗透 / 真环境集成 — 见 [staging-env-checklist.md](docs/cloud/staging-env-checklist.md)
 - [ ] F4 Dogfood / PyPI
 
 **Cloud 待办（后续批次）**
