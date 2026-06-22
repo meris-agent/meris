@@ -67,21 +67,10 @@ def _sandbox_block(settings: dict) -> dict:
 
 
 def get_sandbox_preset(settings: dict) -> str:
-    """Resolved Codex-style preset name (default workspace-write)."""
+    """Resolved sandbox preset name (default workspace-write)."""
     raw = _sandbox_block(settings).get("preset", DEFAULT_PRESET)
     preset = str(raw).strip().lower()
     return preset if preset in SANDBOX_PRESETS else DEFAULT_PRESET
-
-
-def format_codex_preset_hint(preset: str | None = None, *, settings: dict | None = None) -> str:
-    """Human-readable mapping to OpenAI Codex CLI ``--sandbox`` flag."""
-    name = preset if preset else (get_sandbox_preset(settings) if settings else DEFAULT_PRESET)
-    flag = {
-        "read-only": "read-only",
-        "workspace-write": "workspace-write",
-        "danger-full-access": "danger-full-access",
-    }.get(name, name)
-    return f"≈ Codex --sandbox {flag}"
 
 
 def _resolve_sandbox_field(
@@ -322,7 +311,7 @@ def _fetch_seatbelt_plan(workspace: Path, settings: dict) -> tuple[str, list[str
 
 
 def build_seatbelt_policy(workspace: Path, settings: dict) -> tuple[str, list[str]]:
-    """Build SBPL via meris-rs MerisSeatbeltPlan (not a static Codex file copy)."""
+    """Build SBPL via meris-rs MerisSeatbeltPlan."""
     return _fetch_seatbelt_plan(workspace, settings)
 
 
@@ -398,11 +387,11 @@ def probe_os_sandbox(workspace: Path, settings: dict | None = None) -> dict:
 
 
 def describe_platform_sandbox(workspace: Path, settings: dict) -> dict[str, Any]:
-    """Summarize policy vs OS sandbox layers for doctor / platform matrix (Phase G3)."""
+    """Summarize policy vs OS sandbox layers for doctor / platform matrix."""
     ws = workspace.resolve()
     probe = probe_os_sandbox(ws, settings)
     preset = get_sandbox_preset(settings)
-    codex = format_codex_preset_hint(preset)
+    preset_tag = f"preset={preset}"
     plat = sys.platform
     os_mode = get_os_sandbox_mode(settings)
     would_bwrap = bool(probe.get("wouldUseBubblewrap"))
@@ -410,74 +399,73 @@ def describe_platform_sandbox(workspace: Path, settings: dict) -> dict[str, Any]
 
     if plat == "linux":
         if would_bwrap:
-            detail = f"linux: policy + bubblewrap active; {codex}"
+            detail = f"linux: policy + bubblewrap active; {preset_tag}"
             status = "ok"
         elif has_bwrap and os_mode == "auto":
-            detail = f"linux: policy only (bwrap present, osSandbox=auto inactive); {codex}"
+            detail = f"linux: policy only (bwrap present, osSandbox=auto inactive); {preset_tag}"
             status = "warn"
         elif os_mode == "require" and not has_bwrap:
-            detail = f"linux: osSandbox=require but bwrap missing; {codex}"
+            detail = f"linux: osSandbox=require but bwrap missing; {preset_tag}"
             status = "warn"
         else:
             detail = (
-                f"linux: policy + cwd lock only — install bubblewrap for OS layer; {codex}"
+                f"linux: policy + cwd lock only — install bubblewrap for OS layer; {preset_tag}"
             )
             status = "warn"
-        codex_gaps: list[str] = [] if would_bwrap else ["Linux OS sandbox inactive"]
+        platform_gaps: list[str] = [] if would_bwrap else ["Linux OS sandbox inactive"]
     elif plat == "darwin":
         would_seatbelt = bool(probe.get("wouldUseSeatbelt"))
         seatbelt = find_sandbox_exec()
         if would_seatbelt:
-            detail = f"macOS: policy + Seatbelt (sandbox-exec) active; {codex}"
+            detail = f"macOS: policy + Seatbelt (sandbox-exec) active; {preset_tag}"
             status = "ok"
-            codex_gaps = []
+            platform_gaps = []
         elif seatbelt and os_mode != "off":
             detail = (
-                f"macOS: sandbox-exec present but inactive — check osSandbox preset; {codex}"
+                f"macOS: sandbox-exec present but inactive — check osSandbox preset; {preset_tag}"
             )
             status = "warn"
-            codex_gaps = ["Seatbelt not active"]
+            platform_gaps = ["Seatbelt not active"]
         else:
             detail = (
                 f"macOS: policy + cwd lock only — install sandbox-exec / enable osSandbox; "
-                f"{codex}"
+                f"{preset_tag}"
             )
             status = "warn"
-            codex_gaps = ["no macOS Seatbelt sandbox"]
+            platform_gaps = ["no macOS Seatbelt sandbox"]
     elif plat == "win32":
         from meris.harness.wsl import probe_wsl_bwrap
 
         wsl = probe_wsl_bwrap()
         if wsl.get("bwrapInWsl"):
-            detail = f"win32: policy on native; bubblewrap via WSL; {codex}"
+            detail = f"win32: policy on native; bubblewrap via WSL; {preset_tag}"
             status = "ok"
-            codex_gaps = ["Windows native has no OS sandbox — use WSL for bwrap"]
+            platform_gaps = ["Windows native has no OS sandbox — use WSL for bwrap"]
         elif wsl.get("wslAvailable"):
             detail = (
                 f"win32: policy + cwd only — install bwrap in WSL "
-                f"(sudo apt install bubblewrap); {codex}"
+                f"(sudo apt install bubblewrap); {preset_tag}"
             )
             status = "warn"
-            codex_gaps = ["Windows native has no OS sandbox"]
+            platform_gaps = ["Windows native has no OS sandbox"]
         else:
             detail = (
-                f"win32: policy + cwd only — install WSL2 + bubblewrap for Codex-like OS sandbox; "
-                f"{codex}"
+                f"win32: policy + cwd only — install WSL2 + bubblewrap for OS sandbox; "
+                f"{preset_tag}"
             )
             status = "warn"
-            codex_gaps = ["Windows native has no OS sandbox", "WSL2 not detected"]
+            platform_gaps = ["Windows native has no OS sandbox", "WSL2 not detected"]
     else:
-        detail = f"{plat}: policy layer only; {codex}"
+        detail = f"{plat}: policy layer only; {preset_tag}"
         status = "warn"
-        codex_gaps = ["unknown platform"]
+        platform_gaps = ["unknown platform"]
 
     return {
         "platform": plat,
         "preset": preset,
-        "codexEquivalent": codex,
         "policyLayer": True,
         "osLayerActive": would_bwrap,
-        "codexGaps": codex_gaps,
+        "platformGaps": platform_gaps,
         "status": status,
         "detail": detail,
         "probe": probe,

@@ -1,4 +1,4 @@
-"""Phase G2 — network allowlist (Codex-style)."""
+"""Phase G2 — network allowlist."""
 
 from __future__ import annotations
 

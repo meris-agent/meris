@@ -17,7 +17,6 @@ from meris.harness.sandbox import (
     get_os_sandbox_mode,
     get_sandbox_mode,
     get_sandbox_preset,
-    format_codex_preset_hint,
     describe_platform_sandbox,
     probe_os_sandbox,
 )
@@ -149,7 +148,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
         native_note = ", meris-rs built — auto when MERIS_NATIVE unset"
     else:
         native_note = ", build: meris native build"
-    preset_note = f", preset={preset} ({format_codex_preset_hint(preset)})"
+    preset_note = f", preset={preset}"
     if mode == "off":
         results.append(
             CheckResult(

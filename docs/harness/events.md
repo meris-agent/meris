@@ -1,6 +1,6 @@
 # Loop 事件流（Phase E4）
 
-Meris agent loop 可输出 **JSONL 事件**，供 TUI、IDE、CI 消费（对标 Codex Submission/Event 队列）。
+Meris agent loop 可输出 **JSONL 事件**，供 TUI、IDE、CI 消费。
 
 ## 启用
 
@@ -41,4 +41,4 @@ meris exec "task" --json                   # 内存收集 + JSON 摘要
 ## 相关
 
 - 实现：`meris/harness/protocol.py`
-- Codex 对照：session 事件路由见 [events.md](events.md) 与本地 `meris/ui` SSE
+- UI：`meris/ui` SSE 与 Agent Window 事件路由

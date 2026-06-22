@@ -164,7 +164,7 @@ def mcp_servers_dict_from_ui_items(items: list[dict[str, Any]]) -> dict[str, Any
 
 
 def ui_items_to_mcp_json_text(items: list[dict[str, Any]]) -> str:
-    """Cursor-compatible mcp.json snippet for the Agent UI editor."""
+    """External-editor compatible mcp.json snippet for the Agent UI editor."""
     servers = mcp_servers_dict_from_ui_items(items)
     clean: dict[str, Any] = {}
     for name, cfg in servers.items():
@@ -185,7 +185,7 @@ def ui_items_to_mcp_json_text(items: list[dict[str, Any]]) -> str:
 
 
 def parse_mcp_json_text(text: str) -> dict[str, Any]:
-    """Parse Cursor-style mcp.json body into server map."""
+    """Parse common mcp.json body into server map."""
     data = json.loads(text)
     if isinstance(data, dict) and "mcpServers" in data:
         raw = data["mcpServers"]

@@ -1,36 +1,34 @@
-# 平台沙箱矩阵（Phase G3 · Codex CLI 对照）
+# 平台沙箱矩阵
 
-Meris 与 [OpenAI Codex CLI](https://github.com/openai/codex) 在不同操作系统上的沙箱能力对照。  
-配置 preset 见 [sandbox.md](sandbox.md)。
+Meris 在不同操作系统上的沙箱能力。配置 preset 见 [sandbox.md](sandbox.md)。
 
-## Preset 映射（全平台一致）
+## Preset 一览
 
-| Codex `--sandbox` | Meris `sandbox.preset` | 策略层 mode | network | osSandbox |
-|-------------------|------------------------|-------------|---------|-----------|
-| `read-only` | `read-only` | strict | isolated | auto |
-| `workspace-write`（Auto 默认） | `workspace-write` | warn | isolated | auto |
-| `danger-full-access` | `danger-full-access` | off | shared | off |
+| Meris `sandbox.preset` | 策略层 mode | network | osSandbox |
+|------------------------|-------------|---------|-----------|
+| `read-only` | strict | isolated | auto |
+| `workspace-write`（默认） | warn | isolated | auto |
+| `danger-full-access` | off | shared | off |
 
-`meris doctor` 会显示 `preset=… (≈ Codex --sandbox …)`。
+显式 `mode` / `network` / `osSandbox` 可覆盖 preset。`meris doctor` 会显示当前 `preset`。
 
 ## 能力矩阵
 
-| 能力 | Codex CLI | Linux 原生 | WSL (Windows) | Windows 原生 | macOS |
-|------|-----------|------------|---------------|--------------|-------|
-| 策略层（cd/find/pwd/ls 拦截） | ✅ | ✅ | ✅ | ✅ | ✅ |
-| cwd 锁定 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| bubblewrap OS 沙箱 | ✅ (Linux) | ✅ | ✅ | ❌ | ❌ |
-| 网络隔离 (`--unshare-net`) | ✅ | ✅ bwrap | ✅ bwrap | ❌ | ❌ |
-| network allowlist | ✅ 代理级 | ✅ 命令级 | ✅ 命令级 | ⚠️ 仅策略 | ⚠️ 仅策略 |
-| `.env` 遮罩 | ✅ | ✅ bwrap | ✅ bwrap | ❌ | ❌ |
-| macOS Seatbelt | ✅ | — | — | — | ✅ G6.2 `sandbox-exec` |
-| Windows 原生沙箱 | ✅ | — | — | ❌ | — |
+| 能力 | Linux 原生 | WSL (Windows) | Windows 原生 | macOS |
+|------|------------|---------------|--------------|-------|
+| 策略层（cd/find/pwd/ls 拦截） | ✅ | ✅ | ✅ | ✅ |
+| cwd 锁定 | ✅ | ✅ | ✅ | ✅ |
+| bubblewrap OS 沙箱 | ✅ | ✅ | ❌ | ❌ |
+| 网络隔离 (`--unshare-net`) | ✅ bwrap | ✅ bwrap | ❌ | ❌ |
+| network allowlist | ✅ 命令级 | ✅ 命令级 | ⚠️ 仅策略 | ⚠️ hybrid |
+| `.env` 遮罩 | ✅ bwrap | ✅ bwrap | ❌ | ✅ Seatbelt |
+| macOS Seatbelt | — | — | — | ✅ `sandbox-exec` |
 
 **说明**
 
 - **策略层**：全平台生效，不依赖 bubblewrap。
-- **OS 层**：仅 Linux（含 WSL 内 Linux）且 PATH 有 `bwrap` 时，`osSandbox: auto|require` 才启用。
-- **network allowlist**：Meris 为命令级主机名检查 + bwrap `--share-net`，非 Codex 的内核 MITM 代理（见 [sandbox.md](sandbox.md) Phase G2）。
+- **OS 层**：Linux（含 WSL 内 Linux）且 PATH 有 `bwrap` 时，`osSandbox: auto|require` 才启用 bubblewrap。
+- **network allowlist**：命令级主机名检查 + bwrap `--share-net` 或 macOS hybrid（见 [sandbox.md](sandbox.md)）。
 
 ## 推荐运行方式
 
@@ -39,7 +37,7 @@ Meris 与 [OpenAI Codex CLI](https://github.com/openai/codex) 在不同操作系
 | Linux / CI | 直接 `meris run` | bubblewrap（`apt install bubblewrap`） |
 | Windows | **WSL2 内**运行 meris | WSL 内 bwrap |
 | Windows 仅原生 | 可用，策略层 only | 无 — doctor 提示装 WSL |
-| macOS | 可用，策略层 only | 无 Seatbelt — 敏感任务用 Linux/WSL |
+| macOS | 可用 | Seatbelt（`sandbox-exec`）或策略层 only |
 
 ### Windows + WSL 快速检查
 
@@ -54,16 +52,15 @@ WSL 内安装：`sudo apt install bubblewrap`
 
 | 检查项 | 含义 |
 |--------|------|
-| `sandbox` | mode · preset · Codex 等价 · meris-rs · bwrap/网络 |
+| `sandbox` | mode · preset · meris-rs · bwrap/网络 |
 | `platform sandbox` | 当前 OS 上策略层 vs OS 层摘要 |
 | `WSL sandbox`（仅 win32） | WSL 是否可用 · bwrap 是否在 WSL 内 |
 
-## 与 Codex 仍存在的差距
+## 已知平台限制
 
-1. **macOS Seatbelt** — G6.2 MVP（`read-only` / `workspace-write`）；TCC 扩展见 [SEATBELT_DESIGN.md](SEATBELT_DESIGN.md)
-2. **Windows 原生 OS 沙箱** — 推荐 WSL；无 AppContainer 集成
-3. **network allowlist** — 命令级，非代理级
-4. **安装** — Codex npm/brew vs Meris pip（G5 待发 PyPI）
+1. **Windows 原生** — 无 OS 级沙箱；推荐 WSL2 + bubblewrap
+2. **network allowlist** — 命令级解析，非内核代理；子进程 / IP 直连不受控
+3. **macOS** — Seatbelt 能力见 [SEATBELT_DESIGN.md](SEATBELT_DESIGN.md)
 
 ## 相关
 

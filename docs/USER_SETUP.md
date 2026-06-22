@@ -10,7 +10,7 @@
 | 项 | 要求 |
 |----|------|
 | Python | **3.11+** |
-| 终端 | PowerShell / bash / Cursor 集成终端均可 |
+| 终端 | PowerShell / bash / IDE 集成终端均可 |
 | LLM | 任一厂商 API Key，或本机 Ollama / vLLM 等 **OpenAI 兼容** 地址 |
 | 项目目录 | 要用 Meris 改代码或问答的**那个仓库根目录**（含 `AGENTS.md` 的 cwd） |
 

@@ -1,7 +1,7 @@
 {
   "name": "meris-agent-vscode",
   "displayName": "Meris Agent",
-  "description": "Run Meris harness-first coding agent from VS Code / Cursor",
+  "description": "Run Meris harness-first coding agent from VS Code",
   "version": "0.3.0",
   "publisher": "meris-local",
   "engines": {

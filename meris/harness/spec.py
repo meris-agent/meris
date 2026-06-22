@@ -1,4 +1,4 @@
-"""Kiro-style spec workflow — requirements → design → tasks."""
+"""Structured spec workflow — requirements → design → tasks."""
 
 from __future__ import annotations
 

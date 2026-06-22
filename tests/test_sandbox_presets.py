@@ -1,4 +1,4 @@
-"""Phase G1 — Codex CLI sandbox presets."""
+"""Phase G1 — sandbox presets."""
 
 from __future__ import annotations
 

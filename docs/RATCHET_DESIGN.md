@@ -291,7 +291,7 @@ dismiss → dismissed.jsonl        # 不再提示
 
 > 用户确认并 apply 后，Agent 是否更少违背已表达的偏好？
 
-**隐私**：只读 workspace 内 session；不扫 Cursor 云端聊天；LLM 档不传 API key。
+**隐私**：只读 workspace 内 session；不扫 IDE 厂商云端聊天；LLM 档不传 API key。
 
 ---
 

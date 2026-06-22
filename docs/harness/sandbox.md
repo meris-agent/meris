@@ -1,28 +1,28 @@
-# Bash 沙箱（Phase E3 · Phase G1 Codex preset · Phase G2 network allowlist）
+# Bash 沙箱
 
 Meris 在 **permissions** 之外增加两层 **sandbox**：
 
 1. **策略层**（全平台）：拦截 cd/find/pwd/ls、`/workspace` 等探索性 bash  
-2. **OS 层**（Linux + bubblewrap）：只读挂载 `/`，workspace 可写，可选网络隔离与 `.env` 遮罩
+2. **OS 层**（Linux bubblewrap / macOS Seatbelt）：只读挂载或程序化 SBPL，workspace 可写，可选网络隔离与 `.env` 遮罩
 
-## Codex CLI 对照（Phase G1）
+## Preset
 
-| OpenAI Codex `--sandbox` | Meris `sandbox.preset` |
-|--------------------------|------------------------|
-| read-only | `read-only` |
-| workspace-write（Auto 默认） | `workspace-write` |
-| danger-full-access | `danger-full-access` |
+| Meris `sandbox.preset` | 典型用途 |
+|------------------------|----------|
+| `read-only` | 只读探索、ask 模式 |
+| `workspace-write`（默认） | 日常 coding，network isolated |
+| `danger-full-access` | 关闭沙箱约束（慎用） |
 
-显式 `mode` / `network` / `osSandbox` **覆盖** preset。详见 [sandbox.md](sandbox.md) 与 [PLATFORM_MATRIX.md](PLATFORM_MATRIX.md)。
+显式 `mode` / `network` / `osSandbox` **覆盖** preset。详见 [PLATFORM_MATRIX.md](PLATFORM_MATRIX.md)。
 
 ## 配置（`.meris/settings.yaml`）
 
 ```yaml
 sandbox:
-  preset: workspace-write   # 默认，对标 Codex Auto
+  preset: workspace-write   # 默认
   mode: warn                # off | warn | strict
   bashTimeoutSec: 120
-  osSandbox: auto           # off | auto | require（Linux bubblewrap）
+  osSandbox: auto           # off | auto | require（Linux bubblewrap / macOS Seatbelt）
   network: isolated         # shared | isolated — preset 默认 isolated
   networkAllowlist: []      # 非空 → allowlist 模式（见下）
   maskSecrets: true
@@ -38,18 +38,18 @@ sandbox:
 | osSandbox | 行为 |
 |-----------|------|
 | `off` | 仅 cwd 锁定 + 策略层 |
-| `auto` | Linux 且 PATH 有 `bwrap` 时启用 bubblewrap |
-| `require` | 必须有 bwrap，否则 bash 失败 |
+| `auto` | Linux 且 PATH 有 `bwrap` 时启用 bubblewrap；macOS 启用 Seatbelt |
+| `require` | 必须有 OS 沙箱，否则 bash 失败 |
 
-| network | 行为（仅 bubblewrap） |
-|---------|----------------------|
+| network | 行为（bubblewrap / Seatbelt） |
+|---------|------------------------------|
 | `shared` | `--share-net`（需 git/curl 时显式开启或 danger preset） |
-| `isolated` | `--unshare-net`，bash 无法访问网络（**workspace-write 默认**） |
+| `isolated` | `--unshare-net` 或 SBPL deny network（**workspace-write 默认**） |
 | `allowlist` | 显式 allowlist 模式；或 `isolated` + 非空 `networkAllowlist` |
 
-## Phase G2 — network allowlist
+## network allowlist
 
-Codex CLI 可在沙箱内按域名放行网络。Meris 采用 **命令级检查 + bwrap share-net**（Linux）或 **allowlist 混合模型**（macOS Seatbelt 放行 + G2 命令检查，见 [SEATBELT_DESIGN.md](SEATBELT_DESIGN.md)）：
+Meris 采用 **命令级检查 + bwrap share-net**（Linux）或 **allowlist 混合模型**（macOS Seatbelt 放行 + G2 命令检查，见 [SEATBELT_DESIGN.md](SEATBELT_DESIGN.md)）：
 
 ```yaml
 sandbox:
@@ -70,9 +70,9 @@ sandbox:
 
 支持 glob：`*.github.com` 匹配 `api.github.com` 与 `github.com`。
 
-**限制**：仅检查 bash 命令字符串中的可解析主机名；子进程、IP 直连、未列出的工具不受控。对标 Codex 的完整网络代理仍有差距。
+**限制**：仅检查 bash 命令字符串中的可解析主机名；子进程、IP 直连、未列出的工具不受控。
 
-默认遮罩文件（存在则 `--ro-bind /dev/null`）：`.env`、`.env.local`、`.env.production` 等。
+默认遮罩文件（存在则只读挂载或 SBPL deny）：`.env`、`.env.local`、`.env.production` 等。
 
 ## 探测
 
@@ -83,19 +83,19 @@ meris doctor    # Windows 另显示 WSL + bwrap 状态
 
 ## 平台说明
 
-详见 **[PLATFORM_MATRIX.md](PLATFORM_MATRIX.md)**（Phase G3 · Codex 对照）。
+详见 **[PLATFORM_MATRIX.md](PLATFORM_MATRIX.md)**。
 
 | 平台 | 策略层 | OS 层 |
 |------|--------|-------|
 | Linux / WSL | ✅ | ✅ bubblewrap |
 | Windows 原生 | ✅ cwd | ❌ — `doctor` 提示 WSL + `apt install bubblewrap` |
-| macOS | ✅ cwd | ❌ — Codex Seatbelt via `sandbox-exec` (G6.2) |
+| macOS | ✅ cwd | ✅ Seatbelt via `sandbox-exec` |
 
 安装（Debian/Ubuntu / WSL）：`sudo apt install bubblewrap`
 
-## Phase G6.2 — macOS Seatbelt
+## macOS Seatbelt
 
-Linux 以外，macOS 通过 `/usr/bin/sandbox-exec` 执行 bash（`osSandbox: auto|require`）：
+macOS 通过 `/usr/bin/sandbox-exec` 执行 bash（`osSandbox: auto|require`）：
 
 | preset | Seatbelt |
 |--------|----------|
@@ -105,9 +105,7 @@ Linux 以外，macOS 通过 `/usr/bin/sandbox-exec` 执行 bash（`osSandbox: au
 
 `network: isolated` 时在 SBPL 中加入 `(deny network*)`。详见 [SEATBELT_DESIGN.md](SEATBELT_DESIGN.md)。
 
-## Phase G6.3 — allowlist / maskSecrets 对齐
-
-与 Linux bubblewrap 同等能力：
+## allowlist / maskSecrets 对齐
 
 | 能力 | Linux bwrap | macOS Seatbelt |
 |------|-------------|----------------|

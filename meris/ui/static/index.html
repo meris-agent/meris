@@ -142,7 +142,7 @@
             <div class="settings-inline skill-import-actions">
               <button type="button" id="pick-skill-import-dir-btn">选择目录</button>
               <button type="button" id="import-skills-btn">导入</button>
-              <button type="button" id="import-cursor-skills-btn" class="link-btn">从 .cursor/skills</button>
+              <button type="button" id="import-cursor-skills-btn" class="link-btn">从外部 skills 目录</button>
               <span id="skills-import-status" class="settings-hint"></span>
             </div>
             <div id="skill-import-browse" class="skill-import-browse hidden">
@@ -219,12 +219,12 @@
           <p class="settings-hint">仅迁移 <strong>MCP</strong> 与 <strong>规则</strong> 到当前项目 Harness。技能请用「技能」页的目录导入。</p>
           <div class="settings-import-cards">
             <button type="button" class="settings-import-card" id="import-cursor-mcp-btn">
-              <strong>导入 MCP（.cursor）</strong>
-              <span><code>.cursor/mcp.json</code> → <code>.meris/ui/mcp-servers.json</code></span>
+              <strong>导入外部 MCP</strong>
+              <span><code>.cursor/mcp.json</code> 等 → <code>.meris/ui/mcp-servers.json</code></span>
             </button>
             <button type="button" class="settings-import-card" id="import-cursor-rules-btn">
-              <strong>导入规则（.cursor）</strong>
-              <span><code>.cursor/rules/</code> → <code>.meris/rules/</code></span>
+              <strong>导入外部规则</strong>
+              <span><code>.cursor/rules/</code> 等 → <code>.meris/rules/</code></span>
             </button>
           </div>
           <div class="settings-import-custom settings-card">

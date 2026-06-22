@@ -1,19 +1,19 @@
-# Meris Agent — VS Code / Cursor Extension
+# Meris Agent — VS Code Extension
 
 Thin wrapper around the `meris` CLI. Requires `meris` on PATH (`pip install -e .` from repo root).
 
-## 安装（Windows + Cursor）
+## 安装（Windows + VS Code）
 
 推荐目录联接（改仓库内文件即生效）：
 
 ```powershell
 $src = "<repo>\extensions\vscode-meris"   # 换成你的 clone 路径
-$dst = "$env:USERPROFILE\.cursor\extensions\meris-agent-vscode"
+$dst = "$env:USERPROFILE\.vscode\extensions\meris-agent-vscode"
 if (Test-Path $dst) { Remove-Item $dst -Force -Recurse }
 cmd /c mklink /J "$dst" "$src"
 ```
 
-**激活**：Cursor → `Developer: Reload Window`
+**激活**：VS Code → `Developer: Reload Window`
 
 完整步骤：[docs/LOCAL_SETUP.md](../../docs/LOCAL_SETUP.md)
 
@@ -23,7 +23,7 @@ cmd /c mklink /J "$dst" "$src"
 powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1 -SkipRust
 ```
 
-## Agent Window（类 Cursor 可视化）
+## Agent Window（可视化面板）
 
 命令面板 → **Meris: Open Agent Window**（编辑器旁面板）
 
@@ -73,10 +73,6 @@ meris ui
 | Meris: Open TUI | `meris tui` |
 
 终端命令仍在集成终端于 workspace 根目录执行。
-
-## VS Code（非 Cursor）
-
-将 `$dst` 改为 `$env:USERPROFILE\.vscode\extensions\meris-agent-vscode`。
 
 ## Package VSIX（可选）
 

@@ -1,6 +1,6 @@
 # AGENTS.md — Meris Harness（目录，非百科全书）
 
-> Inspired by OpenAI Codex AGENTS.md · 细节见 [docs/harness/README.md](docs/harness/README.md)
+> 细节见 [docs/harness/README.md](docs/harness/README.md)
 
 ## 产品宗旨
 

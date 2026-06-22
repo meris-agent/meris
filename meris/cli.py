@@ -26,7 +26,7 @@ app = typer.Typer(name="meris", help="Meris — harness-first coding agent")
 tui_app = typer.Typer(help="Interactive TUI session")
 mcp_app = typer.Typer(help="MCP server management")
 session_app = typer.Typer(help="Session persistence")
-spec_app = typer.Typer(help="Kiro-style spec workflow")
+spec_app = typer.Typer(help="Structured spec workflow (requirements / design / tasks)")
 benchmark_app = typer.Typer(help="Benchmark task suite")
 ratchet_app = typer.Typer(help="Harness self-evolution (Ratchet)")
 insights_app = typer.Typer(help="Habit insights from session history (confirm → evolve)")
@@ -611,7 +611,7 @@ def spec_init_cmd(
     feature: str = typer.Argument(..., help="Feature name"),
     workspace: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
 ) -> None:
-    """Init Kiro-style spec (requirements / design / tasks)."""
+    """Init structured spec (requirements / design / tasks)."""
     from meris.harness.spec import init_spec
 
     tpl = _pkg_templates() / "spec"
@@ -703,7 +703,7 @@ def ask_cmd(
         None, "--event-stream", help="Append JSONL events to path (- for stdout)"
     ),
 ) -> None:
-    """Read-only exploration (Cursor Ask mode)."""
+    """Read-only exploration (ask mode)."""
     _run_async(
         _stream(
             task,
@@ -756,7 +756,7 @@ def plan_cmd(
     ratchet: bool = typer.Option(False, "--ratchet", help="After run: refresh profile + scan proposals"),
     event_stream: Path | None = typer.Option(None, "--event-stream", help="JSONL event log path"),
 ) -> None:
-    """Generate plan / tasks without editing code (Cursor Plan + Kiro tasks)."""
+    """Generate plan / tasks without editing code."""
     plan_out: str | Path | None = None if no_save else (out or "__default__")
     _run_async(
         _stream(

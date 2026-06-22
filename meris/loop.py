@@ -1,4 +1,4 @@
-"""Agent loop — async kernel (Claude Code / Nanobot shape)."""
+"""Agent loop — async kernel."""
 
 from __future__ import annotations
 

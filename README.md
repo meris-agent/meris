@@ -2,7 +2,7 @@
 
 > **Meris Cloud** (hosted SaaS) is proprietary and not in this repo — see [CLOUD.md](CLOUD.md).
 
-Model-agnostic terminal coding agent — **Harness-first**, inspired by AtomCode, Claude Code, Codex, Cursor, and Kiro.
+Model-agnostic terminal coding agent — **Harness-first**.
 
 ```
 Agent = Model + Harness
@@ -90,7 +90,7 @@ After `meris init-harness`, these files steer the agent in **your** repo:
 | `.meris/settings.yaml` | Tool permissions, sensors, hooks, MCP, models |
 | `PROGRESS.md` | Cross-session progress notes |
 | `.meris/skills/*.md` | Optional domain skills |
-| `.meris/spec/*.md` | Optional spec workflow (Kiro-style) |
+| `.meris/spec/*.md` | Optional structured spec workflow (requirements / design / tasks) |
 
 Templates live in [`templates/`](templates/). Example note-vault harness (Obsidian optional): [`docs/examples/ainote-vault/`](docs/examples/ainote-vault/).
 
@@ -220,7 +220,7 @@ In `run` mode, the agent can call `subagent_run` for read-only sub-tasks with is
 
 ## Hooks & skills
 
-**Tool hooks** (Claude Code–style) in `settings.json`:
+**Tool hooks** (pre/post tool use) in `settings.json`:
 
 ```json
 {
@@ -249,7 +249,7 @@ Env: `MERIS_TOOL_NAME`, `MERIS_TOOL_ARGS`, `MERIS_TOOL_RESULT`, `MERIS_HOOK_PHAS
 
 | Component | Docs |
 |-----------|------|
-| VS Code / Cursor extension | [`extensions/vscode-meris/`](extensions/vscode-meris/) · [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
+| VS Code extension | [`extensions/vscode-meris/`](extensions/vscode-meris/) · [LOCAL_SETUP](docs/LOCAL_SETUP.md) |
 | Rust core (`meris-rs`) | `meris native build` · [NATIVE_BINARY](docs/NATIVE_BINARY.md) · auto native when binary present |
 
 Windows one-shot dev setup: `powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1`

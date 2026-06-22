@@ -1,4 +1,4 @@
-/* Meris Agent Window — vibe coding UI (Cursor / Bolt inspired) */
+/* Meris Agent Window */
 
 :root {
   --bg: #0b0d11;
@@ -625,7 +625,7 @@ body.has-error #layout {
   white-space: nowrap;
 }
 
-/* Composer quick git ship bar (Cursor-style) */
+/* Composer quick git ship bar */
 .git-ship-bar {
   display: flex;
   align-items: center;

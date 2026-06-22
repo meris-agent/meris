@@ -1,6 +1,6 @@
 # 本机环境配置
 
-> 适用于 **Windows + Cursor / VS Code** 开发机：扩展安装、Rust 工具链与 `meris-rs` 构建。  
+> 适用于 **Windows + VS Code** 开发机：扩展安装、Rust 工具链与 `meris-rs` 构建。  
 > 路径请按你的 clone 位置替换 `<repo>`（Meris git 仓库根目录）。
 
 ## 前置检查
@@ -8,7 +8,7 @@
 | 组件 | 说明 |
 |------|------|
 | Python `meris` CLI | `pip install -e .` 后 `meris version` |
-| Cursor / VS Code 扩展 | 目录联接或 VSIX，见下方 |
+| VS Code 扩展 | 目录联接或 VSIX，见下方 |
 | Rust (rustup) | 可选，用于 `meris-rs` |
 | VS Build Tools 2022 | Windows 上 cargo 链接需要 MSVC |
 
@@ -27,7 +27,7 @@ meris native status
 
 ---
 
-## 一、Cursor / VS Code 扩展
+## 一、VS Code 扩展
 
 扩展是 CLI 的 IDE 入口，不 bundled Python 运行时。
 
@@ -37,16 +37,12 @@ meris native status
 
 ```powershell
 $src = "<repo>\extensions\vscode-meris"
-$dst = "$env:USERPROFILE\.cursor\extensions\meris-agent-vscode"
+$dst = "$env:USERPROFILE\.vscode\extensions\meris-agent-vscode"
 if (Test-Path $dst) { Remove-Item $dst -Force -Recurse }
 cmd /c mklink /J "$dst" "$src"
 ```
 
-VS Code 用户将 `$dst` 改为：
-
-```powershell
-$dst = "$env:USERPROFILE\.vscode\extensions\meris-agent-vscode"
-```
+若编辑器使用其他扩展目录，将 `$dst` 改为该编辑器下的 `extensions/meris-agent-vscode`。
 
 **生效**：`Developer: Reload Window`，命令面板搜索 `Meris:`。
 
@@ -55,7 +51,7 @@ $dst = "$env:USERPROFILE\.vscode\extensions\meris-agent-vscode"
 ```bash
 cd extensions/vscode-meris
 npx @vscode/vsce package
-# Cursor: Extensions → Install from VSIX
+# VS Code: Extensions → Install from VSIX
 ```
 
 ### 可用命令
@@ -131,7 +127,7 @@ powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1
 
 参数：
 
-- `-SkipRust` — 只装 Cursor 扩展联接
+- `-SkipRust` — 只装 VS Code 扩展联接
 - `-SkipExtension` — 只构建 meris-rs
 - `-InstallToolchain` — 尝试 winget 安装 rustup + Build Tools
 

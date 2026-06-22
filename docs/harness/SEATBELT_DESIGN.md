@@ -1,16 +1,16 @@
-# Meris macOS Seatbelt 设计（G6.2+）
+# Meris macOS Seatbelt 设计
 
-> 不是 Codex SBPL 文件的拷贝。Meris 用 **preset 驱动的程序化策略** 生成 Seatbelt 规则。
+> Meris 用 **preset 驱动的程序化策略** 在运行时生成 Seatbelt 规则（`meris-rs/seatbelt_policy.rs`）。
 
 ## 设计原则
 
-| 原则 | Meris | Codex CLI |
-|------|-------|-----------|
-| 策略来源 | `meris-rs seatbelt_policy.rs` 运行时生成 | 静态 `seatbelt_base_policy.sbpl` + 动态片段 |
-| 与 preset 对齐 | G1 `read-only` / `workspace-write` 直接映射 profile | 独立 sandbox_mode 配置 |
-| 读权限 | **分层 allowlist**（系统根 + workspace） | 大段 Chromium 衍生 base + 动态写根 |
-| 网络 | **三层**：isolated 拒绝 / allowlist 混合 / shared 放行 | 代理或平台策略 |
-| 秘密遮罩 | 与 Linux `maskSecrets` 同一 `collect_mask_paths` | 独立扩展 |
+| 原则 | Meris 做法 |
+|------|------------|
+| 策略来源 | `meris-rs seatbelt_policy.rs` 运行时生成 SBPL |
+| 与 preset 对齐 | `read-only` / `workspace-write` 直接映射 profile |
+| 读权限 | **分层 allowlist**（系统根 + workspace） |
+| 网络 | **三层**：isolated 拒绝 / allowlist 混合 / shared 放行 |
+| 秘密遮罩 | 与 Linux `maskSecrets` 同一 `collect_mask_paths` |
 
 ## Profile 映射
 
@@ -22,9 +22,9 @@
 
 系统读根（可维护列表）：`/usr` `/bin` `/sbin` `/System` `/Library` `/private/etc` `/private/var/db` `/opt/homebrew`
 
-**刻意不做** `(allow file-read*)` 全局放行 — 比初版 G6.2 更紧，比 Codex 静态文件更易审计。
+**刻意不做** `(allow file-read*)` 全局放行 — 便于审计与收紧。
 
-## 网络（Meris 混合模型）
+## 网络（混合模型）
 
 | `network` 有效模式 | Seatbelt | 策略层 G2 |
 |--------------------|----------|-----------|
@@ -32,7 +32,7 @@
 | `allowlist` | `(allow network-outbound)` | 命令级 host 检查 |
 | `shared` | `(allow network-outbound)` | — |
 
-allowlist 下 OS 允许出站，**G2 命令解析仍拦截未授权主机** — Meris 双轨，而非 Codex 内核代理。
+allowlist 下 OS 允许出站，**G2 命令解析仍拦截未授权主机** — Meris 双轨 enforcement。
 
 ## 单一数据源
 
@@ -53,7 +53,7 @@ meris-rs sandbox policy --workspace . | jq .profile
 meris doctor    # platform sandbox: ok · seatbelt active, mask N secret file(s)
 ```
 
-## G6.3 验收（allowlist + mask 对齐）
+## allowlist + mask 对齐
 
 | 检查 | 命令 / 行为 |
 |------|-------------|

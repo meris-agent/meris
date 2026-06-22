@@ -1,4 +1,4 @@
-//! Meris-native macOS Seatbelt policy (programmatic SBPL — not Codex file copy).
+//! Meris-native macOS Seatbelt policy (programmatic SBPL).
 //!
 //! Design: preset-driven tiers aligned with G1/G2, generated at runtime.
 
@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::Path;
 
-/// Curated read roots for toolchain/runtime (narrower than Codex `(allow file-read*)`).
+/// Curated read roots for toolchain/runtime (no global file-read allow).
 const MERIS_SYSTEM_READ_ROOTS: &[&str] = &[
     "/usr",
     "/bin",

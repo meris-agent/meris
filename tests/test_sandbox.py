@@ -57,7 +57,7 @@ def test_doctor_reports_sandbox(workspace: Path) -> None:
     sandbox = next(r for r in results if r.name == "sandbox")
     assert sandbox.status == "ok"
     assert "mode=" in sandbox.detail
-    assert "Codex --sandbox" in sandbox.detail
+    assert "preset=" in sandbox.detail
 
 
 def test_default_os_sandbox_auto(workspace: Path) -> None:

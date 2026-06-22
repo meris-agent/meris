@@ -80,7 +80,7 @@ def _make_post_hook(
 
 
 def build_hook_runner(workspace: Path, settings: dict) -> HookRunner:
-    """Build HookRunner from settings.hooks (Claude Code–style shell hooks)."""
+    """Build HookRunner from settings.hooks (shell hooks on tool use)."""
     runner = HookRunner()
     hooks_cfg = settings.get("hooks") or {}
 

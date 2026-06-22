@@ -66,7 +66,7 @@ Agent 犯错 → **改 Harness 文件**，不是只重试同一句 prompt。
 | **Composer** | `@` 选择挂上 | （不直接选） | （在设置里配，不在 Composer 重配） | 设置页「CLI 命令」速查 |
 | **设置页** | 技能 | 规则 | MCP | CLI 命令（独立页） |
 
-对标 TRAE / Cursor：**配置进设置中心，聊天区只管聊天**（Meris Phase J）。
+**配置进设置中心，聊天区只管聊天**（设置页与 Composer 职责分离）。
 
 ## Agent UI 控件对照
 

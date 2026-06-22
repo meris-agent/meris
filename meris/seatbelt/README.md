@@ -1,6 +1,6 @@
 # macOS Seatbelt
 
-SBPL is **generated at runtime** by `meris-rs` (`seatbelt_policy.rs`), not copied from Codex.
+SBPL is **generated at runtime** by `meris-rs` (`seatbelt_policy.rs`).
 
 ```bash
 meris-rs sandbox policy --workspace .

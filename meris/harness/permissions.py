@@ -7,7 +7,7 @@ from pathlib import Path
 
 from meris.harness.settings import load_settings
 
-# Meris tool name → Claude Code permission category
+# Meris tool name → permission category
 TOOL_CATEGORY: dict[str, str] = {
     "read_file": "Read",
     "write_file": "Write",
