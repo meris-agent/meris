@@ -92,7 +92,7 @@ After `meris init-harness`, these files steer the agent in **your** repo:
 | `.meris/skills/*.md` | Optional domain skills |
 | `.meris/spec/*.md` | Optional spec workflow (Kiro-style) |
 
-Templates live in [`templates/`](templates/). Example vault harness: [`docs/examples/ainote-vault/`](docs/examples/ainote-vault/).
+Templates live in [`templates/`](templates/). Example note-vault harness (Obsidian optional): [`docs/examples/ainote-vault/`](docs/examples/ainote-vault/).
 
 ## Configuration
 

@@ -2,7 +2,7 @@
 
 > **读者**：想理解 Ratchet 如何工作的用户与贡献者。  
 > **怎么用**：见 [README](../README.md) 的 Ratchet 命令表与 [USER_SETUP.md](USER_SETUP.md)。  
-> 维护者实现进度见私有知识库 `docs-meris/planning/RATCHET_ROADMAP.md`（不进公开仓）。
+> 维护者实现进度不在公开仓；用户以 README 命令表与本设计文档为准。
 
 ---
 

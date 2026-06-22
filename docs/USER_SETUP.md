@@ -162,7 +162,7 @@ meris run --approve "修 tests/test_xxx.py 里失败的用例"
 | 图形界面 | `meris tui` |
 | 跑完后沉淀规则 | `meris run --ratchet "..."` |
 
-**cwd 很重要**：必须在**目标项目根**执行，不要在 Obsidian vault 父目录跑 Meris 子目录里的代码任务（见 `AGENTS.md` / `.meris/rules/workspace.md`）。
+**cwd 很重要**：必须在**目标项目根**执行，不要在笔记库父目录跑 Meris 子目录里的代码任务（见 `AGENTS.md` / `.meris/rules/workspace.md`）。
 
 ---
 

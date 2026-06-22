@@ -1,6 +1,6 @@
 # Meris 文档
 
-面向**用户与贡献者**的公开文档。维护者规划（Roadmap、Phase 勾选、Dogfood 日志）在 Obsidian 知识库 `docs-meris/`，不在本仓库。
+面向**用户与贡献者**的公开文档。维护者内部规划与进度表不在本仓库。
 
 **新用户**：从 [USER_SETUP.md](USER_SETUP.md) 开始。
 
@@ -53,7 +53,7 @@
 
 | 文档 | 说明 |
 |------|------|
-| [examples/ainote-vault/](examples/ainote-vault/) | Obsidian vault 示例 Harness |
+| [examples/ainote-vault/](examples/ainote-vault/) | Markdown 笔记库示例 Harness（含 Obsidian） |
 
 ## 品牌与宗旨（摘要）
 

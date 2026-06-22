@@ -24,7 +24,7 @@
 
 - Python 源码一律在 `meris/` 包下。
 - import：`from meris.xxx import ...`（不要用已废弃的包名或父目录假路径）。
-- 改 Obsidian vault 笔记时 cwd 在 vault 根，见 `.meris/rules/workspace.md`。
+- 改 Markdown 笔记库时 cwd 在笔记库根，见 `.meris/rules/workspace.md`。
 
 ## 扩展 CLI
 

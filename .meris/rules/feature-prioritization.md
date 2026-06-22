@@ -22,5 +22,5 @@
 
 ## 参考
 
-- 产品宗旨：README North star（详细见私有知识库 `Meris-产品宗旨`）
-- Dogfood：私有知识库 `docs-meris/planning/`
+- 产品宗旨：README North star
+- Dogfood：维护者内部规划（不进公开仓）

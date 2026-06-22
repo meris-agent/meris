@@ -33,12 +33,12 @@
 - **项目**：Meris 所称的 **Harness 附着点** — 有 `init-harness` 的那一个仓库根。
 - **禁止混用文案**：Skill 列表、MCP 设置页不要用「工作区 Tab」；应写「当前项目根下的 `.meris/skills/`」。
 
-### 父子目录示例（AINote vault + meris 子仓库）
+### 父子目录示例（笔记库 + meris 子仓库）
 
 | 任务 | 正确 cwd（项目根） |
 |------|-------------------|
 | 改 Meris 源码、pytest、`meris harness check` | `meris/` git 仓库根 |
-| 改 Obsidian 笔记 `Articles/` | vault 根 |
+| 改 Markdown 笔记 `Articles/` | 笔记库根（vault 根） |
 
 在 vault 根跑 `meris run` 改 README 可能写成 `meris/README.md` 并被 block — **先切顶栏 cwd，再改 Harness**。
 

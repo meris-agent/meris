@@ -103,5 +103,5 @@ def test_stale_pytest_root_detector() -> None:
 
     stale = Path("C:/Users/x/AppData/Local/Temp/pytest-of-yangy/pytest-206/test_foo0/b")
     assert _is_stale_pytest_workspace_root(stale) is True
-    ok = Path("D:/personal/obsidian/AINote/meris")
+    ok = Path("/home/user/projects/meris")
     assert _is_stale_pytest_workspace_root(ok) is False
