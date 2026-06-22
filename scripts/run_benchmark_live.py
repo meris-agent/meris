@@ -2,8 +2,8 @@
 """Live benchmark — real LLM agent tasks (requires API key).
 
 Usage:
-  python scripts/run_benchmark_live.py              # Route B default: 3 agent tasks
-  python scripts/run_benchmark_live.py --route-b  # same as default
+  python scripts/run_benchmark_live.py              # default: 3 agent tasks
+  python scripts/run_benchmark_live.py --default    # same as default
   python scripts/run_benchmark_live.py --filter read_hello
   python scripts/run_benchmark_live.py --all-agent
 """
@@ -16,8 +16,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Phase G4 — Route B live acceptance (read-only ask tasks, native loop friendly)
-ROUTE_B_LIVE_TASKS: tuple[str, ...] = ("read_hello", "docs_smoke", "list_tools")
+# Default live acceptance tasks (read-only ask, native-loop friendly)
+DEFAULT_LIVE_TASKS: tuple[str, ...] = ("read_hello", "docs_smoke", "list_tools")
+# Back-compat alias for scripts/tests
+ROUTE_B_LIVE_TASKS = DEFAULT_LIVE_TASKS
 
 
 def select_live_agent_tasks(
@@ -37,7 +39,7 @@ def select_live_agent_tasks(
             for t in agent_tasks
             if any(t.id == p or t.id.startswith(p) for p in filter_prefixes)
         ]
-    ids = task_ids or ROUTE_B_LIVE_TASKS
+    ids = task_ids or DEFAULT_LIVE_TASKS
     by_id = {t.id: t for t in agent_tasks}
     return [by_id[i] for i in ids if i in by_id]
 
@@ -61,12 +63,17 @@ async def main() -> int:
         "-k",
         action="append",
         default=[],
-        help="Task id prefix (repeatable). Default: Route B 3 tasks",
+        help="Task id prefix (repeatable). Default: read_hello, docs_smoke, list_tools",
+    )
+    parser.add_argument(
+        "--default",
+        action="store_true",
+        help=f"Run default live tasks: {', '.join(DEFAULT_LIVE_TASKS)}",
     )
     parser.add_argument(
         "--route-b",
         action="store_true",
-        help=f"Run Route B live tasks: {', '.join(ROUTE_B_LIVE_TASKS)}",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--all-agent",
@@ -111,7 +118,7 @@ async def main() -> int:
         all_tasks,
         filter_prefixes=args.filter or None,
         all_agent=args.all_agent,
-        task_ids=ROUTE_B_LIVE_TASKS if not args.filter and not args.all_agent else None,
+        task_ids=DEFAULT_LIVE_TASKS if not args.filter and not args.all_agent else None,
     )
 
     if not selected:

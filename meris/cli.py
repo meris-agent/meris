@@ -283,7 +283,7 @@ def doctor_cmd(
 def dogfood_cmd(
     cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
 ) -> None:
-    """Daily dogfood readiness (PROGRESS · harness · env). See docs/README.md."""
+    """Project readiness (PROGRESS · harness · env). See docs/harness/testing.md."""
     from meris.harness.dogfood import dogfood_check_failed, run_dogfood_check
 
     results = run_dogfood_check(cwd.resolve())

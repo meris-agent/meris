@@ -190,7 +190,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
             CheckResult(
                 "native loop",
                 "ok",
-                "MERIS_NATIVE_LOOP=auto — Rust agent loop active (Route B / G4)",
+                "MERIS_NATIVE_LOOP=auto — Rust agent loop active",
             )
         )
     elif binary and loop_val in ("0", "false", "no"):
@@ -198,7 +198,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
             CheckResult(
                 "native loop",
                 "warn",
-                "meris-rs present but MERIS_NATIVE_LOOP=0 — set auto in .env for Route B",
+                "meris-rs present but MERIS_NATIVE_LOOP=0 — set MERIS_NATIVE_LOOP=auto in .env",
             )
         )
     elif binary and not loop_val:

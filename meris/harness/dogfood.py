@@ -1,4 +1,4 @@
-"""Daily dogfood readiness checks (Route B)."""
+"""Daily project readiness checks before a real agent session."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ _OPEN_SESSION_RE = re.compile(r"Status\*\*:\s*(dod_failed|error)\s*$", re.MULTIL
 
 
 def run_dogfood_check(cwd: Path) -> list[DogfoodResult]:
-    """Lightweight checks before a real dogfood session (no live API probe)."""
+    """Lightweight checks before a real agent session (no live API probe)."""
     ws = cwd.resolve()
     rows: list[DogfoodResult] = []
 

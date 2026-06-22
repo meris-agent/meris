@@ -1,4 +1,4 @@
-"""Phase G4 — Route B completion (native loop default + live 3 task)."""
+"""Live benchmark default tasks (native loop + 3 agent tasks)."""
 
 from __future__ import annotations
 

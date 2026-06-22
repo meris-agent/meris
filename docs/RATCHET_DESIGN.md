@@ -13,7 +13,7 @@
 Meris 已有 Harness **载体**（AGENTS、rules、skills、PROGRESS、session、sensors），但进化依赖维护者：
 
 - 看失败 → 手改 `.meris/rules/` 或 `AGENTS.md`
-- 7 天 dogfood 已验证有效，但 **不可扩展** 给普通用户
+- 7 天真实任务试用已验证有效，但 **不可扩展** 给普通用户
 
 ### 目标
 
@@ -94,7 +94,7 @@ Ratchet 消费 **结构化信号**，不是扫描整个 git history。
 
 ### 4.1 教训分类（Lesson taxonomy）
 
-与 dogfood 复盘对齐，可扩展：
+与真实任务复盘对齐，可扩展：
 
 | ID | 类型 | 典型信号 | 默认补丁目标 |
 |----|------|----------|--------------|

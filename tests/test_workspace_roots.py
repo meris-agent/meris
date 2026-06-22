@@ -101,7 +101,7 @@ def test_prune_ephemeral_pytest_roots(roots_file: Path, tmp_path: Path) -> None:
 def test_stale_pytest_root_detector() -> None:
     from meris.harness.ui_config import _is_stale_pytest_workspace_root
 
-    stale = Path("C:/Users/x/AppData/Local/Temp/pytest-of-yangy/pytest-206/test_foo0/b")
+    stale = Path("C:/Users/x/AppData/Local/Temp/pytest-of-user/pytest-206/test_foo0/b")
     assert _is_stale_pytest_workspace_root(stale) is True
     ok = Path("/home/user/projects/meris")
     assert _is_stale_pytest_workspace_root(ok) is False

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       filter:
-        description: "Task id prefix (empty = Route B 3 tasks: read_hello, docs_smoke, list_tools)"
+        description: "Task id prefix (empty = default 3 tasks: read_hello, docs_smoke, list_tools)"
         required: false
         default: ""
       all_agent:

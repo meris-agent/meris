@@ -205,7 +205,7 @@ meris native status
 | `MERIS_NATIVE_LOOP=auto` 或 `1` | ask / plan / review / run 走 Rust agent loop |
 | `MERIS_NATIVE_LOOP=0` | 强制 Python loop |
 
-推荐 dogfood：
+推荐验证 native loop：
 
 ```bash
 meris-rs run ask "List top-level files"

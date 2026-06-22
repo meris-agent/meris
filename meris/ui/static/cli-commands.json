@@ -86,7 +86,7 @@
         {
           "id": "dogfood",
           "cmd": "meris dogfood",
-          "summary": "日常 dogfood 就绪检查",
+          "summary": "环境就绪检查（PROGRESS · harness · env）",
           "ui": null
         },
         {
