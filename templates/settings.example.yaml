@@ -41,7 +41,7 @@ blockedPaths:
   - "**/generated/**"
   - "**/node_modules/**"
 
-# --- Bash 沙箱（Phase E3）：off | warn | strict ---
+# --- Bash 沙箱：off | warn | strict ---
 sandbox:
   preset: workspace-write   # read-only | workspace-write | danger-full-access
   mode: warn                # 可被 preset 覆盖；显式设置优先

@@ -90,7 +90,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
                 CheckResult(
                     "system prompt",
                     "warn",
-                    f"~{chars} chars — slim AGENTS / use docs/harness (Phase E1)",
+                    f"~{chars} chars — slim AGENTS / use docs/harness",
                 )
             )
         elif chars > 18_000:
@@ -154,7 +154,7 @@ def check_harness(workspace: Path) -> list[CheckResult]:
             CheckResult(
                 "sandbox",
                 "warn",
-                f"mode=off, bashTimeout={timeout}s{preset_note} — consider workspace-write (Phase G1){native_note}{os_note}",
+                f"mode=off, bashTimeout={timeout}s{preset_note} — consider preset workspace-write{native_note}{os_note}",
             )
         )
     elif mode == "strict":

@@ -9,7 +9,7 @@ pytest tests/ -m "not integration" -q
 - 集成测试标记：`@pytest.mark.integration`（CI 默认不跑）
 - 改 Python 后必须跑上述命令，退出码 0 才算完成。
 
-## Harness 检查（Phase E2）
+## Harness 检查
 
 ```bash
 meris harness check

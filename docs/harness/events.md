@@ -1,4 +1,4 @@
-# Loop 事件流（Phase E4）
+# Loop 事件流
 
 Meris agent loop 可输出 **JSONL 事件**，供 TUI、IDE、CI 消费。
 

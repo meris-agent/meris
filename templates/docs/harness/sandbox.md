@@ -1,4 +1,4 @@
-# Bash 沙箱（Phase E3）
+# Bash 沙箱
 
 ```yaml
 sandbox:
