@@ -1,7 +1,7 @@
 [project]
 name = "meris-agent"
 version = "0.0.2"
-description = "Model-agnostic coding agent with first-class Harness engineering"
+description = "Meris — model-agnostic coding agent with a per-project agent harness (.meris/)"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"

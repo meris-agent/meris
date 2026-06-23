@@ -1,6 +1,7 @@
 # Meris Harness 深度文档
 
-> **AGENTS.md 是目录**；细节按需 `read_file` 本目录下的文件。
+> **AGENTS.md 是目录**；细节按需 `read_file` 本目录下的文件。  
+> 「Harness」术语澄清（vs OpenHarness / Harness.io）：先读 [concepts.md](concepts.md)。
 
 | 文档 | 何时读 |
 |------|--------|

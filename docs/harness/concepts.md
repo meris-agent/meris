@@ -3,6 +3,21 @@
 > 使用 Agent UI、编写 Harness 或贡献 UI 代码前建议先读本文，避免把 cwd、Skill、MCP 混在同一套文案里。  
 > 配套：[routing.md](routing.md)（cwd 与模型路由）、[README 宗旨](../README.md#meris-agent)。
 
+## 「Harness」指什么（避免混淆）
+
+Meris 文档里的 **Harness** 是 [agent harness](https://openai.com/index/harness-engineering/)（模型外的项目约束层），**产品名是 Meris**，不是叫 Harness 的软件。
+
+| 名称 | 路径 / 项目 | 含义 |
+|------|-------------|------|
+| **项目 Harness** | 各仓库根：`AGENTS.md`、`.meris/`、`PROGRESS.md` | 用户可编辑的规则、技能、权限、会话 |
+| **Harness 引擎** | 本 pip 包：`meris/harness/` | 读取项目文件、驱动 agent loop |
+| **Harness 文档** | `docs/harness/` | 机制说明（`init-harness` 可拷到用户项目） |
+
+**不是同一事物：**
+
+- [OpenHarness](https://github.com/HKUDS/OpenHarness) — 独立开源 agent 框架，与 Meris **无隶属关系**
+- [Harness.io](https://www.harness.io/) — DevOps CI/CD 平台，与 AI agent harness **无关**（英文同词）
+
 ## 一张表
 
 | 概念 | 含义 | 存在位置 | Agent 怎么用 |

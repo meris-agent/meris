@@ -3,6 +3,8 @@
 > **English quick start:** [README](../README.md)  
 > **模型配置大全:** [MODELS.md](MODELS.md)
 
+Meris 里的 **Harness** 指项目上的 agent 约束层（`AGENTS.md`、`.meris/`），产品名是 **Meris**；与 [OpenHarness](https://github.com/HKUDS/OpenHarness)、[Harness.io](https://www.harness.io/) 无关联。详见 [harness/concepts.md](harness/concepts.md)。
+
 从零到在自己的项目里运行 `meris ask` / `plan` / `run`。
 
 ---

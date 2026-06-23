@@ -7,6 +7,8 @@ Public docs for **Meris Agent** users and contributors.
 | **English** | [README](../README.md) — install, quick start, command table |
 | **中文** | [USER_SETUP.md](USER_SETUP.md) — 安装、API Key、Harness 初始化 |
 
+> **「Harness」** = 项目上的 agent harness 层（`AGENTS.md` + `.meris/`），产品名是 **Meris**。不是 [OpenHarness](https://github.com/HKUDS/OpenHarness)，也不是 [Harness.io](https://www.harness.io/) DevOps。详见 [harness/concepts.md](harness/concepts.md)。
+
 ---
 
 ## Choose your path

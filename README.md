@@ -12,6 +12,23 @@ Agent = Model + Harness
 
 Meris ships a lean CLI (`meris`) plus a **Harness** layer you control: `AGENTS.md`, permissions, hooks, and Definition-of-Done sensors. Bring your own LLM (OpenAI-compatible or Anthropic).
 
+## What is the Harness?
+
+**Harness** here is the [agent harness](https://openai.com/index/harness-engineering/) — the project-specific layer around the model (`Agent = Model + Harness`). It is **not** the product name; the product is **Meris**.
+
+| Layer | Where | Role |
+|-------|-------|------|
+| **Project harness** | Your repo: `AGENTS.md`, `.meris/`, `PROGRESS.md` | Rules, skills, permissions, sessions — you edit these |
+| **Harness engine** | This package: `meris/harness/` | Loads project files, runs the loop, sandbox, sensors |
+| **Harness docs** | `docs/harness/` | Concepts and mechanics (optional copy via `init-harness`) |
+
+**Not the same as:**
+
+- [OpenHarness](https://github.com/HKUDS/OpenHarness) — a separate open-source agent framework (no affiliation)
+- [Harness.io](https://www.harness.io/) — a DevOps CI/CD platform (unrelated; same English word)
+
+Details: [docs/harness/concepts.md](docs/harness/concepts.md).
+
 ## Install
 
 **From PyPI:**
