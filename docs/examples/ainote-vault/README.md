@@ -1,6 +1,6 @@
-# 示例：Obsidian Vault 作为第二常驻项目
+# 示例：Markdown 笔记库 + 嵌套代码仓库
 
-Meris 仓库内自带 Harness；若你还有 Obsidian 笔记库，可复制本目录模板到 **vault 根**。
+若你有一个**外层文档/笔记根目录**，内嵌独立的 **git 代码仓库**，可复制本模板到外层根目录作为 Harness 起点（Obsidian 可选）。
 
 ## 典型布局
 

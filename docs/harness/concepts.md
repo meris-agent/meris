@@ -1,7 +1,7 @@
-# Vibe Coding 概念：工作区、项目、Skill、MCP
+# Harness 核心概念：工作区、项目、Skill、MCP
 
-> **改 Agent UI / 设置页 / Harness 前先读本文**，避免把 cwd、Skill、MCP 混在同一套文案里。  
-> 与 [routing.md](routing.md)（顶栏下拉 = cwd 路由）、README North star（Harness 分层）配套。
+> 使用 Agent UI、编写 Harness 或贡献 UI 代码前建议先读本文，避免把 cwd、Skill、MCP 混在同一套文案里。  
+> 配套：[routing.md](routing.md)（cwd 与模型路由）、[README 宗旨](../README.md#meris-agent)。
 
 ## 一张表
 
@@ -29,18 +29,22 @@
 └─────────────────────────────────────────────────────────┘
 ```
 
-- **工作区**：像 VS Code「打开的文件夹」— 可在 vault 根与 `meris/` 子仓库之间切换（见 `.meris/rules/workspace.md`）。
-- **项目**：Meris 所称的 **Harness 附着点** — 有 `init-harness` 的那一个仓库根。
+- **工作区**：像 VS Code「打开的文件夹」— 可在多个已注册根目录之间切换。
+- **项目**：Meris 所称的 **Harness 附着点** — 运行 `init-harness` 的那一个仓库根。
 - **禁止混用文案**：Skill 列表、MCP 设置页不要用「工作区 Tab」；应写「当前项目根下的 `.meris/skills/`」。
 
-### 父子目录示例（笔记库 + meris 子仓库）
+### 父子目录示例（外层文件夹 + 嵌套 git 仓库）
+
+常见于「笔记库 / 文档根 + 内嵌代码仓库」：
 
 | 任务 | 正确 cwd（项目根） |
 |------|-------------------|
-| 改 Meris 源码、pytest、`meris harness check` | `meris/` git 仓库根 |
-| 改 Markdown 笔记 `Articles/` | 笔记库根（vault 根） |
+| 改内嵌代码仓库、跑 pytest | 内层 git 仓库根（如 `my-app/`） |
+| 改外层 Markdown / 文档 | 外层根目录 |
 
-在 vault 根跑 `meris run` 改 README 可能写成 `meris/README.md` 并被 block — **先切顶栏 cwd，再改 Harness**。
+在外层 cwd 跑 `meris run` 改内层 README 可能路径错误 — **先切换到目标项目根，再执行任务**。
+
+完整示例模板：[examples/ainote-vault/](../examples/ainote-vault/README.md)。
 
 ## Harness 分层（进化写在哪）
 
@@ -118,5 +122,5 @@ Agent 犯错 → **改 Harness 文件**，不是只重试同一句 prompt。
 - [git-workflow.md](git-workflow.md) — 改动面板与 Ship 流程
 - [routing.md](routing.md) — cwd 与 model 路由
 - [architecture.md](architecture.md) — 包布局
-- `.meris/rules/workspace.md` — vault / meris 双 cwd
+- [examples/ainote-vault/](../examples/ainote-vault/) — 笔记库 + 嵌套代码仓库示例
 - [multi-repo.md](multi-repo.md) — 多仓库 task scope

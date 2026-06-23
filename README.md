@@ -54,7 +54,7 @@ meris plan "add rate limiting to /api/users"
 meris run --approve "fix the failing test in tests/test_auth.py"
 ```
 
-On Windows, use `set VAR=value` instead of `export`. Copy [.env.example](.env.example) to `.env` for local overrides. Full vendor table: [docs/MODELS.md](docs/MODELS.md). **Hand this to new users:** [docs/USER_SETUP.md](docs/USER_SETUP.md).
+On Windows, use `set VAR=value` instead of `export`. Copy [.env.example](.env.example) to `.env` for local overrides. Full vendor table: [docs/MODELS.md](docs/MODELS.md). Step-by-step setup (中文): [docs/USER_SETUP.md](docs/USER_SETUP.md).
 
 ## Commands
 
@@ -254,15 +254,26 @@ Env: `MERIS_TOOL_NAME`, `MERIS_TOOL_ARGS`, `MERIS_TOOL_RESULT`, `MERIS_HOOK_PHAS
 
 Windows one-shot dev setup: `powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1`
 
-## Contributing & development
+## Documentation
+
+| I want to… | Start here |
+|------------|------------|
+| Install & configure (中文详解) | [docs/USER_SETUP.md](docs/USER_SETUP.md) |
+| Browse all docs | [docs/README.md](docs/README.md) |
+| Switch LLM vendor | [docs/MODELS.md](docs/MODELS.md) |
+| Understand Harness concepts | [docs/harness/concepts.md](docs/harness/concepts.md) |
+| Learn Ratchet | [docs/RATCHET_DESIGN.md](docs/RATCHET_DESIGN.md) |
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, tests, and PR guidelines. Security reports: [SECURITY.md](SECURITY.md).
 
 | Topic | Link |
 |-------|------|
-| **Documentation index** | [docs/README.md](docs/README.md) |
-| **Ratchet (`meris ratchet scan`)** | [docs/RATCHET_DESIGN.md](docs/RATCHET_DESIGN.md) |
+| Local dev (Rust, VS Code) | [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md) |
 | Harness architecture | [docs/harness/architecture.md](docs/harness/architecture.md) |
-| Publish to PyPI | `scripts/publish-pypi.ps1` |
-| **Meris Cloud (hosted SaaS)** | Proprietary — see [CLOUD.md](CLOUD.md) |
+| Tests & DoD | [docs/harness/testing.md](docs/harness/testing.md) |
+| **Meris Cloud (hosted SaaS)** | Proprietary — [CLOUD.md](CLOUD.md) |
 
 **Naming**: **Meris** · CLI `meris` · PyPI `meris-agent` · env `MERIS_*` · Harness dir `.meris/`
 

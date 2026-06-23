@@ -1,30 +1,32 @@
-# Meris — 给他人使用的配置指南
+# Meris 入门指南
 
-> 给同事、朋友或开源用户：从零到能在**自己的项目**里跑 `meris ask/plan/run`。  
-> 模型厂商大全见 [MODELS.md](MODELS.md)。
+> **English quick start:** [README](../README.md)  
+> **模型配置大全:** [MODELS.md](MODELS.md)
+
+从零到在自己的项目里运行 `meris ask` / `plan` / `run`。
 
 ---
 
-## 他们需要准备什么
+## 你需要准备
 
 | 项 | 要求 |
 |----|------|
 | Python | **3.11+** |
-| 终端 | PowerShell / bash / IDE 集成终端均可 |
-| LLM | 任一厂商 API Key，或本机 Ollama / vLLM 等 **OpenAI 兼容** 地址 |
-| 项目目录 | 要用 Meris 改代码或问答的**那个仓库根目录**（含 `AGENTS.md` 的 cwd） |
+| 终端 | PowerShell / bash / IDE 集成终端 |
+| LLM | 任一厂商 API Key，或本机 Ollama / vLLM 等 **OpenAI 兼容** 端点 |
+| 项目目录 | 要用 Meris 问答或改代码的**仓库根目录**（`init-harness` 所在 cwd） |
 
 Meris **不附带模型**，只连接你配置的 API。
 
 ---
 
-## 第一步：安装 Meris
+## 1. 安装
 
 ```bash
 pip install meris-agent
 # 可选
 pip install "meris-agent[tui]"        # 交互界面 meris tui
-pip install "meris-agent[anthropic]"  # 仅用 Claude 原生 API 时
+pip install "meris-agent[anthropic]"  # Claude 原生 API
 ```
 
 验证：
@@ -35,29 +37,30 @@ meris version
 
 ---
 
-## 第二步：配置模型（三选一）
+## 2. 配置模型
+
+任选一种方式。
 
 ### 方式 A — 项目根 `.env`（推荐）
 
-在**常用项目根**或 Meris  clone 根目录：
+在项目根或 clone 目录：
 
 ```bash
 cp .env.example .env   # 从仓库复制模板后改
 ```
 
-编辑 `.env`（**不要提交到 git**，已在 `.gitignore`）：
+编辑 `.env`（**不要提交**，已在 `.gitignore`）：
 
 ```env
 MERIS_PROVIDER=deepseek
 DEEPSEEK_API_KEY=sk-xxxxxxxx
 ```
 
-换厂商只改两行：`MERIS_PROVIDER` + 对应 Key 变量名。查看厂商与变量名：
+换厂商只改两行。查看预设与变量名：
 
 ```bash
 meris models list
-meris models show qwen      # 示例：阿里百炼 / 通义
-meris models show volcengine
+meris models show qwen
 meris models show local     # 自部署
 ```
 
@@ -77,9 +80,7 @@ $env:MERIS_PROVIDER = "openai"
 $env:OPENAI_API_KEY = "sk-..."
 ```
 
-持久化可用系统「环境变量」设置，或把上面两行写入 PowerShell `$PROFILE`。
-
-### 方式 C — 仅本机自部署（无云 Key）
+### 方式 C — 本机自部署（无云 Key）
 
 ```env
 MERIS_PROVIDER=ollama
@@ -91,10 +92,12 @@ MERIS_PROVIDER=ollama
 
 ---
 
-## 第三步：在「他的项目」里初始化 Harness
+## 3. 初始化 Harness
+
+在**目标项目根**执行：
 
 ```bash
-cd /path/to/his-repo
+cd /path/to/your-repo
 meris init-harness .
 ```
 
@@ -104,15 +107,13 @@ meris init-harness .
 |------|------|
 | `AGENTS.md` | 项目规则、目录说明、验收标准 |
 | `PROGRESS.md` | 跨会话进度 |
-| `.meris/settings.yaml` | 工具权限、传感器、MCP、models 等（见 templates/settings.example.yaml） |
+| `.meris/settings.yaml` | 工具权限、传感器、MCP、models（见 `templates/settings.example.yaml`） |
 
-维护者应**根据项目改 `AGENTS.md`**（路径、测试命令、禁止操作）。模板只是起点。
+请根据项目**编辑 `AGENTS.md`**（路径、测试命令、禁止操作）。模板只是起点。
 
-### 个人 models 覆盖（`settings.local.yaml`）
+### 个人 models 覆盖
 
-团队仓库里的 `.meris/settings.yaml` 可以提交占位模型（如 `ep-xxxxxxxx`）。**不要**把整段 `byMode` / `rules` 复制到本机文件。
-
-在本机项目根创建 **`.meris/settings.local.yaml`**（已在 `.gitignore`），只写你要覆盖的字段：
+团队仓库里的 `.meris/settings.yaml` 可提交占位模型。在本机创建 **`.meris/settings.local.yaml`**（已 gitignore），只写要覆盖的字段：
 
 ```yaml
 models:
@@ -124,7 +125,7 @@ models:
     enabled: true
 ```
 
-深合并会保留团队的 `byMode`、`rules`、`router` 等；详见 [MODELS.md](MODELS.md)「个人覆盖示例」。
+深合并保留团队的 `byMode`、`rules` 等 — 详见 [MODELS.md](MODELS.md)。
 
 可选：扫描项目生成规则提案：
 
@@ -135,18 +136,17 @@ meris ratchet review
 
 ---
 
-## 第四步：自检
+## 4. 自检
 
 ```bash
-cd /path/to/his-repo
 meris doctor
 ```
 
-期望：API key、Model、API probe 为 **ok**；缺 `AGENTS.md` 等为 **warn** 时补 `init-harness`。
+期望：API key、Model、API probe 为 **ok**；缺 `AGENTS.md` 等为 **warn** 时运行 `init-harness`。
 
 ---
 
-## 第五步：开始使用
+## 5. 开始使用
 
 ```bash
 meris ask "认证逻辑在哪个文件？"
@@ -154,44 +154,56 @@ meris plan "给 session 加 prune 子命令，3 条 checkbox"
 meris run --approve "修 tests/test_xxx.py 里失败的用例"
 ```
 
-| 场景 | 建议命令 |
-|------|----------|
+| 场景 | 命令 |
+|------|------|
 | 只问不改 | `meris ask` |
 | 只要计划 | `meris plan` |
 | 自动改代码 | `meris run` 或 `meris run --approve` |
-| 图形界面 | `meris tui` |
-| 跑完后沉淀规则 | `meris run --ratchet "..."` |
+| 图形界面 | `meris tui` 或 VS Code 扩展 |
+| 跑完沉淀规则 | `meris run --ratchet "..."` |
 
-**cwd 很重要**：必须在**目标项目根**执行，不要在笔记库父目录跑 Meris 子目录里的代码任务（见 `AGENTS.md` / `.meris/rules/workspace.md`）。
+**cwd 很重要**：在**目标项目根**执行。多根目录（如笔记库 + 嵌套代码仓库）见 [harness/concepts.md](harness/concepts.md)。
 
 ---
 
-## 常见厂商速查（给别人复制）
+## 常见厂商速查
 
-| 他用谁 | `MERIS_PROVIDER` | Key 环境变量 | 备注 |
-|--------|------------------|--------------|------|
+| 厂商 | `MERIS_PROVIDER` | Key 环境变量 | 备注 |
+|------|------------------|--------------|------|
 | DeepSeek | `deepseek` | `DEEPSEEK_API_KEY` | |
 | OpenAI | `openai` | `OPENAI_API_KEY` | |
-| Claude | `anthropic` | `ANTHROPIC_API_KEY` | 需 `[anthropic]` 扩展 |
+| Claude | `anthropic` | `ANTHROPIC_API_KEY` | 需 `[anthropic]` |
 | 阿里百炼 / 通义 | `qwen` | `DASHSCOPE_API_KEY` | 别名 `bailian` |
-| 火山 / 豆包 | `volcengine` | `ARK_API_KEY` | `MERIS_MODEL=ep-...` 接入点 ID |
+| 火山 / 豆包 | `volcengine` | `ARK_API_KEY` | `MERIS_MODEL=ep-...` |
 | 智谱 | `glm` | `ZHIPU_API_KEY` | |
 | Kimi | `moonshot` | `MOONSHOT_API_KEY` | |
 | 本地 Ollama | `ollama` | 通常不需要 | |
-| 自部署 vLLM 等 | `local` | `OPENAI_API_KEY` 可填占位 | 必设 `MERIS_BASE_URL` |
-
-覆盖默认模型或区域：
-
-```env
-MERIS_MODEL=qwen-max
-MERIS_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
-```
+| 自部署 vLLM 等 | `local` | 可填占位 | 必设 `MERIS_BASE_URL` |
 
 ---
 
-## 可选：Rust 加速（meris-rs）
+## 团队协作
 
-Meris 自带可选 Rust 核心 `meris-rs`，用于更快冷启动与 harness 热路径。从源码开发时：
+**建议提交到 git：**
+
+- `AGENTS.md`、`.meris/settings.yaml`、`.meris/rules/`、`.meris/skills/`
+
+**不要提交：**
+
+- `.env`、`.meris/settings.local.yaml`
+- `.meris/sessions/`、`.meris/plan/`、`.meris/ratchet/`
+
+**给新成员的三步：**
+
+1. `pip install meris-agent`
+2. 复制 `.env.example` → `.env` 填 Key
+3. `cd 项目 && meris doctor && meris ask "..."`
+
+可在项目 README 里链接本文或 [MODELS.md](MODELS.md)。
+
+---
+
+## 可选：Rust 加速
 
 ```bash
 meris native build
@@ -200,45 +212,10 @@ meris native status
 
 | 变量 | 含义 |
 |------|------|
-| `MERIS_NATIVE` | 默认 **auto**：有二进制则启用 compress / permissions / sandbox / tools |
+| `MERIS_NATIVE` | 默认 auto：有二进制则启用 |
 | `MERIS_NATIVE=0` | 强制纯 Python |
-| `MERIS_NATIVE_LOOP=auto` 或 `1` | ask / plan / review / run 走 Rust agent loop |
-| `MERIS_NATIVE_LOOP=0` | 强制 Python loop |
 
-推荐验证 native loop：
-
-```bash
-meris-rs run ask "List top-level files"
-meris-rs run review --staged
-```
-
-无本地编译时，可从 GitHub Actions **release** workflow 下载各平台 `meris-rs` 二进制。Windows 可运行 `scripts\install_meris_rs_from_ci.ps1`（需 `gh auth login`）。详见 [NATIVE_BINARY.md](NATIVE_BINARY.md)。
-
-详见 [LOCAL_SETUP.md](LOCAL_SETUP.md) · [NATIVE_BINARY.md](NATIVE_BINARY.md) · [harness/testing.md](harness/testing.md)。
-
----
-
-## 团队 / 开源仓库怎么交接
-
-**建议提交到 git：**
-
-- `AGENTS.md`、`PROGRESS.md`（若希望共享进度）
-- `.meris/settings.yaml`（权限、DoD、MCP、**团队 models 模板**）
-- `.meris/rules/`、`.meris/skills/`（项目规则）
-
-**不要提交（已在 `.gitignore`）：**
-
-- `.env`（API Key）
-- `.meris/settings.local.yaml`（**个人覆盖**：`profiles.code.model`、`dynamic.enabled` 等，见 [MODELS.md](MODELS.md)）
-- `.meris/sessions/`、`.meris/plan/`、`.meris/ratchet/`、`.meris/profile.md`
-
-**给新同事的一句话：**
-
-1. `pip install meris-agent`  
-2. 复制 `.env.example` → `.env` 填 Key  
-3. `cd 项目 && meris doctor && meris ask "..."`  
-
-可在项目 `README` 里链到本文或 [MODELS.md](MODELS.md)。
+详见 [NATIVE_BINARY.md](NATIVE_BINARY.md) · [LOCAL_SETUP.md](LOCAL_SETUP.md)（贡献者本机构建）。
 
 ---
 
@@ -246,17 +223,19 @@ meris-rs run review --staged
 
 | 现象 | 处理 |
 |------|------|
-| `doctor` API 401 | Key 错或 `MERIS_BASE_URL` 与厂商不匹配；`meris models show <厂商>` |
-| 改了 `.env` 不生效 | 在新终端重开，或确认 cwd 下有 `.env`（Meris 从 cwd / 包目录加载） |
+| `doctor` API 401 | Key 错或 `MERIS_BASE_URL` 不匹配；`meris models show <厂商>` |
+| 改了 `.env` 不生效 | 新开终端；确认 cwd 下有 `.env` |
 | Agent 改错目录 | cwd 改到项目根；补 `AGENTS.md` 路径表 |
-| 只有 DeepSeek 文档 | 设 `MERIS_PROVIDER` 即可换厂商，不绑 DeepSeek |
-| 双击 `meris-rs.exe` 无界面 | 用终端命令 `meris`，不是 GUI 安装包 |
+| 不绑 DeepSeek | 设 `MERIS_PROVIDER` 即可换任意厂商 |
 
 ---
 
-## 相关文档
+## 下一步
 
-- [MODELS.md](MODELS.md) — 全厂商与自部署  
-- [README.md](../README.md) — 命令表与 Harness 说明  
-- [RATCHET_DESIGN.md](RATCHET_DESIGN.md) — Ratchet 设计原理（进阶；命令见 README）
-- [LOCAL_SETUP.md](LOCAL_SETUP.md) — 维护者本机 Rust / VS Code 扩展
+| 目标 | 文档 |
+|------|------|
+| 命令大全 | [README](../README.md) |
+| Harness 概念 | [harness/concepts.md](harness/concepts.md) |
+| Ratchet 原理 | [RATCHET_DESIGN.md](RATCHET_DESIGN.md) |
+| 贡献代码 | [CONTRIBUTING.md](../CONTRIBUTING.md) |
+| 文档索引 | [docs/README.md](README.md) |
