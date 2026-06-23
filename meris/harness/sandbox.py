@@ -1,4 +1,4 @@
-"""Harness — bash sandbox policy (Phase E3)."""
+"""Harness — bash sandbox policy."""
 
 from __future__ import annotations
 
@@ -120,7 +120,7 @@ def get_network_mode(settings: dict) -> str:
 
 
 def get_network_allowlist(settings: dict) -> list[str]:
-    """Host patterns: exact, suffix, or `*.example.com` (Phase G2)."""
+    """Host patterns: exact, suffix, or `*.example.com`."""
     raw = _sandbox_block(settings).get("networkAllowlist") or []
     if not isinstance(raw, list):
         return []

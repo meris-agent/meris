@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage meris-rs into meris/_bundled for pip wheel packaging (F3-M2)."""
+"""Stage meris-rs into meris/_bundled for pip wheel packaging."""
 
 from __future__ import annotations
 

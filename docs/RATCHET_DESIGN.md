@@ -1,8 +1,7 @@
 # Meris Ratchet — 自我进化设计
 
 > **读者**：想理解 Ratchet 如何工作的用户与贡献者。  
-> **怎么用**：见 [README](../README.md) 的 Ratchet 命令表与 [USER_SETUP.md](USER_SETUP.md)。  
-> 维护者实现进度不在公开仓；用户以 README 命令表与本设计文档为准。
+> **怎么用**：见 [README](../README.md) 的 Ratchet 命令表与 [USER_SETUP.md](USER_SETUP.md)。
 
 ---
 
@@ -10,10 +9,7 @@
 
 ### 现状
 
-Meris 已有 Harness **载体**（AGENTS、rules、skills、PROGRESS、session、sensors），但进化依赖维护者：
-
-- 看失败 → 手改 `.meris/rules/` 或 `AGENTS.md`
-- 7 天真实任务试用已验证有效，但 **不可扩展** 给普通用户
+Meris 已有 Harness **载体**（AGENTS、rules、skills、PROGRESS、session、sensors），但失败后常靠**人工**改 rules / AGENTS，难以形成可重复的自动闭环：
 
 ### 目标
 
@@ -62,7 +58,7 @@ Ratchet 消费 **结构化信号**，不是扫描整个 git history。
 | **PROGRESS** | `PROGRESS.md` append | 连续相同 `Status: dod_failed` |
 | **Benchmark** | `meris benchmark run` | task `fail` + `detail` |
 | **Approve** | 新：`.meris/ratchet/events.jsonl` | 用户拒绝某 tool（`y/n → n`） |
-| **Doctor** | `meris doctor` warn | 缺 Harness、API 以外：重复 warn 模式（后续） |
+| **Doctor** | `meris doctor` warn | 缺 Harness、API 以外：重复 warn 模式 |
 
 ### 3.2 信号记录（新）
 

@@ -1,4 +1,4 @@
-/* Harness UI — workspace picker & file tree (Phase J) */
+/* Harness UI — workspace picker & file tree */
 (function () {
   const vscode = window.__merisVscode || {
     postMessage: () => {},

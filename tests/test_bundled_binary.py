@@ -1,4 +1,4 @@
-"""F3-M2 — pip bundled meris-rs binary."""
+"""pip bundled meris-rs binary."""
 
 from __future__ import annotations
 

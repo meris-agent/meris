@@ -113,7 +113,7 @@ def extract_last_assistant_text(messages: list[dict]) -> str | None:
 
 
 def parse_plan_checkboxes(text: str) -> list[dict]:
-    """Parse `- [ ]` / `- [x]` lines for Plan UI (Phase I4)."""
+    """Parse `- [ ]` / `- [x]` lines for Plan UI."""
     items: list[dict] = []
     for line in text.splitlines():
         m = re.match(r"^-\s+\[( |x|X)\]\s+(.+)$", line.strip())

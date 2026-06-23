@@ -1,4 +1,4 @@
-"""Phase G6.2/G6.3 — macOS Seatbelt sandbox (Meris-native policy, G2 parity)."""
+"""macOS Seatbelt sandbox tests."""
 
 from __future__ import annotations
 

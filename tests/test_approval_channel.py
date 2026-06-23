@@ -1,4 +1,4 @@
-"""Tests for file-based approval channel (Phase H3)."""
+"""Tests for file-based approval channel."""
 
 from __future__ import annotations
 

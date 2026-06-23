@@ -1,4 +1,4 @@
-"""Tests for file_change diff preview (Phase H5)."""
+"""Tests for file_change diff preview."""
 
 from meris.harness.diff_preview import build_file_change_preview
 

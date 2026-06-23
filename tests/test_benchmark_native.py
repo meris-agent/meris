@@ -1,4 +1,4 @@
-"""Phase F4 — native benchmark smoke tasks."""
+"""Native benchmark smoke tasks."""
 
 from __future__ import annotations
 

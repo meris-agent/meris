@@ -1,4 +1,4 @@
-"""Harness doc index for Agent Window (Phase J5)."""
+"""Harness doc index for Agent Window."""
 
 from meris.ui.harness_data import list_harness_docs_for_ui, read_harness_doc_for_ui
 

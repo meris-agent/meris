@@ -1,4 +1,4 @@
-"""Phase G3 — platform sandbox matrix."""
+"""Platform sandbox matrix tests."""
 
 from __future__ import annotations
 

@@ -187,7 +187,7 @@ enum AgentAction {
         require_approval: bool,
         #[arg(long, help = "Skip DoD sensors at end (run mode)")]
         no_sensor: bool,
-        #[arg(long, help = "Append JSONL events (Phase E4)")]
+        #[arg(long, help = "Append JSONL events")]
         event_stream: Option<PathBuf>,
         #[arg(long, help = "Save plan markdown when mode=plan completes")]
         save_plan: bool,

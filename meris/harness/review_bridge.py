@@ -1,4 +1,4 @@
-"""Review task bridge for meris-rs native agent (Phase F2-M1)."""
+"""Review task bridge for meris-rs native agent."""
 
 from __future__ import annotations
 

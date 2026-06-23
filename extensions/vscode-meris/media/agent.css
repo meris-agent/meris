@@ -2444,7 +2444,7 @@ body.theme-light .diff-del {
   border-radius: 8px;
 }
 
-/* Phase I — vibe coding panels */
+/* Meris Agent Window — composer & plan panels */
 
 #model-bar {
   display: flex;
@@ -3189,7 +3189,7 @@ body.has-error #layout {
   height: calc(100vh - 68px);
 }
 
-/* Settings overlay (Phase J) */
+/* Settings overlay */
 #settings-overlay {
   position: fixed;
   inset: 0;
@@ -3781,7 +3781,7 @@ body.has-error #layout {
   opacity: 0.85;
 }
 
-/* Skills & Commands settings (TRAE-style) */
+/* Skills settings panel */
 .settings-card {
   border: 1px solid var(--border-subtle);
   border-radius: 10px;

@@ -1,4 +1,4 @@
-"""Phase E4–E6 — events, review, settings merge, ratchet apply."""
+"""Events, review, settings merge, ratchet apply."""
 
 from __future__ import annotations
 

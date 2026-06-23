@@ -1,4 +1,4 @@
-//! `meris-rs run` direct native entry parsing (Phase F2-M2).
+//! `meris-rs run` direct native entry parsing.
 
 use crate::review::load_review_task;
 use std::path::PathBuf;

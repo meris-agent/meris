@@ -1,4 +1,4 @@
-"""Tests for live token streaming in agent loop (Phase H6)."""
+"""Tests for live token streaming in agent loop."""
 
 from __future__ import annotations
 

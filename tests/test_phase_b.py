@@ -1,4 +1,4 @@
-"""Phase B — spec workflow, event hooks, benchmark, session prune."""
+"""Spec workflow, event hooks, benchmark, session prune."""
 
 from __future__ import annotations
 

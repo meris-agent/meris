@@ -1,4 +1,4 @@
-"""Phase E1/E2 — harness docs and static checks."""
+"""Harness docs and static checks."""
 
 from __future__ import annotations
 

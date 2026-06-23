@@ -201,7 +201,7 @@ function loadPlanPayload(cwd) {
   }
 }
 
-/** Harness doc index for settings overlay (Phase J5). */
+/** Harness doc index for settings overlay. */
 const HARNESS_DOC_CATALOG = [
   { id: "readme", file: "README.md", title: "Harness 索引", blurb: "docs/harness 入口与快速参考" },
   { id: "architecture", file: "architecture.md", title: "仓库架构", blurb: "包布局、CLI、import 约定" },

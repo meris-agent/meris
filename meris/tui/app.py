@@ -44,7 +44,7 @@ class ApproveModal(ModalScreen[bool]):
 
 
 class RatchetActionModal(ModalScreen[str | None]):
-    """Apply or reject a pending Ratchet proposal (Phase E6 TUI)."""
+    """Apply or reject a pending Ratchet proposal in TUI."""
 
     DEFAULT_CSS = """
     RatchetActionModal { align: center middle; }
@@ -78,7 +78,7 @@ class RatchetActionModal(ModalScreen[str | None]):
 
 
 class TUIEventStream(EventStream):
-    """Mirror structured events into RichLog (Phase E4.3)."""
+    """Mirror structured events into RichLog."""
 
     def __init__(self, log: RichLog) -> None:
         super().__init__(collector=[])

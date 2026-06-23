@@ -531,7 +531,7 @@ def ui_cmd(
     host: str = typer.Option("127.0.0.1", "--host", help="Bind address"),
     port: int = typer.Option(8765, "--port", "-p", help="HTTP port"),
 ) -> None:
-    """Standalone Agent Window web UI (Path B)."""
+    """Standalone Agent Window web UI in the browser."""
     from meris.ui.server import serve_ui
 
     serve_ui(cwd=cwd.resolve(), host=host, port=port)

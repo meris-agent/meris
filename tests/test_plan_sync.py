@@ -1,4 +1,4 @@
-"""Tests for plan checkbox sync (Phase I+)."""
+"""Tests for plan checkbox sync."""
 
 from meris.harness.plan import apply_plan_checkbox_updates, mark_plan_items_done, sync_plan_items
 

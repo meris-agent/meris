@@ -1,4 +1,4 @@
-"""Phase G1 — sandbox presets."""
+"""Sandbox preset resolution."""
 
 from __future__ import annotations
 

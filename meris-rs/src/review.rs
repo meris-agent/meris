@@ -1,4 +1,4 @@
-//! Review task bridge via `meris harness review-task --json` (Phase F2-M1).
+//! Review task bridge via `meris harness review-task --json`.
 
 use serde_json::Value;
 use std::path::Path;

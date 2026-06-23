@@ -1,4 +1,4 @@
-"""Phase A — doctor, permissions allow, plan save, git_commit."""
+"""Doctor, permissions allow, plan save, git_commit."""
 
 from __future__ import annotations
 

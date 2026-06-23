@@ -1,4 +1,4 @@
-"""Build inline diff preview for file_change events (Phase H5)."""
+"""Build inline diff preview for file_change events."""
 
 from __future__ import annotations
 

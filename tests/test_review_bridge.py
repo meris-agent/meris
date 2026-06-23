@@ -1,4 +1,4 @@
-"""Phase F2-M1 — review task bridge for native loop."""
+"""Review task bridge for native loop."""
 
 from __future__ import annotations
 

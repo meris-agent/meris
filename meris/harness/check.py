@@ -1,4 +1,4 @@
-"""Static harness checks — mechanical enforcement (Phase E2)."""
+"""Static harness checks — mechanical enforcement."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-/* Phase J7 — voice input + screenshot/paste image context */
+/* Composer voice input + screenshot/paste image context */
 (function () {
   const vscode = window.__merisVscode || { postMessage: () => {} };
 

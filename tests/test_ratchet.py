@@ -1,4 +1,4 @@
-"""Ratchet MVP — events, scan, apply, guides injection."""
+"""Ratchet — events, scan, apply, guides injection."""
 
 from __future__ import annotations
 

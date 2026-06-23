@@ -1,4 +1,4 @@
-/* Phase I — vibe coding UX (loaded after agent.js) */
+/* Composer & plan UX (loaded after agent.js) */
 (function () {
   const vscode = window.__merisVscode || {
     postMessage: () => {},

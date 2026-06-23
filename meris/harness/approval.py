@@ -1,4 +1,4 @@
-"""File-based approval channel for IDE / Agent Window consumers (Phase H3)."""
+"""File-based approval channel for IDE / Agent Window consumers."""
 
 from __future__ import annotations
 

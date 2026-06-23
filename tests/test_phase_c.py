@@ -1,4 +1,4 @@
-"""Phase C — token context, anthropic factory, extras tools."""
+"""Token context, anthropic factory, extras tools."""
 
 from __future__ import annotations
 

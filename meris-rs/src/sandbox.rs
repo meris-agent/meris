@@ -1,4 +1,4 @@
-//! Bash sandbox — policy scan + cwd-locked run + optional Linux bubblewrap (Phase E3).
+//! Bash sandbox — policy scan + cwd-locked run + optional Linux bubblewrap.
 
 #[path = "sandbox_macos.rs"]
 mod sandbox_macos;

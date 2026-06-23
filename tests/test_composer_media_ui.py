@@ -1,4 +1,4 @@
-"""Composer image context (Phase J7)."""
+"""Composer image context in Agent UI."""
 
 import base64
 

@@ -1,6 +1,6 @@
 # Meris 文档
 
-面向**用户与贡献者**的公开文档。维护者内部规划与进度表不在本仓库。
+面向**用户与贡献者**的公开文档。
 
 **新用户**：从 [USER_SETUP.md](USER_SETUP.md) 开始。
 
@@ -9,7 +9,7 @@
 | 层级 | 文档 | 说明 |
 |------|------|------|
 | **用户** | USER_SETUP、MODELS、harness/concepts、plan-format | 安装、日常用法、概念 |
-| **进阶** | RATCHET_DESIGN、sandbox、events | 设计原理；无 MVP/P1 进度表 |
+| **进阶** | RATCHET_DESIGN、sandbox、events | 设计原理与机制 |
 | **贡献者** | LOCAL_SETUP、testing、architecture、SEATBELT_DESIGN | 本机构建、pytest、实现细节 |
 
 ## 入门

@@ -1,4 +1,4 @@
-"""DoD failure bridge for meris-rs native agent (Phase F2-M3)."""
+"""DoD failure bridge for meris-rs native agent."""
 
 from __future__ import annotations
 

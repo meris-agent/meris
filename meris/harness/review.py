@@ -1,4 +1,4 @@
-"""Code review helper — git diff → read-only agent task (Phase E5)."""
+"""Code review helper — git diff → read-only agent task."""
 
 from __future__ import annotations
 

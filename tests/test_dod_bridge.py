@@ -1,4 +1,4 @@
-"""Phase F2-M3 — DoD failure ratchet bridge."""
+"""DoD failure ratchet bridge."""
 
 from __future__ import annotations
 

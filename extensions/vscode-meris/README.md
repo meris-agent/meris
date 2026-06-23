@@ -47,9 +47,9 @@ powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1 -SkipRust
 - 实时渲染 JSONL 事件：assistant 文本、tool 调用、sensor、done
 - **Stop** 终止当前进程；**Ctrl+Enter** 提交任务
 
-规划与后续阶段：见仓库 `docs/README.md` 与 [harness/architecture.md](../../docs/harness/architecture.md)
+更多文档： [docs/README.md](../../docs/README.md) · [harness/architecture.md](../../docs/harness/architecture.md)
 
-## 独立 Web UI（Path B）
+## 独立 Web UI
 
 不依赖 IDE 时，在仓库根目录：
 

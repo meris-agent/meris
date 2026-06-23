@@ -1,4 +1,4 @@
-"""Tests for plan checkbox parsing (Phase I4)."""
+"""Tests for plan checkbox parsing."""
 
 from meris.harness.plan import parse_plan_checkboxes
 

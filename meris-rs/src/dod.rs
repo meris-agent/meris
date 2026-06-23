@@ -1,4 +1,4 @@
-//! DoD failure bridge via `meris harness dod-failed --json` (Phase F2-M3).
+//! DoD failure bridge via `meris harness dod-failed --json`.
 
 use serde_json::Value;
 use std::path::Path;

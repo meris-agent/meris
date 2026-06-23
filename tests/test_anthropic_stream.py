@@ -1,4 +1,4 @@
-"""Tests for AnthropicProvider.chat_stream (Phase H7)."""
+"""Tests for AnthropicProvider.chat_stream."""
 
 from __future__ import annotations
 

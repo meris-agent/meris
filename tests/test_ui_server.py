@@ -1,4 +1,4 @@
-"""Tests for meris ui server helpers (Phase H10)."""
+"""Tests for meris ui server helpers."""
 
 from __future__ import annotations
 

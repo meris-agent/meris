@@ -1,4 +1,4 @@
-"""Harness event protocol — SQ/EQ shape for UI and CI (Phase E4)."""
+"""Harness event protocol — SQ/EQ shape for UI and CI."""
 
 from __future__ import annotations
 

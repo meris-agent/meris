@@ -172,7 +172,7 @@ def read_skill_for_ui(cwd: Path, name: str) -> dict[str, str] | None:
 
 
 def list_harness_docs_for_ui() -> list[dict[str, str]]:
-    """Curated harness doc index for Agent Window settings (Phase J5)."""
+    """Curated harness doc index for Agent Window settings."""
     rows: list[dict[str, str]] = []
     base = _harness_docs_dir()
     for entry in _HARNESS_DOC_CATALOG:

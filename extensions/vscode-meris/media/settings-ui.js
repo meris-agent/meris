@@ -1,4 +1,4 @@
-/* Settings center — TRAE-style overlay (Phase J) */
+/* Settings center overlay */
 (function () {
   const vscode = window.__merisVscode || {
     postMessage: () => {},

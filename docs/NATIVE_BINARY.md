@@ -1,6 +1,6 @@
 # 下载 meris-rs 预编译二进制（无 tag）
 
-> 维护者/贡献者：从 CI 或本地编译安装 native 二进制。
+> **贡献者**：从 CI 或本地编译安装 native 二进制。
 
 ## 方式 A — GitHub Actions（推荐）
 
@@ -58,7 +58,7 @@ python -m build --wheel
 python -m build --sdist   # sdist 不含平台二进制
 ```
 
-Windows / macOS 的 PyPI wheel 仍建议用方式 A 下载对应 artifact，或本地 `meris native build`（F3-M2 后续可扩展多平台 wheel matrix）。
+Windows / macOS 的 PyPI wheel 仍建议用方式 A 下载对应 artifact，或本地 `meris native build`（后续版本可能提供多平台 wheel）。
 
 ## 启用 native loop
 

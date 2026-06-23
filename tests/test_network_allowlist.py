@@ -1,4 +1,4 @@
-"""Phase G2 — network allowlist."""
+"""Network allowlist for sandbox bash."""
 
 from __future__ import annotations
 

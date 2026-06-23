@@ -1,4 +1,4 @@
-"""Phase E3 — bash sandbox."""
+"""Bash sandbox policy tests."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""HTTP server for standalone Meris Agent Window (Phase H10)."""
+"""HTTP server for standalone Meris Agent Window."""
 
 from __future__ import annotations
 

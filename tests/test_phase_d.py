@@ -1,4 +1,4 @@
-"""Phase D — Rust core scaffold, brand doc, IDE extension."""
+"""Rust core scaffold, brand doc, IDE extension."""
 
 from __future__ import annotations
 
