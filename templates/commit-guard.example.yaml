@@ -1,0 +1,10 @@
+# Optional commit-guard extensions (copy to .meris/commit-guard.yaml or commit-guard.local.yaml).
+# Shared team rules → commit-guard.yaml; personal-only → commit-guard.local.yaml (gitignored).
+
+extra_forbidden_paths:
+  - "vendor/private/**"
+
+extra_patterns:
+  - regex: "git@github\\.com:my-private-org/"
+    rule: org:private_remote
+    label: private GitHub org remote

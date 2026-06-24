@@ -17,6 +17,16 @@ meris harness check
 
 静态检查路径/import 等；失败时输出 **hint** 供 Agent 自修。
 
+## 提交前校验（commit guard）
+
+```bash
+bash scripts/install-git-hooks.sh          # 一次：启用 .githooks/pre-commit
+meris harness commit-check --cached        # 暂存区（hook 同款）
+meris harness commit-check --tracked         # 全 tracked 文件（CI）
+```
+
+拦截：`.env`（非 example）、runtime `.meris/`、常见 API token。可选扩展：`.meris/commit-guard.yaml`（见 `templates/commit-guard.example.yaml`）。规则见 `meris/harness/commit_guard.py`。
+
 ## Benchmark（Harness 回归）
 
 ```bash

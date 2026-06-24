@@ -32,6 +32,9 @@ jobs:
       - name: Harness check
         run: meris harness check --cwd .
 
+      - name: Commit guard
+        run: python -m meris.harness.commit_guard --tracked
+
       - name: Benchmark mock (offline)
         run: python scripts/run_benchmark_mock.py
 

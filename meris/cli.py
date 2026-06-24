@@ -348,6 +348,33 @@ def harness_check_cmd(
         raise typer.Exit(1)
 
 
+@harness_app.command("commit-check")
+def harness_commit_check_cmd(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    cached: bool = typer.Option(False, "--cached", help="Check staged files (pre-commit default)"),
+    tracked: bool = typer.Option(False, "--tracked", help="Check all tracked files (CI)"),
+    diff: str | None = typer.Option(None, "--diff", help="Git rev range, e.g. origin/main...HEAD"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Block secrets and forbidden paths before commit (see CONTRIBUTING.md)."""
+    import sys
+
+    from meris.harness import commit_guard
+
+    argv = ["--cwd", str(cwd.resolve())]
+    if cached:
+        argv.append("--cached")
+    elif tracked:
+        argv.append("--tracked")
+    elif diff:
+        argv.extend(["--diff", diff])
+    else:
+        argv.append("--cached")
+    if json_out:
+        argv.append("--json")
+    raise typer.Exit(commit_guard.main(argv))
+
+
 @harness_app.command("post-edit")
 def harness_post_edit_cmd(
     cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),

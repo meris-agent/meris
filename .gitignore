@@ -53,6 +53,7 @@ Desktop.ini
 .meris/settings.local.yaml
 .meris/settings.local.yml
 .meris/settings.local.json
+.meris/commit-guard.local.yaml
 .meris/ratchet/
 .meris/events/
 .meris/context/

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Meris — block secrets and forbidden paths on commit.
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+if command -v meris >/dev/null 2>&1; then
+  meris harness commit-check --cached
+else
+  PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" python -m meris.harness.commit_guard --cached
+fi

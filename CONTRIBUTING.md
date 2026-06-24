@@ -25,6 +25,12 @@ Optional: Rust core, VS Code extension — [docs/LOCAL_SETUP.md](docs/LOCAL_SETU
 
 Windows one-shot: `powershell -ExecutionPolicy Bypass -File scripts\setup-local.ps1`
 
+Install git hooks (commit guard):
+
+```bash
+bash scripts/install-git-hooks.sh
+```
+
 ## Before you open a PR
 
 Run the project Definition of Done:
@@ -32,6 +38,7 @@ Run the project Definition of Done:
 ```bash
 pytest tests/ -m "not integration" -q
 meris harness check
+meris harness commit-check --tracked
 ```
 
 Both must pass. Integration tests may need API keys — see [docs/harness/testing.md](docs/harness/testing.md).
@@ -53,7 +60,7 @@ Harness conventions for this repo: [AGENTS.md](AGENTS.md).
 2. **Describe the change** — what problem it solves and how you tested it.
 3. **Keep scope focused** — one logical change per PR when possible.
 4. **Update docs** if user-visible behavior or CLI flags change.
-5. **No secrets** — never commit `.env`, API keys, or personal `settings.local.yaml`.
+5. **No secrets** — never commit `.env`, API keys, or personal `settings.local.yaml`. Run `meris harness commit-check` (or install hooks via `scripts/install-git-hooks.sh`).
 
 We review PRs as time allows. Be patient; smaller, well-tested PRs merge faster.
 
