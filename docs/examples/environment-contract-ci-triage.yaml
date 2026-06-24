@@ -1,0 +1,59 @@
+# Environment Contract — CI failure triage
+#
+# A small, verifiable workspace for Agent loops (see docs/harness/concepts.md).
+# Copy or adapt for your project under `.meris/environments/`.
+
+name: ci-failure-triage
+goal: >
+  Classify CI failure, propose minimal fix, leave reproducible evidence.
+
+readable_state:
+  repository_files: read-only by default
+  ci_logs: read-only
+  previous_attempts: read-only
+
+writable_state:
+  working_branch_only: true
+  evidence_note_path: .meris/evidence/ci-triage.md
+
+allowed_actions:
+  - inspect files
+  - run selected tests
+  - edit candidate fix in isolated worktree
+  - produce patch summary
+
+blocked_actions:
+  - push to main
+  - delete tests without explicit approval
+  - touch production secrets
+  - modify evaluator scripts
+
+evaluators:
+  - unit tests
+  - type check
+  - targeted regression command
+  - human review before merge
+
+budget:
+  max_repair_rounds: 3
+  max_wall_clock_minutes: 30
+  stop_on_repeated_same_failure: true
+
+memory_policy:
+  write_verified_facts_only: true
+  mark_unverified_assumptions: true
+  never_persist_secrets_or_customer_data: true
+
+human_handoff:
+  - permission escalation
+  - evaluator conflict
+  - production-impacting change
+  - unclear requirement
+
+meris_mapping:
+  dod_commands:
+    - pytest tests/ -m "not integration" -q
+    - meris harness check
+  ratchet_on_failure: true
+  handoff_path: .meris/handoff.md
+  benchmark: .meris/benchmark/tasks.json

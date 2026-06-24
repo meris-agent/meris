@@ -55,6 +55,7 @@ Detailed walkthrough (中文): [USER_SETUP.md](USER_SETUP.md)
 | Rust core (`meris-rs`) | [NATIVE_BINARY.md](NATIVE_BINARY.md) |
 | VS Code extension | [extensions/vscode-meris/](../extensions/vscode-meris/) |
 | Ratchet (Harness learning) | [RATCHET_DESIGN.md](RATCHET_DESIGN.md) · commands in [README](../README.md) |
+| Meris Cloud templates | [cloud/template-contract.md](cloud/template-contract.md) |
 
 ---
 

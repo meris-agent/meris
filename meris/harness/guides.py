@@ -105,6 +105,19 @@ Deep docs live under docs/harness/ — read_file when AGENTS.md points there."""
 
     if guides:
         base = f"{base}\n\n# Project guides\n\n{guides}"
+    from meris.harness.handoff import load_handoff_for_prompt
+
+    handoff = load_handoff_for_prompt(workspace)
+    if handoff:
+        base = (
+            f"{base}\n\n# Prior session handoff (continue from here if task was interrupted)\n\n"
+            f"{handoff}"
+        )
+    from meris.harness.environment import load_environment_for_prompt
+
+    env_block = load_environment_for_prompt(workspace)
+    if env_block:
+        base = f"{base}\n\n# Environment contract\n\n{env_block}"
     profile = load_profile_text(workspace)
     if profile.strip():
         base = f"{base}\n\n# User profile\n\n{profile}"

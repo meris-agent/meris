@@ -58,7 +58,10 @@ def _plan_format_proposal(ev: dict[str, Any]) -> Proposal:
             content=content,
         ),
         signals=[f"{ev.get('kind')}:{ev.get('task_id', '')}"],
-        verify=["meris benchmark run --filter plan_smoke"],
+        verify=["meris harness check", "meris benchmark run --filter plan_smoke"],
+        target_failure="Plan/benchmark output missing `- [ ]` checkbox lines",
+        expected_effect="Plan mode outputs at least 3 `- [ ]` tasks",
+        regression_risk="May add redundant plan-format bullets if already documented",
     )
 
 
@@ -82,6 +85,9 @@ def _workspace_proposal(ev: dict[str, Any]) -> Proposal:
         ),
         signals=[ev.get("kind", "")],
         verify=[],
+        target_failure="Wrong cwd — agent tried to edit child repo from parent workspace",
+        expected_effect="Switch cwd to git repo root before code/README changes",
+        regression_risk="Low — workspace rule only",
     )
 
 
@@ -104,7 +110,10 @@ def _paths_proposal(ev: dict[str, Any]) -> Proposal:
             content=content,
         ),
         signals=[ev.get("kind", "")],
-        verify=[],
+        verify=["meris harness check"],
+        target_failure="Invalid path prefix (e.g. meris/README.md) or layout mismatch",
+        expected_effect="Use README.md at repo root per AGENTS.md",
+        regression_risk="Low — paths rule append",
     )
 
 
@@ -129,6 +138,9 @@ def _harness_check_proposal(ev: dict[str, Any]) -> Proposal:
         ),
         signals=[ev.get("kind", "")],
         verify=["meris harness check"],
+        target_failure="Harness check or DoD failed (import/path/pytest)",
+        expected_effect="Run DoD before finishing; fix paths and imports",
+        regression_risk="Low — reinforces existing DoD",
     )
 
 
@@ -173,7 +185,37 @@ def classify_event(
         if not _lesson_applied(workspace, "L-path", existing):
             return _paths_proposal(ev)
 
+    if kind == "max_turns":
+        if not _lesson_applied(workspace, "L-stall", existing):
+            return _stall_proposal(ev)
+
     return None
+
+
+def _stall_proposal(ev: dict[str, Any]) -> Proposal:
+    marker = "<!-- ratchet:L-stall -->"
+    content = f"""{marker}
+
+## Ratchet (auto)
+
+- 达到 max_turns 仍未交付时：先写产物/结论，再探索；避免长时间无产出探索。
+- 触发: {ev.get("detail", "")[:120]}
+"""
+    return Proposal(
+        id=new_proposal_id(),
+        lesson="L-stall",
+        summary="Turn 用尽仍未完成 — 探索过长或无产物",
+        target=ProposalTarget(
+            path=".meris/rules/workspace.md",
+            action="append",
+            content=content,
+        ),
+        signals=[ev.get("kind", "")],
+        verify=[],
+        target_failure="Agent exhausted turns without deliverable",
+        expected_effect="Prioritize artifact delivery before deep exploration",
+        regression_risk="Low",
+    )
 
 
 def classify_events(workspace: Path, events: list[dict[str, Any]]) -> list[Proposal]:

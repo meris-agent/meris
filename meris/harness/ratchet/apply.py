@@ -73,12 +73,19 @@ def apply_proposal(
     force_agents: bool = False,
     force_settings: bool = False,
     update_progress: bool = True,
+    verify: bool = False,
 ) -> Path:
     """Write proposal content; archive proposal under applied/."""
+    from meris.harness.ratchet.fingerprint import harness_fingerprint
+    from meris.harness.ratchet.verify import run_proposal_verify
+
     ws = workspace.resolve()
     rel = proposal.target.path.replace("\\", "/")
     if not is_allowed_target(rel, force_agents=force_agents, force_settings=force_settings):
         raise ValueError(f"Target not allowed for auto-apply: {rel}")
+
+    fp_before = harness_fingerprint(ws)
+    proposal.harness_fp = fp_before
 
     dest = ws / rel
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -90,9 +97,36 @@ def apply_proposal(
 
     _write_target(ws, dest, proposal)
 
+    if verify and proposal.verify:
+        ok, out = run_proposal_verify(ws, proposal)
+        if not ok:
+            if backup_root.is_dir() and any(backup_root.iterdir()):
+                for fp in backup_root.iterdir():
+                    if fp.is_file():
+                        shutil.copy2(fp, dest)
+            elif dest.is_file() and not (backup_root / dest.name).is_file():
+                dest.unlink()
+            raise ValueError(f"Verify failed — reverted target:\n{out[:1500]}")
+
     proposal.status = "applied"
     delete_pending_proposal(ws, proposal.id)
     save_proposal(ws, proposal, applied=True)
+
+    from meris.harness.ratchet.events import record_event
+
+    record_event(
+        ws,
+        "ratchet_applied",
+        detail=proposal.summary[:500],
+        tags=["ratchet", proposal.lesson],
+        extra={
+            "proposal_id": proposal.id,
+            "harness_fp_before": fp_before,
+            "harness_fp_after": harness_fingerprint(ws),
+            "target": rel,
+        },
+        dedupe=False,
+    )
 
     if update_progress:
         append_ratchet_summary_line(ws, f"[{proposal.lesson}] {proposal.summary}")

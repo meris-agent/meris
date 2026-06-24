@@ -23,10 +23,22 @@ def ratchet_post_run(workspace: Path, *, session_id: str | None = None) -> tuple
     failed = False
     if sid:
         rec = load_session(ws, sid)
-        if rec and rec.status in ("dod_failed", "error", "denied", "cancelled"):
+        if rec and rec.status in ("dod_failed", "error", "denied", "cancelled", "max_turns"):
             failed = rec.status != "cancelled"
 
     created = scan_workspace(ws, since_days=14 if failed else 3)
+
+    cluster_created = 0
+    if failed:
+        from meris.harness.settings import load_settings
+
+        settings = load_settings(ws)
+        if (settings.get("ratchet") or {}).get("clusterOnPostRun"):
+            from meris.harness.ratchet.cluster import cluster_failures, propose_from_clusters
+
+            clusters = cluster_failures(ws, since_days=14)
+            clustered = propose_from_clusters(ws, clusters, min_count=2)
+            cluster_created = len(clustered)
 
     from meris.harness.ratchet import list_proposals
 
@@ -36,9 +48,11 @@ def ratchet_post_run(workspace: Path, *, session_id: str | None = None) -> tuple
         parts.append("[ratchet] profile updated")
     if created:
         parts.append(f"[ratchet] {len(created)} new proposal(s) — meris ratchet review")
+    elif cluster_created:
+        parts.append(f"[ratchet] {cluster_created} cluster proposal(s) — meris ratchet review")
     elif pending:
         parts.append(f"[ratchet] {len(pending)} pending — meris ratchet review")
     elif failed:
         parts.append("[ratchet] meris ratchet scan")
     msg = " · ".join(parts) if parts else None
-    return len(created), msg
+    return len(created) + cluster_created, msg

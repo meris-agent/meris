@@ -31,6 +31,10 @@ class Proposal:
     verify: list[str] = field(default_factory=list)
     status: str = "pending"  # pending | applied | rejected
     created: str = field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    target_failure: str = ""
+    expected_effect: str = ""
+    regression_risk: str = ""
+    harness_fp: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -53,6 +57,10 @@ class Proposal:
             verify=list(data.get("verify") or []),
             status=data.get("status", "pending"),
             created=data.get("created", ""),
+            target_failure=data.get("target_failure", ""),
+            expected_effect=data.get("expected_effect", ""),
+            regression_risk=data.get("regression_risk", ""),
+            harness_fp=data.get("harness_fp", ""),
         )
 
     def marker(self) -> str:

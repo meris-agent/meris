@@ -297,6 +297,38 @@ def dogfood_cmd(
         raise typer.Exit(1)
 
 
+@harness_app.command("gc")
+def harness_gc_cmd(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    json_out: bool = typer.Option(False, "--json", help="Emit JSON findings"),
+) -> None:
+    """Scan harness entropy (stale docs, ratchet backlog, oversized AGENTS.md)."""
+    from meris.harness.gc import gc_has_warnings, run_harness_gc
+
+    findings = run_harness_gc(cwd.resolve())
+    if json_out:
+        import json
+
+        console.print(
+            json.dumps(
+                [{"id": f.id, "severity": f.severity, "detail": f.detail, "hint": f.hint} for f in findings],
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+    else:
+        table = Table("Check", "Level", "Detail")
+        for f in findings:
+            style = {"info": "dim", "warn": "yellow", "fail": "red"}.get(f.severity, "white")
+            table.add_row(f.id, f"[{style}]{f.severity}[/{style}]", f.detail[:70])
+            if f.hint:
+                console.print(f"  [dim]hint:[/dim] {f.hint}")
+        console.print(table)
+        console.print("[dim]Read-only scan — fix findings manually or via meris ratchet review[/dim]")
+    if gc_has_warnings(findings):
+        raise typer.Exit(1)
+
+
 @harness_app.command("check")
 def harness_check_cmd(
     cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
@@ -563,6 +595,13 @@ def init_harness(
     (harness / "plan").mkdir(exist_ok=True)
     (harness / "ratchet" / "proposals").mkdir(parents=True, exist_ok=True)
     (harness / "ratchet" / "applied").mkdir(parents=True, exist_ok=True)
+    (harness / "benchmark").mkdir(parents=True, exist_ok=True)
+    (harness / "environments").mkdir(parents=True, exist_ok=True)
+    env_dst = harness / "environments" / "default.yaml"
+    env_src = tpl / "environments" / "default.yaml"
+    if not env_dst.exists() and env_src.is_file():
+        shutil.copy(env_src, env_dst)
+        console.print(f"[green]Created[/green] {env_dst}")
     skills_dir = harness / "skills"
     rules_dir = harness / "rules"
     rules_dir.mkdir(exist_ok=True)
@@ -603,7 +642,7 @@ def init_harness(
         console.print(f"[green]Created[/green] {env_file} (MERIS_NATIVE_LOOP=auto — edit API key)")
 
     console.print("[bold]Harness initialized.[/bold] Edit AGENTS.md for your stack.")
-    console.print("[dim]Next: meris ratchet learn --init · docs/RATCHET_DESIGN.md[/dim]")
+    console.print("[dim]Next: meris ratchet learn --init · docs/cloud/template-contract.md[/dim]")
 
 
 @spec_app.command("init")
@@ -1041,10 +1080,17 @@ def benchmark_run(
     ),
 ) -> None:
     """Run benchmark tasks and report pass rate."""
-    from meris.benchmark import filter_benchmark_tasks, load_benchmark_tasks, run_benchmark, summarize
+    from meris.benchmark import (
+        filter_benchmark_tasks,
+        load_benchmark_tasks,
+        resolve_benchmark_tasks_path,
+        run_benchmark,
+        summarize,
+    )
 
     ws = cwd.resolve()
-    tf = tasks_file or (Path(__file__).resolve().parent.parent / "scripts" / "benchmark" / "tasks.json")
+    default_tf = Path(__file__).resolve().parent.parent / "scripts" / "benchmark" / "tasks.json"
+    tf = tasks_file or resolve_benchmark_tasks_path(ws, default_tf)
     if not tf.is_file():
         console.print(f"[red]Tasks file not found: {tf}[/red]")
         raise typer.Exit(1)
@@ -1096,20 +1142,111 @@ def benchmark_run(
         raise typer.Exit(1)
 
 
+@benchmark_app.command("regression")
+def benchmark_regression(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    tasks_file: Path = typer.Option(None, "--file", "-f"),
+    split: str | None = typer.Option(
+        None,
+        "--split",
+        help="Run only held_in or held_out tasks",
+    ),
+    local_only: bool = typer.Option(
+        True,
+        "--local-only/--all",
+        help="Default: local tasks only (no API). Use --all for agent tasks.",
+    ),
+    update_baseline: bool = typer.Option(
+        False,
+        "--update-baseline",
+        help="Save results as new baseline after a green run",
+    ),
+) -> None:
+    """Run benchmark vs `.meris/benchmark/baseline.json` — fail on pass→fail regression."""
+    from meris.benchmark import (
+        filter_benchmark_tasks,
+        load_benchmark_tasks,
+        resolve_benchmark_tasks_path,
+        run_benchmark,
+        summarize,
+    )
+    from meris.benchmark_regression import (
+        compare_to_baseline,
+        load_baseline,
+        save_baseline,
+    )
+
+    ws = cwd.resolve()
+    default_tf = Path(__file__).resolve().parent.parent / "scripts" / "benchmark" / "tasks.json"
+    tf = tasks_file or resolve_benchmark_tasks_path(ws, default_tf)
+    if not tf.is_file():
+        console.print(f"[red]Tasks file not found: {tf}[/red]")
+        raise typer.Exit(1)
+    tasks = load_benchmark_tasks(tf)
+    tasks = filter_benchmark_tasks(tasks, include_native=False, split=split)
+    if local_only:
+        tasks = [t for t in tasks if t.local]
+    if not tasks:
+        console.print("[red]No tasks for regression (add split/local tasks to .meris/benchmark/)")
+        raise typer.Exit(1)
+
+    console.print(f"[bold]Regression: {len(tasks)} task(s)[/bold] from {tf.name}")
+    baseline = load_baseline(ws)
+    if baseline:
+        console.print(f"[dim]baseline: {baseline.get('updated', '?')}[/dim]")
+    else:
+        console.print("[dim]no baseline yet[/dim]")
+
+    async def _go():
+        return await run_benchmark(ws, tasks)
+
+    results = _run_async(_go())
+    summary = summarize(results)
+    table = Table("Task", "Split", "Status", "Detail")
+    split_map = {t.id: t.split or "—" for t in tasks}
+    for r in results:
+        style = "green" if r.status == "pass" else "red"
+        table.add_row(
+            r.task_id,
+            split_map.get(r.task_id, "—"),
+            f"[{style}]{r.status}[/{style}]",
+            r.detail[:50],
+        )
+    console.print(table)
+    console.print(
+        f"\n[bold]Pass: {summary['passed']}/{summary['total']} ({summary['rate']:.0f}%)[/bold]"
+    )
+
+    reg_ok, reg_msgs, stats = compare_to_baseline(results, baseline)
+    for line in reg_msgs:
+        console.print(line)
+
+    run_ok = summary["failed"] == 0 and reg_ok
+    if run_ok and update_baseline:
+        bp = save_baseline(ws, results, tasks)
+        console.print(f"[green]Baseline updated[/green] → {bp}")
+    elif update_baseline and not run_ok:
+        console.print("[yellow]Baseline not updated — fix failures/regressions first[/yellow]")
+
+    if not run_ok:
+        raise typer.Exit(1)
+
+
 @benchmark_app.command("list")
 def benchmark_list(
     tasks_file: Path = typer.Option(None, "--file", "-f"),
 ) -> None:
     """List benchmark tasks."""
-    from meris.benchmark import load_benchmark_tasks
+    from meris.benchmark import load_benchmark_tasks, resolve_benchmark_tasks_path
 
-    tf = tasks_file or (Path(__file__).resolve().parent.parent / "scripts" / "benchmark" / "tasks.json")
+    default = Path(__file__).resolve().parent.parent / "scripts" / "benchmark" / "tasks.json"
+    tf = tasks_file or default
     tasks = load_benchmark_tasks(tf)
-    table = Table("ID", "Mode", "Task")
+    table = Table("ID", "Split", "Mode", "Task")
     for t in tasks:
         mode = f"local:{t.local}" if t.local else t.mode
         desc = t.task[:60] if t.task else f"({t.local})"
-        table.add_row(t.id, mode, desc)
+        table.add_row(t.id, t.split or "—", mode, desc)
     console.print(table)
 
 
@@ -1280,6 +1417,39 @@ def ratchet_scan(
         console.print(f"[green]+[/green] {p.id} [{p.lesson}] {p.summary}")
         console.print(f"    → {p.target.path}")
     console.print(f"\n[bold]{len(created)} proposal(s)[/bold] — meris ratchet review")
+
+
+@ratchet_app.command("cluster")
+def ratchet_cluster(
+    cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
+    since_days: int = typer.Option(14, "--since", help="Events window (days)"),
+    min_count: int = typer.Option(1, "--min", help="Minimum occurrences to show"),
+    propose: bool = typer.Option(
+        False,
+        "--propose",
+        help="Create ratchet proposals for clusters with count ≥ 2",
+    ),
+) -> None:
+    """Cluster session/event failures (weakness mining)."""
+    from meris.harness.ratchet.cluster import cluster_failures, propose_from_clusters
+
+    ws = cwd.resolve()
+    clusters = cluster_failures(ws, since_days=since_days, min_count=min_count)
+    if not clusters:
+        console.print("[dim]No failure clusters in recent sessions/events[/dim]")
+        return
+    table = Table("Signature", "Label", "Count", "Sample")
+    for c in clusters:
+        table.add_row(c.signature, c.label, str(c.count), c.sample[:55])
+    console.print(table)
+    if propose:
+        saved = propose_from_clusters(ws, clusters, min_count=2)
+        if saved:
+            for p in saved:
+                console.print(f"[green]+[/green] {p.id} [{p.lesson}] {p.summary}")
+            console.print(f"\n[bold]{len(saved)} proposal(s)[/bold] — meris ratchet review")
+        else:
+            console.print("[dim]No proposals — need count ≥ 2 and mappable signature[/dim]")
 
 
 @ratchet_app.command("digest")
@@ -1535,8 +1705,13 @@ def ratchet_review(
         console.print(f"\n[bold]{p.id}[/bold] [{p.lesson}] — {p.summary}")
         console.print(f"  → {p.target.path}")
         console.print(p.target.content[:400] + ("…" if len(p.target.content) > 400 else ""))
+        if p.target_failure:
+            console.print(f"  [dim]failure:[/dim] {p.target_failure}")
+        if p.verify:
+            console.print(f"  [dim]verify:[/dim] {', '.join(p.verify)}")
+        do_verify = verify or bool(p.verify)
         if typer.confirm("Apply?", default=True):
-            _ratchet_apply_one(ws, p, verify=verify)
+            _ratchet_apply_one(ws, p, verify=do_verify)
         elif typer.confirm("Reject this proposal?", default=False):
             reject_proposal(ws, p.id)
             console.print("[dim]Rejected[/dim]")
@@ -1563,7 +1738,11 @@ def ratchet_reject(
 def ratchet_apply(
     proposal_id: str = typer.Argument(..., help="Proposal id"),
     cwd: Path = typer.Option(Path.cwd(), "--cwd", "-C"),
-    verify: bool = typer.Option(False, "--verify", help="Run proposal verify commands"),
+    verify: bool = typer.Option(
+        False,
+        "--verify/--no-verify",
+        help="Run proposal verify steps (default on when proposal lists verify)",
+    ),
     force_agents: bool = typer.Option(False, "--force-agents", help="Allow AGENTS.md patches"),
     force_settings: bool = typer.Option(
         False, "--force-settings", help="Allow .meris/settings.* patches"
@@ -1577,7 +1756,13 @@ def ratchet_apply(
     if not p or p.status != "pending":
         console.print(f"[red]Pending proposal not found: {proposal_id}[/red]")
         raise typer.Exit(1)
-    _ratchet_apply_one(ws, p, verify=verify, force_agents=force_agents, force_settings=force_settings)
+    _ratchet_apply_one(
+        ws,
+        p,
+        verify=verify or bool(p.verify),
+        force_agents=force_agents,
+        force_settings=force_settings,
+    )
 
 
 @ratchet_app.command("revert")
@@ -1611,24 +1796,16 @@ def _ratchet_apply_one(
             proposal,
             force_agents=force_agents,
             force_settings=force_settings,
+            verify=verify,
         )
     except ValueError as e:
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1) from e
     console.print(f"[green]Applied[/green] → {dest}")
     if verify and proposal.verify:
-        for cmd in proposal.verify:
-            console.print(f"[dim]verify: {cmd}[/dim]")
-            if cmd.startswith("meris benchmark"):
-                parts = cmd.split()
-                filt = None
-                if "--filter" in parts:
-                    filt = parts[parts.index("--filter") + 1]
-                benchmark_run(
-                    cwd=workspace,
-                    tasks_file=None,
-                    filter=filt,
-                )
+        console.print("[green]Verify passed[/green]")
+    elif proposal.verify and not verify:
+        console.print("[dim]Tip: re-run with --verify to run promotion gate[/dim]")
 
 
 @tui_app.callback(invoke_without_command=True)

@@ -466,6 +466,10 @@ async def agent_loop(
                 status = "cancelled"
                 break
 
+        if state.done and status == "completed":
+            status = "max_turns"
+            yield out("[meris] max turns reached — session saved", "status")
+
         if status != "cancelled" and run_sensors_at_end and mode == "run":
             ok, out = await run_sensors(ws)
             dod_sensor_out = out
@@ -487,10 +491,11 @@ async def agent_loop(
         if mcp_mgr:
             await mcp_mgr.close()
         _persist_session(ws, record, state, status)
-        if mode == "run" and status != "running":
+        if mode == "run" and status not in ("running", "completed"):
             update_progress_task(ws, task[:200], status)
-        if status in ("dod_failed", "error"):
+        if status in ("dod_failed", "error", "max_turns"):
             from meris.harness.check import is_harness_check_failure
+            from meris.harness.handoff import write_session_handoff
             from meris.harness.ratchet import record_event
             from meris.harness.ratchet.post_run import ratchet_post_run
 
@@ -498,14 +503,17 @@ async def agent_loop(
             detail = dod_sensor_out[:800] if dod_sensor_out else status
             if status == "dod_failed" and is_harness_check_failure(dod_sensor_out):
                 kind = "harness_check_fail"
+            if status == "max_turns":
+                detail = f"max turns ({record.max_turns}) reached without completion"
             record_event(
                 ws,
                 kind,
                 session=record.id,
                 task=task[:200],
                 detail=detail,
-                tags=["loop", mode, "dod"],
+                tags=["loop", mode, "dod" if status == "dod_failed" else status],
             )
+            write_session_handoff(ws, record, status=status, verifier_output=dod_sensor_out)
             _created, post_run_msg = ratchet_post_run(ws, session_id=record.id)
             if post_run_msg and event_stream:
                 event_stream.emit("status", message=post_run_msg)

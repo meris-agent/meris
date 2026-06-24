@@ -23,7 +23,7 @@ def ingest_session_failures(workspace: Path) -> int:
         except json.JSONDecodeError:
             continue
         status = data.get("status", "")
-        if status not in ("dod_failed", "error"):
+        if status not in ("dod_failed", "error", "max_turns"):
             continue
         record_event(
             workspace,

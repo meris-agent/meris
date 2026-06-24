@@ -20,6 +20,7 @@ class BenchmarkTask:
     reject: list[str] = field(default_factory=list)
     max_turns: int = 8
     local: str = ""
+    split: str = ""  # held_in | held_out | "" (both)
 
 
 @dataclass
@@ -28,6 +29,14 @@ class BenchmarkResult:
     status: str
     session_id: str = ""
     detail: str = ""
+
+
+def resolve_benchmark_tasks_path(workspace: Path, default: Path) -> Path:
+    """Prefer project `.meris/benchmark/tasks.json` over shipped default."""
+    proj = workspace.resolve() / ".meris" / "benchmark" / "tasks.json"
+    if proj.is_file():
+        return proj
+    return default
 
 
 def load_benchmark_tasks(path: Path) -> list[BenchmarkTask]:
@@ -43,6 +52,7 @@ def load_benchmark_tasks(path: Path) -> list[BenchmarkTask]:
                 reject=list(item.get("reject") or []),
                 max_turns=int(item.get("max_turns", 8)),
                 local=item.get("local", ""),
+                split=str(item.get("split", "")),
             )
         )
     return tasks
@@ -133,13 +143,18 @@ def filter_benchmark_tasks(
     *,
     include_native: bool = False,
     native_only: bool = False,
+    split: str | None = None,
 ) -> list[BenchmarkTask]:
     """Default mock run excludes native_* offline smokes unless requested."""
     if native_only:
-        return [t for t in tasks if t.id.startswith("native_")]
-    if include_native:
-        return tasks
-    return [t for t in tasks if not t.id.startswith("native_")]
+        out = [t for t in tasks if t.id.startswith("native_")]
+    elif include_native:
+        out = list(tasks)
+    else:
+        out = [t for t in tasks if not t.id.startswith("native_")]
+    if split:
+        out = [t for t in out if not t.split or t.split == split]
+    return out
 
 
 def _benchmark_output(workspace: Path, lines: list[str], task: BenchmarkTask) -> str:

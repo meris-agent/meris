@@ -22,10 +22,15 @@ meris harness check
 ```bash
 meris benchmark list
 meris benchmark run --local-only          # 无 API：harness_check + review_smoke
+meris benchmark regression                # vs .meris/benchmark/baseline.json（默认 local）
+meris benchmark regression --update-baseline   # 绿跑后写入 baseline
 python scripts/run_benchmark_mock.py      # 离线 mock，CI 同款
 python scripts/run_benchmark_live.py      # 默认 3 个 live agent 任务（需 API key）
 meris benchmark run --filter plan_smoke   # 单任务 agent
 ```
+
+项目级任务集：`.meris/benchmark/tasks.json`（可选 `split: held_in | held_out`）。  
+环境契约示例：`docs/examples/environment-contract-ci-triage.yaml`。
 
 GitHub Actions：**benchmark-live** workflow（手动触发，需 `DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY` secret）。
 

@@ -114,3 +114,8 @@ models:
       provider: deepseek
       model: deepseek-chat
     reRoute: onMutation
+
+# --- Ratchet 自我进化（见 docs/RATCHET_DESIGN.md）---
+ratchet:
+  # 失败后 post-run 自动 cluster（≥2 次同类失败 → proposal 候选）
+  clusterOnPostRun: false
