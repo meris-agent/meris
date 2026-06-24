@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.0 (2026-06-24)
+
+**Open-source launch** — single clean git history; Meris Cloud remains proprietary ([CLOUD.md](CLOUD.md)).
+
+### Added
+
+- Harness entropy scan: `meris harness gc`
+- Session handoff: `.meris/handoff.md` on failed / max-turns runs
+- Ratchet verify gate on apply; failure clustering (`meris ratchet cluster`)
+- Benchmark regression vs `.meris/benchmark/baseline.json` (`meris benchmark regression`)
+- Environment contracts: `.meris/environments/*.yaml`, `init-harness` seeds defaults
+- Cloud template contract docs: [docs/cloud/template-contract.md](docs/cloud/template-contract.md)
+
+### Install
+
+```bash
+pip install meris-agent==0.1.0
+```
+
 ## 0.0.2 (2026-06-21)
 
 First PyPI release after **Meris Cloud split** from the open-source monorepo.

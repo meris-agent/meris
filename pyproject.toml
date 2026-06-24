@@ -1,6 +1,6 @@
 [project]
 name = "meris-agent"
-version = "0.0.3"
+version = "0.1.0"
 description = "Meris — model-agnostic coding agent with a per-project agent harness (.meris/)"
 readme = "README.md"
 license = "MIT"
