@@ -1,0 +1,17 @@
+# Meris default environment contract (see templates/environments/default.yaml)
+
+name: default
+goal: >
+  Deliver verifiable changes with DoD before finishing.
+
+evaluators:
+  - pytest tests/ -m "not integration" -q
+  - meris harness check
+
+blocked_actions:
+  - git push without approval
+  - modify **/generated/**
+
+meris_mapping:
+  regression: meris benchmark regression
+  handoff_path: .meris/handoff.md

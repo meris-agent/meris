@@ -1,0 +1,35 @@
+{
+  "tasks": [
+    {
+      "id": "plan_smoke",
+      "split": "held_in",
+      "mode": "plan",
+      "task": "Plan adding a meris session prune command. Output exactly 3 lines of `- [ ]` checkbox tasks only.",
+      "expect": ["- [ ]"],
+      "max_turns": 4
+    },
+    {
+      "id": "harness_check_smoke",
+      "split": "held_in",
+      "local": "harness_check",
+      "expect": ["import:forge: ok"]
+    },
+    {
+      "id": "docs_smoke",
+      "split": "held_out",
+      "mode": "ask",
+      "task": "What pytest command is Definition of Done in docs/harness/testing.md? Use read_file on that path only; one line answer.",
+      "expect": ["pytest tests/"],
+      "max_turns": 4
+    },
+    {
+      "id": "harness_paths_smoke",
+      "split": "held_out",
+      "mode": "ask",
+      "task": "When cwd is this Meris repo root, what path is the root README? Use read_file on .meris/rules/paths.md only; one short line.",
+      "expect": ["README.md"],
+      "reject": ["meris/README.md"],
+      "max_turns": 4
+    }
+  ]
+}

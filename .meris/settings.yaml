@@ -1,0 +1,90 @@
+# Meris 本仓库 Harness（团队共享，可提交 Git）
+# 个人 ep / dynamic.enabled 等 → .meris/settings.local.yaml
+
+permissions:
+  allow:
+    - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
+    - Git
+    - Bash(pytest*)
+    - Bash(python*)
+    - Bash(git status*)
+    - Bash(git diff*)
+    - Bash(git add*)
+    - MCP
+  deny:
+    - Bash(rm -rf*)
+    - Bash(git push*)
+    - Bash(curl*)
+
+sensors:
+  postEdit:
+    - pytest tests/ -m "not integration" -q --tb=no
+  onComplete: true
+
+context:
+  maxMessages: 48
+  maxTokens: 32000
+  maxToolTokens: 2000
+
+blockedPaths:
+  - "**/generated/**"
+  - "**/node_modules/**"
+
+sandbox:
+  preset: workspace-write
+  mode: warn
+  bashTimeoutSec: 120
+
+hooks:
+  preToolUse: []
+  postToolUse: []
+
+mcpServers: {}
+
+models:
+  profiles:
+    fast:
+      provider: deepseek
+      model: deepseek-chat
+      hint: 只读问答、解释、轻量 plan
+    code:
+      provider: volcengine
+      model: ep-xxxxxxxx
+      hint: 改代码、跑测试、实现功能
+    heavy:
+      provider: anthropic
+      model: claude-sonnet-4-20250514
+      hint: 大规模重构、架构设计
+  byMode:
+    ask:
+      profile: fast
+    plan:
+      profile: fast
+    review:
+      profile: fast
+    run:
+      strategy: dynamic
+      candidates:
+        - fast
+        - code
+        - heavy
+      defaultProfile: fast
+  rules:
+    - name: heavy-refactor
+      match:
+        mode: run
+        taskContains:
+          - 重构
+          - refactor
+          - 架构
+      profile: heavy
+  dynamic:
+    enabled: false
+    router:
+      provider: deepseek
+      model: deepseek-chat
+    reRoute: onMutation

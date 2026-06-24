@@ -1,0 +1,11 @@
+# Meris dogfood — run after `meris doctor` passes
+
+## Quick verify
+meris doctor
+pytest tests/ -m "not integration" -q
+meris plan "add session delete command" --no-save
+meris parallel --file scripts/dogfood-tasks.txt --mode ask -j 2
+
+## Plan → Run flow
+meris plan "improve error messages in provider"
+meris run --from-plan "implement the plan" --approve

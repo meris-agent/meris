@@ -1,0 +1,72 @@
+# --- Secrets & local env ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+dist/
+build/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# --- Test / lint caches ---
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# --- Rust ---
+meris-rs/target/
+# meris/_bundled/meris-rs* — do NOT gitignore: hatchling excludes ignored paths from wheels.
+# Stage before release build; never commit the binary (large). README.md stays tracked.
+
+# --- IDE / editor (local) ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- Meris harness runtime (do not commit) ---
+.meris/sessions/
+.meris/plan/
+.meris/worktrees/
+.meris/spec/
+.meris/profile.md
+.meris/settings.local.yaml
+.meris/settings.local.yml
+.meris/settings.local.json
+.meris/ratchet/
+.meris/events/
+.meris/context/
+.meris/ui/
+meris/.meris/
+
+# Local wheel / packaging smoke (do not commit)
+dist-test/
+
+# Agent-generated scratch (not part of package layout)
+meris_website.html
+
+# Commit shared harness: .meris/settings.yaml, .meris/rules/, .meris/skills/
+# Personal overrides: .meris/settings.local.yaml (see templates/settings.example.yaml)
+
+# --- Cursor local (not the vscode-meris extension source) ---
+.cursor/

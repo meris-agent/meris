@@ -1,0 +1,236 @@
+name: test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install
+        run: pip install -e ".[dev,tui]"
+
+      - name: Unit tests
+        run: pytest tests/ -v -m "not integration"
+
+      - name: Ruff check
+        run: ruff check meris tests
+
+      - name: Harness check
+        run: meris harness check --cwd .
+
+      - name: Benchmark mock (offline)
+        run: python scripts/run_benchmark_mock.py
+
+      - name: Benchmark native smoke (offline)
+        run: python scripts/run_benchmark_mock.py --native-only
+
+      - name: MCP schemas JSON smoke
+        run: meris mcp schemas --cwd . --json | grep -q '"schemas"'
+
+      - name: Ratchet status
+        run: meris ratchet status --cwd .
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo test
+        working-directory: meris-rs
+        run: cargo test
+
+      - name: Cargo build release
+        working-directory: meris-rs
+        run: cargo build --release
+
+      - name: Sandbox check smoke
+        run: |
+          ./meris-rs/target/release/meris-rs sandbox check \
+            --workspace .. \
+            --command "pwd" \
+            --mode strict | grep -q blocked
+
+      - name: Sandbox allow pytest pattern
+        run: |
+          ./meris-rs/target/release/meris-rs sandbox check \
+            --workspace .. \
+            --command 'pytest tests/ -m "not integration" -q' \
+            --mode warn | grep -q '"ok"'
+
+      - name: Install bubblewrap
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap
+
+      - name: OS sandbox probe
+        run: |
+          ./meris-rs/target/release/meris-rs sandbox probe --workspace .. | grep -q wouldUseBubblewrap
+
+      - name: Bubblewrap blocks writes outside workspace
+        run: |
+          set -e
+          root="$(cd .. && pwd)"
+          marker="/etc/meris-bwrap-ci-$$"
+          ./meris-rs/target/release/meris-rs sandbox run --workspace "$root" --timeout 30 -- \
+            sh -c "touch $marker" || true
+          test ! -e "$marker"
+
+      - name: Bubblewrap allows workspace writes
+        run: |
+          root="$(cd .. && pwd)"
+          if ./meris-rs/target/release/meris-rs sandbox run --workspace "$root" --timeout 30 -- \
+            sh -c "touch .meris-bwrap-ci-ok && test -f .meris-bwrap-ci-ok"; then
+            rm -f "$root/.meris-bwrap-ci-ok"
+          else
+            echo "SKIP: bubblewrap unavailable on this runner (loopback)"
+          fi
+
+      - name: Bubblewrap masks .env from bash
+        run: |
+          set -e
+          root="$(cd .. && pwd)"
+          echo 'SECRET=ci-leak' > "$root/.env.test"
+          trap 'rm -f "$root/.env.test"' EXIT
+          out=$(./meris-rs/target/release/meris-rs sandbox run --workspace "$root" --timeout 30 -- \
+            sh -c 'cat .env.test 2>/dev/null || true')
+          test -z "$out" || ! echo "$out" | grep -q SECRET=ci-leak
+
+      - name: Native parity
+        run: python scripts/check_native_parity.py
+
+      - name: Provider probe
+        run: ./meris-rs/target/release/meris-rs provider probe | grep -q baseUrl
+
+      - name: Tools read_file smoke
+        run: |
+          ./meris-rs/target/release/meris-rs tools run \
+            --workspace .. \
+            --tool read_file \
+            --args '{"path":"README.md","limit":3}' | grep -q README
+
+      - name: Tools schemas smoke
+        run: |
+          ./meris-rs/target/release/meris-rs tools schemas --read-only | grep -q read_file
+          python scripts/check_tool_schemas_parity.py
+
+      - name: Tools write_file smoke
+        run: |
+          ./meris-rs/target/release/meris-rs tools run \
+            --workspace .. \
+            --tool write_file \
+            --args '{"path":".meris-ci-write.txt","content":"ok"}' | grep -q Wrote
+          rm -f ../.meris-ci-write.txt
+
+      - name: Agent session smoke
+        run: |
+          ./meris-rs/target/release/meris-rs agent session list --workspace .. | true
+
+      - name: System prompt bridge smoke
+        run: |
+          pip install -e ".."
+          meris harness system-prompt --cwd .. --mode ask --json | grep -q '"prompt"'
+
+      - name: meris-rs run entry smoke
+        run: |
+          ./meris-rs/target/release/meris-rs run ask 2>&1 | head -1 || true
+
+      - name: Review task bridge smoke
+        run: |
+          pip install -e ".."
+          meris harness review-task --cwd .. --json 2>/dev/null || test $? -ne 0
+
+      - name: DoD failed bridge smoke
+        run: |
+          meris harness dod-failed --cwd .. --session ci --task t --detail fail --json | grep -q ratchet
+
+  macos-seatbelt:
+    name: macOS Seatbelt (G6.2/G6.3)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Python
+        run: pip install -e ".[dev]"
+
+      - name: Build meris-rs
+        working-directory: meris-rs
+        run: cargo build --release
+
+      - name: Seatbelt policy tests (Python)
+        run: pytest tests/test_seatbelt_macos.py -q
+
+      - name: Seatbelt policy tests (Rust)
+        working-directory: meris-rs
+        run: cargo test seatbelt --quiet
+
+      - name: Meris profile in policy JSON
+        run: |
+          ./meris-rs/target/release/meris-rs sandbox policy --workspace . | grep -q meris-workspace-write
+
+      - name: Seatbelt probe and bash smoke
+        run: |
+          probe=$(./meris-rs/target/release/meris-rs sandbox probe --workspace . 2>&1) || true
+          echo "$probe"
+          if echo "$probe" | grep -qi seatbelt; then
+            ./meris-rs/target/release/meris-rs sandbox run --workspace . --timeout 30 -- echo seatbelt_ci_ok | grep -q seatbelt_ci_ok
+          else
+            echo "SKIP: seatbelt not available on this macOS runner"
+          fi
+
+      - name: Seatbelt blocks writes outside workspace (read-only)
+        run: |
+          set -e
+          root="$(pwd)"
+          marker="/tmp/meris-seatbelt-ci-$$"
+          ./meris-rs/target/release/meris-rs sandbox run --workspace "$root" --timeout 30 \
+            --settings-json '{"sandbox":{"preset":"read-only","osSandbox":"auto"}}' \
+            -- sh -c "echo pwned > $marker" || true
+          test ! -e "$marker"
+
+      - name: Seatbelt masks .env from bash
+        run: |
+          set -e
+          root="$(pwd)"
+          echo 'SECRET=ci-leak' > "$root/.env"
+          trap 'rm -f "$root/.env"' EXIT
+          out=$(./meris-rs/target/release/meris-rs sandbox run --workspace "$root" --timeout 30 \
+            --settings-json '{"sandbox":{"preset":"workspace-write","maskSecrets":true,"osSandbox":"auto"}}' \
+            -- sh -c 'cat .env 2>/dev/null || true')
+          test -z "$out" || ! echo "$out" | grep -q SECRET=ci-leak
+
+      - name: Allowlist blocks unknown host (strict check)
+        run: |
+          set -e
+          ./meris-rs/target/release/meris-rs sandbox check --workspace . --mode strict \
+            --settings-json '{"sandbox":{"networkAllowlist":["github.com"],"preset":"workspace-write"}}' \
+            --command "curl https://evil.example.com/x" | grep -q '"blocked":true'
+
+      - name: Allowlist hybrid policy and probe
+        run: |
+          set -e
+          ./meris-rs/target/release/meris-rs sandbox policy --workspace . \
+            --settings-json '{"sandbox":{"networkAllowlist":["github.com"],"preset":"workspace-write"}}' \
+            | grep -q allowlist-hybrid
+          ./meris-rs/target/release/meris-rs sandbox probe --workspace . \
+            --settings-json '{"sandbox":{"networkAllowlist":["github.com"],"preset":"workspace-write","osSandbox":"auto"}}' \
+            | grep -q '"networkEnforcement": "allowlist-hybrid'

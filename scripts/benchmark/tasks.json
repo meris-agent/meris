@@ -1,0 +1,73 @@
+{
+  "tasks": [
+    {
+      "id": "read_hello",
+      "mode": "ask",
+      "task": "What does hello.py print? Use read_file only.",
+      "expect": ["hello"],
+      "max_turns": 6
+    },
+    {
+      "id": "list_tools",
+      "mode": "ask",
+      "task": "List the built-in tool names in meris/tools/builtin.py using grep. Names only in answer.",
+      "expect": ["read_file"],
+      "max_turns": 6
+    },
+    {
+      "id": "plan_smoke",
+      "mode": "plan",
+      "task": "Plan adding a meris session prune command. Output exactly 3 lines of `- [ ]` checkbox tasks only.",
+      "expect": ["- [ ]"],
+      "max_turns": 4
+    },
+    {
+      "id": "docs_smoke",
+      "mode": "ask",
+      "task": "What pytest command is Definition of Done in docs/harness/testing.md? Use read_file on that path only; one line answer.",
+      "expect": ["pytest tests/"],
+      "max_turns": 4
+    },
+    {
+      "id": "harness_check_smoke",
+      "local": "harness_check",
+      "expect": ["import:forge: ok"]
+    },
+    {
+      "id": "harness_paths_smoke",
+      "mode": "ask",
+      "task": "When cwd is this Meris repo root, what path is the root README? Use read_file on .meris/rules/paths.md only; one short line.",
+      "expect": ["README.md"],
+      "reject": ["meris/README.md"],
+      "max_turns": 4
+    },
+    {
+      "id": "import_prefix_smoke",
+      "mode": "ask",
+      "task": "What Python import prefix should Meris package code use? Use read_file on docs/harness/architecture.md only; one line.",
+      "expect": ["from meris"],
+      "reject": ["from forge", "import forge"],
+      "max_turns": 4
+    },
+    {
+      "id": "review_smoke",
+      "local": "review_task",
+      "expect": ["## Issues"]
+    },
+    {
+      "id": "native_system_prompt",
+      "local": "native_system_prompt",
+      "expect": ["Meris", "MODE: ASK"]
+    },
+    {
+      "id": "native_dod_bridge",
+      "local": "native_dod_bridge",
+      "expect": ["ratchet"]
+    },
+    {
+      "id": "native_run_entry",
+      "local": "native_run_entry",
+      "expect": ["ok"]
+    }
+  ]
+}

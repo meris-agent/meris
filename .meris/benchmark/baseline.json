@@ -1,0 +1,10 @@
+{
+  "updated": "2026-06-24T00:00:00Z",
+  "tasks": {
+    "harness_check_smoke": {
+      "status": "pass",
+      "split": "held_in",
+      "detail": "harness check ok"
+    }
+  }
+}

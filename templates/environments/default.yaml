@@ -1,0 +1,42 @@
+# Default environment contract — copy and customize per workflow.
+# See docs/examples/environment-contract-ci-triage.yaml for full reference.
+
+name: default
+goal: >
+  Deliver verifiable changes with DoD (pytest + meris harness check) before finishing.
+
+readable_state:
+  repository: read-only by default except agreed edit paths
+
+writable_state:
+  working_tree: true
+  evidence_path: .meris/handoff.md
+
+blocked_actions:
+  - git push to remote without approval
+  - delete tests to pass CI
+  - modify **/generated/**
+
+evaluators:
+  - pytest tests/ -m "not integration" -q
+  - meris harness check
+
+budget:
+  max_turns: 30
+  stop_on_max_turns: true
+
+memory_policy:
+  write_verified_facts_to: PROGRESS.md
+  read_handoff_on_start: true
+
+human_handoff:
+  - unclear requirements
+  - production-impacting change
+  - permission escalation
+
+meris_mapping:
+  dod_commands:
+    - pytest tests/ -m "not integration" -q
+    - meris harness check
+  benchmark: .meris/benchmark/tasks.json
+  regression: meris benchmark regression

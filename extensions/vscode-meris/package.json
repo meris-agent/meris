@@ -1,0 +1,94 @@
+{
+  "name": "meris-agent-vscode",
+  "displayName": "Meris Agent",
+  "description": "Run Meris harness-first coding agent from VS Code",
+  "version": "0.3.0",
+  "publisher": "meris-local",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other", "Machine Learning"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "meris-sidebar",
+          "title": "Meris",
+          "icon": "media/meris-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "meris-sidebar": [
+        {
+          "type": "webview",
+          "id": "meris.agentView",
+          "name": "Agent"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "meris.ask",
+        "title": "Meris: Ask (read-only)"
+      },
+      {
+        "command": "meris.plan",
+        "title": "Meris: Plan"
+      },
+      {
+        "command": "meris.run",
+        "title": "Meris: Run Agent"
+      },
+      {
+        "command": "meris.runApprove",
+        "title": "Meris: Run (approve mode)"
+      },
+      {
+        "command": "meris.runWithEvents",
+        "title": "Meris: Run with event stream"
+      },
+      {
+        "command": "meris.review",
+        "title": "Meris: Review diff"
+      },
+      {
+        "command": "meris.exec",
+        "title": "Meris: Exec (JSON)"
+      },
+      {
+        "command": "meris.doctor",
+        "title": "Meris: Doctor"
+      },
+      {
+        "command": "meris.tui",
+        "title": "Meris: Open TUI"
+      },
+      {
+        "command": "meris.agentWindow",
+        "title": "Meris: Open Agent Window"
+      },
+      {
+        "command": "meris.agentView.focus",
+        "title": "Meris: Focus Sidebar Agent"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        { "command": "meris.ask" },
+        { "command": "meris.plan" },
+        { "command": "meris.run" },
+        { "command": "meris.runApprove" },
+        { "command": "meris.runWithEvents" },
+        { "command": "meris.review" },
+        { "command": "meris.exec" },
+        { "command": "meris.doctor" },
+        { "command": "meris.tui" },
+        { "command": "meris.agentWindow" },
+        { "command": "meris.agentView.focus" }
+      ]
+    }
+  }
+}
